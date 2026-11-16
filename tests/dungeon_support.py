@@ -19,7 +19,7 @@ from ai_dbg.game.dungeon import (
     current_combat_round_entity,
     current_dungeon_combat,
 )
-from ai_dbg.game.entities import create_entity
+from ai_dbg.game.entities import create_entity, get_entity_by_name
 from ai_dbg.models import (
     CombatResult,
     CombatState,
@@ -60,7 +60,7 @@ def make_room_entity(
     dungeon_name: str = "副本.测试",
 ) -> Entity:
     """创建房间实体（当前实现中房间实体就是对应 Stage 实体）。"""
-    existing = game.entity_index.get(name)
+    existing = get_entity_by_name(game, name)
     entity = existing if existing is not None else create_entity(game, name)
     entity.replace(StageComponent, name)
     entity.replace(DungeonComponent, name)

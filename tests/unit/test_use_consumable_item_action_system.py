@@ -10,13 +10,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import (
     combat_round_view,
     combat_rounds,
     create_combat_round,
 )
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.dungeon import current_combat_entity
 from ai_dbg.models import (
     ActorComponent,
@@ -65,7 +65,7 @@ def _make_consumable(
 
 
 def _make_actor_entity(
-    context: Context,
+    context: ECSContext,
     name: str,
     action_item: ConsumableItem,
 ) -> Entity:
@@ -83,7 +83,7 @@ def _make_actor_entity(
 
 
 def _make_player_entity(
-    context: Context, name: str, items: List[ConsumableItem]
+    context: ECSContext, name: str, items: List[ConsumableItem]
 ) -> Entity:
     """创建持有队伍背包（InventoryComponent）的 player 实体。"""
     entity = context.create_entity()
@@ -114,15 +114,14 @@ def _setup_mock_dungeon(mock_game: Any, *, round_count: int = 1) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -141,14 +140,14 @@ def system(mock_game: Any) -> UseConsumableItemActionSystem:
 
 class TestFilter:
     def test_true_when_action_and_hand_present(
-        self, context: Context, system: UseConsumableItemActionSystem
+        self, context: ECSContext, system: UseConsumableItemActionSystem
     ) -> None:
         item = _make_consumable("灼血药剂")
         actor = _make_actor_entity(context, "角色.无名", item)
         assert system.filter(actor) is True
 
     def test_false_when_hand_missing(
-        self, context: Context, system: UseConsumableItemActionSystem
+        self, context: ECSContext, system: UseConsumableItemActionSystem
     ) -> None:
         entity = context.create_entity()
         entity._name = "player"
@@ -165,7 +164,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_skips_when_not_ongoing(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -181,7 +180,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_materializes_card_into_hand(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -207,7 +206,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_materializes_each_builtin_card_times_count(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -227,7 +226,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_materializes_multi_card_times_count(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -246,7 +245,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_consumes_whole_stack(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -266,7 +265,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_inventory_item_removed_when_last_count(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -284,7 +283,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_records_round_log_like_gear(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -309,7 +308,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_broadcasts_notice_to_stage(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -328,7 +327,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_does_not_materialize_when_item_not_in_inventory(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
@@ -351,7 +350,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_raises_when_multiple_entities_triggered(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:

@@ -20,17 +20,13 @@ from ..memory import remove_agent_memory
 
 def create_entity(dbg_game: DBGGame, name: str) -> Entity:
     """创建并注册一个新实体。"""
-    entity = dbg_game.ecs.create_entity()
-    entity.name = str(name)
-    dbg_game.entity_index[name] = entity
-    return entity
+    return dbg_game.ecs.create_entity(str(name))
 
 
 def destroy_entity(dbg_game: DBGGame, entity: Entity) -> None:
-    """销毁实体：先清理 LLM 记忆与名称索引，再从 ECS 销毁。"""
+    """销毁实体：先清理 LLM 记忆，再从 ECS 销毁（名称索引由 context 维护）。"""
     logger.debug(f"destroy_entity: {entity.name}")
     remove_agent_memory(dbg_game, entity)
-    dbg_game.entity_index.pop(entity.name, None)
     dbg_game.ecs.destroy_entity(entity)
 
 
@@ -43,14 +39,8 @@ def get_world_entity(dbg_game: DBGGame, world_name: str) -> Optional[Entity]:
 
 
 def get_entity_by_name(dbg_game: DBGGame, name: str) -> Optional[Entity]:
-    """通过名称获取实体；索引缺失时回退扫描 ECS（便于测试与旧快照）。"""
-    indexed = dbg_game.entity_index.get(name, None)
-    if indexed is not None:
-        return indexed
-    for entity in dbg_game.ecs.entities:
-        if entity.name == name:
-            return entity
-    return None
+    """通过名称获取实体。"""
+    return dbg_game.ecs.get_entity_by_name(name)
 
 
 def get_stage_entity(dbg_game: DBGGame, stage_name: str) -> Optional[Entity]:

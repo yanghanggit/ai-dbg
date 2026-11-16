@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas import Entity
-from ai_dbg.entitas.context import Context
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -28,17 +28,16 @@ from dungeon_support import install_combat, set_combat_state
 
 
 @pytest.fixture()
-def context() -> Context:
+def context() -> ECSContext:
     """提供真实 ECS Context，使 Group / Matcher 自动更新行为生效。"""
-    return Context()
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     """Mock DBGGame，将 get_group() 代理到真实 Context。"""
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     game.get_group.side_effect = context.get_group
@@ -69,7 +68,7 @@ def _make_card(name: str, source: str) -> Card:
     )
 
 
-def _make_combat_entity(context: Context, name: str) -> Entity:
+def _make_combat_entity(context: ECSContext, name: str) -> Entity:
     """创建持有全部战斗组件的角色实体（模拟战斗中状态）。"""
     entity = context.create_entity()
     entity._name = name
@@ -111,7 +110,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_removes_draw_pile_component(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 DrawPileComponent。"""
         set_combat_state(
@@ -127,7 +126,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_removes_discard_pile_component(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 DiscardPileComponent。"""
         set_combat_state(
@@ -143,7 +142,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_removes_exhaust_pile_component(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 ExhaustPileComponent。"""
         set_combat_state(
@@ -159,7 +158,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_deck_component_retained(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体应仍持有 DeckComponent（原始牌库跨战斗持久存在）。"""
         set_combat_state(
@@ -175,7 +174,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_deck_cards_unchanged_after_teardown(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """战斗结束后 DeckComponent 中的原始牌库应保持不变（副本被丢弃，原始不受影响）。"""
         set_combat_state(
@@ -201,7 +200,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_combat_copies_discarded_not_returned(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """战斗子堆中的副本（包括外来牌）战斗结束后应全部丢弃，不写入 DeckComponent。"""
         set_combat_state(
@@ -232,7 +231,7 @@ class TestCombatPileTeardownSystemPileRemoval:
 
     @pytest.mark.asyncio
     async def test_multiple_entities_all_piles_removed(
-        self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
+        self, context: ECSContext, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """多个实体应全部被处理，Pile 组件全部移除，DeckComponent 保留。"""
         set_combat_state(

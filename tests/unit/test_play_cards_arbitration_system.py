@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import combat_round_view
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
@@ -46,7 +46,9 @@ def _make_card() -> Card:
     )
 
 
-def _make_actor(context: Context, name: str, card: Card, targets: List[str]) -> Entity:
+def _make_actor(
+    context: ECSContext, name: str, card: Card, targets: List[str]
+) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.测试密室")
@@ -60,8 +62,8 @@ def _make_actor(context: Context, name: str, card: Card, targets: List[str]) -> 
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
@@ -72,13 +74,12 @@ def stage_memory() -> SimpleNamespace:
 
 @pytest.fixture()
 def mock_game(
-    context: Context,
+    context: ECSContext,
     stage_memory: SimpleNamespace,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {"场景.测试密室": stage_memory}
     game.events = MagicMock()
     install_combat(game)
@@ -169,7 +170,7 @@ class TestLoopMemoryCompression:
     @pytest.mark.asyncio
     async def test_success_compresses_loop_span_into_summary(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
@@ -215,7 +216,7 @@ class TestLoopMemoryCompression:
     @pytest.mark.asyncio
     async def test_failure_keeps_trace_and_appends_notice(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
@@ -256,7 +257,7 @@ class TestLoopMemoryCompression:
     @pytest.mark.asyncio
     async def test_exception_keeps_trace_and_appends_notice(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
@@ -277,7 +278,7 @@ class TestLoopMemoryCompression:
     @pytest.mark.asyncio
     async def test_persistence_happens_before_compression(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
@@ -309,7 +310,7 @@ class TestLoopIdUniqueness:
     @pytest.mark.asyncio
     async def test_same_actor_same_card_gets_distinct_loop_ids(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
@@ -340,7 +341,7 @@ class TestLoopIdUniqueness:
     @pytest.mark.asyncio
     async def test_repeated_failures_get_distinct_loop_ids(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:

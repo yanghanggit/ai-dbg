@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import combat_round_view
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
@@ -55,7 +55,7 @@ def _make_card(name: str, *, autonomous: bool = False) -> Card:
     )
 
 
-def _make_actor(context: Context, name: str) -> Entity:
+def _make_actor(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.测试密室")
@@ -64,15 +64,14 @@ def _make_actor(context: Context, name: str) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
+def mock_game(context: ECSContext, monkeypatch: pytest.MonkeyPatch) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {
         "场景.测试密室": SimpleNamespace(
             messages=[SystemMessage(content="你是本场景的仲裁者")]
@@ -113,7 +112,7 @@ def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
 
 class TestCollectHandAutonomousCards:
     def test_returns_only_autonomous_cards(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         actor = _make_actor(context, "英雄")
@@ -132,7 +131,7 @@ class TestCollectHandAutonomousCards:
 
 class TestAutonomousArbitrationSystem:
     def test_filter_requires_pass_turn_and_autonomous_card(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         entity = context.create_entity()
@@ -145,7 +144,7 @@ class TestAutonomousArbitrationSystem:
         assert system.filter(entity) is True
 
     def test_filter_false_when_no_autonomous_card(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "英雄")
@@ -156,7 +155,7 @@ class TestAutonomousArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_react_skips_when_not_ongoing(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         set_combat_state(mock_game, CombatState.COMPLETE)
         system = AutonomousArbitrationSystem(mock_game)
@@ -173,7 +172,7 @@ class TestAutonomousArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_stage_arbitrates_autonomous_without_locking_target(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")
@@ -234,7 +233,7 @@ class TestAutonomousLoopMemoryCompression:
 
     @pytest.mark.asyncio
     async def test_success_compresses_span_and_records_autonomous(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")

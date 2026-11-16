@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import combat_round_view
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -43,7 +43,7 @@ def _make_gear(name: str) -> GearItem:
 
 
 def _make_actor_entity(
-    context: Context,
+    context: ECSContext,
     name: str,
     action_item: GearItem,
 ) -> Entity:
@@ -61,7 +61,9 @@ def _make_actor_entity(
     return entity
 
 
-def _make_player_entity(context: Context, name: str, items: List[GearItem]) -> Entity:
+def _make_player_entity(
+    context: ECSContext, name: str, items: List[GearItem]
+) -> Entity:
     """创建持有团队背包（InventoryComponent）的 player 实体。"""
     entity = context.create_entity()
     entity._name = name
@@ -81,15 +83,14 @@ def _setup_mock_game(mock_game: Any, player: Entity) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -110,7 +111,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_skips_when_not_ongoing(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
@@ -125,7 +126,7 @@ class TestReact:
     @pytest.mark.asyncio
     async def test_converts_gear_to_hand_card(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:

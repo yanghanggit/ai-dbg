@@ -66,6 +66,7 @@ async def test_global_pipeline_is_safe_in_opening_room() -> None:
     await game.pipeline.process(None)
 
     # 开场初始化应正常写入角色记忆，且没有战斗临时组件被创建。
-    player_entity = game.entity_index["角色.玩家"]
+    player_entity = game.ecs.get_entity_by_name("角色.玩家")
+    assert player_entity is not None
     assert game.world.agent_memories["角色.玩家"].messages
     assert not player_entity.has(DrawPileComponent)

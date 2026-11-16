@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ai_dbg.entitas import Entity
-from ai_dbg.entitas.context import Context
+from ai_dbg.game.context import ECSContext
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
 from ai_dbg.models import (
     ActorComponent,
@@ -34,7 +34,7 @@ _LOOT_JSON = """{
 }"""
 
 
-def _make_player(context: Context) -> Entity:
+def _make_player(context: ECSContext) -> Entity:
     entity = context.create_entity()
     entity._name = "角色.无名"
     entity.add(ActorComponent, entity._name, "场景.河湾芦苇丛")
@@ -44,7 +44,7 @@ def _make_player(context: Context) -> Entity:
     return entity
 
 
-def _make_monster(context: Context, name: str) -> Entity:
+def _make_monster(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.河湾芦苇丛")
@@ -54,17 +54,16 @@ def _make_monster(context: Context, name: str) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
-def _make_game(context: Context, monsters: List[Entity], player: Entity) -> Any:
+def _make_game(context: ECSContext, monsters: List[Entity], player: Entity) -> Any:
     stage = context.create_entity()
     stage._name = "场景.河湾芦苇丛"
     stage.add(StageComponent, stage.name)
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(
@@ -78,7 +77,7 @@ def _make_game(context: Context, monsters: List[Entity], player: Entity) -> Any:
 
 class TestLootMemory:
     async def test_writes_prompt_and_ai_response_to_monster_memory(
-        self, context: Context
+        self, context: ECSContext
     ) -> None:
         """掉落推理必须留痕：human = 请求原文（带 combat_loot 标记），ai = 回包原文。"""
         player = _make_player(context)
@@ -125,7 +124,9 @@ class TestLootMemory:
         assert "材料.利爪 ×1" in loot_message.content
         assert loot_message.combat_loot_items == "场景.河湾芦苇丛"
 
-    async def test_records_prompt_only_when_no_response(self, context: Context) -> None:
+    async def test_records_prompt_only_when_no_response(
+        self, context: ECSContext
+    ) -> None:
         """LLM 无回包时只记请求侧，不伪造 AI 回复（add_ai_message 会断言非空）。"""
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")
@@ -148,7 +149,9 @@ class TestLootMemory:
         assert not [m for m in messages if m.type == "ai"]
         assert player.get(LootComponent).items == []
 
-    async def test_skips_entirely_when_combat_not_won(self, context: Context) -> None:
+    async def test_skips_entirely_when_combat_not_won(
+        self, context: ECSContext
+    ) -> None:
         """未胜利（或未结束）时不推理、不留痕。"""
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")
@@ -160,7 +163,7 @@ class TestLootMemory:
 
         assert not game.world.agent_memories
 
-    async def test_asserts_when_player_has_no_stage(self, context: Context) -> None:
+    async def test_asserts_when_player_has_no_stage(self, context: ECSContext) -> None:
         """actor 与 stage 不允许脱离：缺失场景是断言失败，而不是降级空串。"""
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")

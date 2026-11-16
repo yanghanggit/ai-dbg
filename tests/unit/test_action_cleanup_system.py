@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import DrawCardsAction, FillDrawPileAction, PassTurnAction
 from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
@@ -17,17 +17,16 @@ from ecs_testing import Position
 
 
 @pytest.fixture()
-def context() -> Context:
+def context() -> ECSContext:
     """提供真实 ECS Context，使 Group 自动更新行为生效。"""
-    return Context()
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     """Mock DBGGame，将 get_group() 代理到真实 Context，避免初始化重量级 DBGGame。"""
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.get_group.side_effect = context.get_group
     return game
 
@@ -64,7 +63,7 @@ class TestActionCleanupSystem:
 
     @pytest.mark.asyncio
     async def test_execute_removes_single_action_component(
-        self, context: Context, system: ActionCleanupSystem
+        self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """单实体持有一个动作组件，执行后该组件应被移除。"""
         entity = context.create_entity()
@@ -76,7 +75,7 @@ class TestActionCleanupSystem:
 
     @pytest.mark.asyncio
     async def test_execute_removes_multiple_actions_from_same_entity(
-        self, context: Context, system: ActionCleanupSystem
+        self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """单实体同时持有多个动作组件，执行后应全部被移除。"""
         entity = context.create_entity()
@@ -92,7 +91,7 @@ class TestActionCleanupSystem:
 
     @pytest.mark.asyncio
     async def test_execute_removes_actions_from_multiple_entities(
-        self, context: Context, system: ActionCleanupSystem
+        self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """多个实体各持不同动作组件，执行后应全部被清除。"""
         entity_a = context.create_entity()
@@ -112,7 +111,7 @@ class TestActionCleanupSystem:
 
     @pytest.mark.asyncio
     async def test_execute_preserves_non_action_components(
-        self, context: Context, system: ActionCleanupSystem
+        self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """实体同时持有动作组件与非动作组件，执行后非动作组件应保留。"""
         entity = context.create_entity()

@@ -4,11 +4,11 @@
 handler 核心已收敛到 `arbitration_common`；此处经 `turn_end` 的薄包装验证（含持有者目标约束）。
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 from unittest.mock import MagicMock
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -27,7 +27,7 @@ from ai_dbg.systems.turn_end_arbitration_system import (
 
 
 def _make_actor(
-    context: Context, name: str, hp: int, max_hp: int, hand: List[Card]
+    context: ECSContext, name: str, hp: int, max_hp: int, hand: List[Card]
 ) -> Entity:
     entity = context.create_entity()
     entity._name = name
@@ -39,7 +39,14 @@ def _make_actor(
 
 def _make_game(entities: Dict[str, Entity]) -> Any:
     game = MagicMock()
-    game.entity_index = entities
+    context = (
+        cast(ECSContext, next(iter(entities.values()))._context)
+        if entities
+        else ECSContext()
+    )
+    game.ecs = context
+    for entity in entities.values():
+        context.register_entity(entity)
     return game
 
 
@@ -54,7 +61,7 @@ def _block_card(block: int) -> Card:
 
 class TestResolveDamageHandler:
     def test_damage_subtracts_total_block(self) -> None:
-        context = Context()
+        context = ECSContext()
         hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[_block_card(4)])
         ctx = ArbitrationContext()
 
@@ -70,7 +77,7 @@ class TestResolveDamageHandler:
 class TestResolveEffectHandler:
     def test_heal_holder_raises_hp(self) -> None:
         """回合结束的受效结算目标恒为持有者本人。"""
-        context = Context()
+        context = ECSContext()
         ally = _make_actor(context, "队友", hp=4, max_hp=10, hand=[])
         ctx = ArbitrationContext()
 
@@ -91,7 +98,7 @@ class TestResolveEffectHandler:
         assert "（治疗术：回复 damage 的一半）" in segment
 
     def test_lifesteal_clamps_to_max_hp(self) -> None:
-        context = Context()
+        context = ECSContext()
         hero = _make_actor(context, "英雄", hp=9, max_hp=10, hand=[])
         ctx = ArbitrationContext()
 
@@ -108,7 +115,7 @@ class TestResolveEffectHandler:
         assert ctx.hp_changes["英雄"] == 10  # 封顶
 
     def test_reflect_lowers_hp_per_hit(self) -> None:
-        context = Context()
+        context = ECSContext()
         hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[])
         ctx = ArbitrationContext()
 
@@ -126,7 +133,7 @@ class TestResolveEffectHandler:
         assert "反伤3×1=3/击 ×2击=6 = 净扣减6" in segment
 
     def test_missing_entity_returns_error_without_change(self) -> None:
-        context = Context()
+        context = ECSContext()
         ctx = ArbitrationContext()
 
         segment = _handle_resolve_effect(
@@ -138,7 +145,7 @@ class TestResolveEffectHandler:
 
     def test_damage_non_holder_target_is_rejected(self) -> None:
         """回合结束词缀不能指向非持有者。"""
-        context = Context()
+        context = ECSContext()
         hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[])
         other = _make_actor(context, "怪物", hp=10, max_hp=10, hand=[])
         ctx = ArbitrationContext()
@@ -156,7 +163,7 @@ class TestResolveEffectHandler:
         assert ctx.hp_changes == {}
 
     def test_effect_non_holder_target_is_rejected(self) -> None:
-        context = Context()
+        context = ECSContext()
         hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[])
         other = _make_actor(context, "怪物", hp=10, max_hp=10, hand=[])
         ctx = ArbitrationContext()

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from ai_dbg.entitas import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     DungeonComponent,
@@ -16,8 +16,8 @@ from ai_dbg.services.dungeon_combat_actions import activate_equip_gear
 from dungeon_support import install_combat
 
 
-def _make_game() -> tuple[MagicMock, Context, Entity]:
-    context = Context()
+def _make_game() -> tuple[MagicMock, ECSContext, Entity]:
+    context = ECSContext()
     stage = context.create_entity()
     stage._name = "场景.测试"
     stage.add(StageComponent, stage.name)
@@ -29,14 +29,13 @@ def _make_game() -> tuple[MagicMock, Context, Entity]:
     player.add(InventoryComponent, player.name, [])
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game, room_name=stage.name)
     return game, context, player
 
 
-def _make_actor(context: Context, name: str, *, party: bool, hand: bool) -> Entity:
+def _make_actor(context: ECSContext, name: str, *, party: bool, hand: bool) -> Entity:
     actor = context.create_entity()
     actor._name = name
     actor.add(ActorComponent, name, "场景.测试")
@@ -50,7 +49,7 @@ def _make_actor(context: Context, name: str, *, party: bool, hand: bool) -> Enti
 def test_activate_equip_gear_rejects_non_party_actor() -> None:
     game, context, _ = _make_game()
     actor = _make_actor(context, "怪物.测试", party=False, hand=True)
-    game.entity_index[actor.name] = actor
+    game.ecs.register_entity(actor)
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
@@ -65,7 +64,7 @@ def test_activate_equip_gear_rejects_non_party_actor() -> None:
 def test_activate_equip_gear_rejects_missing_hand() -> None:
     game, context, _ = _make_game()
     actor = _make_actor(context, "角色.测试", party=True, hand=False)
-    game.entity_index[actor.name] = actor
+    game.ecs.register_entity(actor)
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
@@ -82,7 +81,7 @@ def test_activate_equip_gear_activates_action() -> None:
     gear = GearItem(name="装备.测试", description="测试装备")
     player.get(InventoryComponent).items.append(gear)
     actor = _make_actor(context, "角色.测试", party=True, hand=True)
-    game.entity_index[actor.name] = actor
+    game.ecs.register_entity(actor)
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",

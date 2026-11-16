@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas import Entity
-from ai_dbg.entitas.context import Context
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -37,7 +37,7 @@ def _make_card(name: str) -> Card:
     )
 
 
-def _make_actor(context: Context, cards: List[Card]) -> Entity:
+def _make_actor(context: ECSContext, cards: List[Card]) -> Entity:
     entity = context.create_entity()
     entity._name = "角色.无名"
     entity.add(ActorComponent, entity._name, "场景.河湾芦苇丛")
@@ -49,20 +49,19 @@ def _make_actor(context: Context, cards: List[Card]) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def game(context: Context) -> Any:
+def game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     install_combat(game)
     return game
 
 
-async def test_fills_draw_pile_with_deck_copies(context: Context, game: Any) -> None:
+async def test_fills_draw_pile_with_deck_copies(context: ECSContext, game: Any) -> None:
     """填充的是深拷贝：顺序可变，但内容与数量与牌库一致，且不回写牌库对象。"""
     deck_cards = [_make_card("攻击"), _make_card("防守")]
     actor = _make_actor(context, deck_cards)
@@ -80,7 +79,7 @@ async def test_fills_draw_pile_with_deck_copies(context: Context, game: Any) -> 
     assert all(c is not d for c in draw_pile.cards for d in deck_cards)
 
 
-async def test_empty_deck_asserts(context: Context, game: Any) -> None:
+async def test_empty_deck_asserts(context: ECSContext, game: Any) -> None:
     """空牌库直接断言（数据损坏），不降级。"""
     actor = _make_actor(context, [])
 

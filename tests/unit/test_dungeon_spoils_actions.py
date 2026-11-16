@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     DeckComponent,
@@ -35,7 +35,7 @@ from dungeon_support import (
 # ---------------------------------------------------------------------------
 
 
-def _make_party_member(context: Context, name: str) -> Entity:
+def _make_party_member(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "")
@@ -48,10 +48,9 @@ def _mock_game(
     party: set[Entity], *, in_dungeon: bool = True, in_combat: bool = False
 ) -> Any:
     member = next(iter(party))
-    context = cast(Context, member._context)
+    context = cast(ECSContext, member._context)
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     stage = context.create_entity()
@@ -79,8 +78,8 @@ def _mock_game(
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +87,7 @@ def context() -> Context:
 # ---------------------------------------------------------------------------
 
 
-def test_remove_spoils_clears_party(context: Context) -> None:
+def test_remove_spoils_clears_party(context: ECSContext) -> None:
     member = _make_party_member(context, "英雄")
     member.add(SpoilsComponent, "英雄", [], [])
     game = _mock_game({member})
@@ -99,7 +98,7 @@ def test_remove_spoils_clears_party(context: Context) -> None:
     assert not member.has(SpoilsComponent)
 
 
-def test_remove_spoils_rejects_when_nothing_to_clear(context: Context) -> None:
+def test_remove_spoils_rejects_when_nothing_to_clear(context: ECSContext) -> None:
     member = _make_party_member(context, "英雄")
     game = _mock_game({member})
 
@@ -108,7 +107,7 @@ def test_remove_spoils_rejects_when_nothing_to_clear(context: Context) -> None:
     assert ok is False
 
 
-def test_remove_spoils_rejects_outside_dungeon(context: Context) -> None:
+def test_remove_spoils_rejects_outside_dungeon(context: ECSContext) -> None:
     member = _make_party_member(context, "英雄")
     member.add(SpoilsComponent, "英雄", [], [])
     game = _mock_game({member}, in_dungeon=False)
@@ -124,7 +123,7 @@ def test_remove_spoils_rejects_outside_dungeon(context: Context) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_generate_spoils_rejected_in_combat_room(context: Context) -> None:
+def test_generate_spoils_rejected_in_combat_room(context: ECSContext) -> None:
     member = _make_party_member(context, "英雄")
     game = _mock_game({member}, in_combat=True)
 
@@ -134,7 +133,7 @@ def test_generate_spoils_rejected_in_combat_room(context: Context) -> None:
     assert "战斗房间" in msg
 
 
-def test_generate_spoils_rejected_when_already_generated(context: Context) -> None:
+def test_generate_spoils_rejected_when_already_generated(context: ECSContext) -> None:
     member = _make_party_member(context, "英雄")
     member.add(SpoilsComponent, "英雄", [], [])
     game = _mock_game({member})
@@ -144,7 +143,9 @@ def test_generate_spoils_rejected_when_already_generated(context: Context) -> No
     assert ok is False
 
 
-def test_generate_spoils_activates_action_in_non_combat_room(context: Context) -> None:
+def test_generate_spoils_activates_action_in_non_combat_room(
+    context: ECSContext,
+) -> None:
     member = _make_party_member(context, "英雄")
     game = _mock_game({member})
 
@@ -157,7 +158,7 @@ def test_generate_spoils_activates_action_in_non_combat_room(context: Context) -
 ###################################################################################################################################################################
 def test_party_has_any_spoils_requires_component() -> None:
     """「生成完了但零产出」可被判定：队内无 SpoilsComponent 即视为未完成。"""
-    from ai_dbg.entitas.context import Context
+    from ai_dbg.game.context import ECSContext
     from ai_dbg.models import (
         ActorComponent,
         Card,
@@ -166,10 +167,9 @@ def test_party_has_any_spoils_requires_component() -> None:
     )
     from ai_dbg.services.dungeon_spoils_actions import party_has_any_spoils
 
-    context = Context()
+    context = ECSContext()
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
 
     entity = context.create_entity()
     entity._name = "角色.无名"

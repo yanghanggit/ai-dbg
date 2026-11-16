@@ -55,7 +55,7 @@ class Entity:
         #: Dense slot index inside the context.
         self._index: int = index
 
-        #: Optional human readable name (managed by RPGEntityManager).
+        #: Optional human readable name (managed by the game ECS context).
         self._name: str = ""
 
         #: Occurs when a component gets added.

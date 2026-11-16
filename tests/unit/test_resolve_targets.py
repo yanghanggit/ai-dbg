@@ -4,11 +4,10 @@ from typing import Any, Dict
 from unittest.mock import MagicMock
 
 import ai_dbg.game.combat.targeting as combat_processor
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.assembly import create_dbg_game
 from ai_dbg.game.combat import resolve_targets
-from ai_dbg.game.context import DBGGame
+from ai_dbg.game.context import DBGGame, ECSContext
 from ai_dbg.game.entities import (
     create_entity,
 )
@@ -293,9 +292,10 @@ def _make_transfer_game(actors: Dict[str, Entity]) -> Any:
     """只提供转移系统所需接口的 game stub。"""
 
     mock_game = MagicMock()
-    mock_game.ecs = Context()
+    mock_game.ecs = ECSContext()
     mock_game.world.agent_memories = {}
-    mock_game.entity_index = actors
+    for entity in actors.values():
+        mock_game.ecs.register_entity(entity)
     install_combat(mock_game)
     for entity in actors.values():
         if not entity.has(HandComponent):

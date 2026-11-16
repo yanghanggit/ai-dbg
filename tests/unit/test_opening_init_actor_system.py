@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     AppearanceComponent,
@@ -29,7 +29,7 @@ from ai_dbg.systems.opening_init_actor_system import (
 
 
 def _make_actor(
-    context: Context,
+    context: ECSContext,
     name: str,
     *,
     is_ally: bool = False,
@@ -55,15 +55,14 @@ def _make_actor(
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     return game
@@ -117,7 +116,7 @@ def test_format_other_actors_info_contains_name_camp_appearance() -> None:
 
 
 def test_inject_opening_scene_environment_injects_human_and_ai_messages(
-    context: Context, mock_game: Any, system: OpeningInitActorSystem
+    context: ECSContext, mock_game: Any, system: OpeningInitActorSystem
 ) -> None:
     actor_a = _make_actor(context, "勇者", is_ally=True)
     actor_b = _make_actor(context, "游侠", is_ally=True)
@@ -145,7 +144,7 @@ def test_inject_opening_scene_environment_injects_human_and_ai_messages(
 
 
 def test_inject_opening_scene_environment_skips_already_injected_actor(
-    context: Context, mock_game: Any, system: OpeningInitActorSystem
+    context: ECSContext, mock_game: Any, system: OpeningInitActorSystem
 ) -> None:
     actor = _make_actor(context, "勇者", is_ally=True)
 
@@ -168,7 +167,7 @@ def test_inject_opening_scene_environment_skips_already_injected_actor(
 
 
 # def test_add_generate_deck_actions_adds_action_to_party_only(
-#     context: Context, mock_game: Any, system: OpeningInitActorSystem
+#     context: ECSContext, mock_game: Any, system: OpeningInitActorSystem
 # ) -> None:
 #     ally = _make_actor(context, "勇者", is_ally=True)
 #     monster = _make_actor(context, "哥布林", is_monster=True)

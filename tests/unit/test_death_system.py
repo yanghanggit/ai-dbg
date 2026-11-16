@@ -4,14 +4,14 @@
 神器后仲裁等在自己回合内死亡，无人能触发重算，本回合会永久卡死。
 """
 
-from typing import Dict, List
+from typing import Dict, List, cast
 from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import combat_round_view
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
@@ -22,7 +22,7 @@ from ai_dbg.systems.death_system import DeathSystem
 from dungeon_support import current_round_entity, install_combat
 
 
-def _make_actor(context: Context, name: str, hp: int, max_hp: int = 10) -> Entity:
+def _make_actor(context: ECSContext, name: str, hp: int, max_hp: int = 10) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "dungeon")
@@ -35,10 +35,11 @@ def _make_game(
     action_order: List[str],
     current_actor: str,
 ) -> MagicMock:
-    context = next(iter(entities.values()))._context
+    context = cast(ECSContext, next(iter(entities.values()))._context)
     game = MagicMock()
     game.ecs = context
-    game.entity_index = entities
+    for entity in entities.values():
+        context.register_entity(entity)
     game.world.agent_memories = {}
     game.events = MagicMock()
 
@@ -53,7 +54,7 @@ def _make_game(
 
 @pytest.mark.asyncio
 async def test_current_actor_death_advances_pointer() -> None:
-    context = Context()
+    context = ECSContext()
     dying = _make_actor(context, "角色.坏运气", hp=0)
     nxt = _make_actor(context, "角色.无名", hp=5)
     game = _make_game(
@@ -75,7 +76,7 @@ async def test_current_actor_death_advances_pointer() -> None:
 
 @pytest.mark.asyncio
 async def test_non_current_actor_death_keeps_pointer() -> None:
-    context = Context()
+    context = ECSContext()
     dying = _make_actor(context, "怪物.头狼", hp=0)
     current = _make_actor(context, "角色.坏运气", hp=5)
     game = _make_game(
@@ -95,7 +96,7 @@ async def test_non_current_actor_death_keeps_pointer() -> None:
 
 @pytest.mark.asyncio
 async def test_pointer_becomes_none_when_no_alive_actor_left() -> None:
-    context = Context()
+    context = ECSContext()
     a = _make_actor(context, "角色.坏运气", hp=0)
     b = _make_actor(context, "角色.无名", hp=0)
     game = _make_game(

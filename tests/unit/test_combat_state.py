@@ -253,7 +253,7 @@ def test_destroy_combat_removes_rounds_and_room_marker(sample_game: Any) -> None
     assert not sample_game.ecs.get_group(
         Matcher(all_of=[CombatRoundEntryComponent])
     ).entities
-    assert combat_name not in sample_game.entity_index
+    assert sample_game.ecs.get_entity_by_name(combat_name) is None
 
 
 def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
@@ -276,4 +276,4 @@ def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
     teardown_dungeon(sample_game)
 
     assert sample_game.ecs.entity_count == 0
-    assert sample_game.entity_index == {}
+    assert sample_game.ecs.entity_count == 0

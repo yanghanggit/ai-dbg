@@ -11,8 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -40,7 +40,7 @@ def _make_card(*, transferable: bool = True) -> Card:
     )
 
 
-def _make_actor(context: Context, name: str) -> Entity:
+def _make_actor(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "stage1")
@@ -49,19 +49,19 @@ def _make_actor(context: Context, name: str) -> Entity:
 
 
 def _stub_actor_lookup(mock_game: Any, actors: Dict[str, Entity]) -> None:
-    mock_game.entity_index = actors
+    for entity in actors.values():
+        mock_game.ecs.register_entity(entity)
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -89,7 +89,7 @@ def _contents(mock_game: Any) -> list[str]:
 
 class TestTransferCardsActionSystem:
     async def test_removes_source_card_and_copies_to_each_target(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         source = _make_actor(context, "角色.无名")
         target_a = _make_actor(context, "怪物.甲")
@@ -120,7 +120,7 @@ class TestTransferCardsActionSystem:
             assert card.transferable is True
 
     async def test_repeated_targets_get_one_copy_per_hit(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """同一角色在目标列表中出现两次 = 被命中两次 → 收到两份副本（不是一份）。"""
         source = _make_actor(context, "角色.无名")
@@ -141,7 +141,7 @@ class TestTransferCardsActionSystem:
         assert all(c.transferable is False for c in hand)
 
     async def test_single_target_list_yields_single_copy(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """SINGLE 的解析目标列表只有一项：`hit_count` 是多段伤害，不额外产生副本。"""
         source = _make_actor(context, "角色.无名")
@@ -158,7 +158,7 @@ class TestTransferCardsActionSystem:
         assert len(target.get(HandComponent).cards) == 1
 
     async def test_spread_all_hits_on_single_target_deliver_all_copies(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """散射只剩一个目标时命中「全摊」：5 击全打中它 → 5 份副本。"""
         source = _make_actor(context, "角色.无名")
@@ -188,7 +188,7 @@ class TestTransferCardsActionSystem:
         assert "怪物.甲 5 份" in outcome
 
     async def test_spread_hits_split_across_characters(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """散射分摊：甲 3 击 / 乙 2 击 → 甲 3 份、乙 2 份，总数等于击数。"""
         source = _make_actor(context, "角色.无名")
@@ -218,7 +218,7 @@ class TestTransferCardsActionSystem:
         assert "共 5 份" not in outcome  # 每人份数已分别列出
 
     async def test_spread_including_self_uses_self_wording(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """SPREAD 锚点为己方时解析结果可含出牌者本人，该份按「回到你自己手牌」措辞。"""
         source = _make_actor(context, "角色.无名")
@@ -252,7 +252,7 @@ class TestTransferCardsActionSystem:
         assert "角色.队友 1 份" in outcome
 
     async def test_explicit_self_target_copies_back_to_source(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """显式把自身选为目标时，自传递复制一份回源手牌。"""
         source = _make_actor(context, "角色.无名")
@@ -275,7 +275,7 @@ class TestTransferCardsActionSystem:
         assert copied.transferable is False
 
     async def test_received_copy_cannot_be_transferred_again(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """链式传递被阻断：收到副本者再持牌时，filter 因 transferable=False 直接拒绝。"""
         source = _make_actor(context, "角色.无名")
@@ -296,7 +296,7 @@ class TestTransferCardsActionSystem:
         assert system.filter(receiver) is False
 
     async def test_skips_when_not_ongoing(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         set_combat_state(mock_game, CombatState.COMPLETE)
         source = _make_actor(context, "角色.无名")
@@ -313,7 +313,7 @@ class TestTransferCardsActionSystem:
         assert len(target.get(HandComponent).cards) == 0
 
     def test_filter_rejects_non_transferable(
-        self, context: Context, system: TransferCardsActionSystem
+        self, context: ECSContext, system: TransferCardsActionSystem
     ) -> None:
         source = _make_actor(context, "角色.无名")
         card = _make_card(transferable=False)
@@ -323,7 +323,7 @@ class TestTransferCardsActionSystem:
         assert system.filter(source) is False
 
     async def test_react_rejects_non_transferable_card(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """旁路直接调 react 时，防御性断言拦住非传递牌（正常路径由 filter 兜住）。"""
         source = _make_actor(context, "角色.无名")
@@ -335,7 +335,7 @@ class TestTransferCardsActionSystem:
             await system.react([source])
 
     async def test_each_receiver_gets_received_card_memory(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """副本落地后必须给接收方写记忆：否则接收方手牌凭空多牌而无从解释。"""
         source = _make_actor(context, "角色.无名")
@@ -367,7 +367,7 @@ class TestTransferCardsActionSystem:
             assert "蚀纸毒" in message.received_card
 
     async def test_giver_gets_transfer_outcome_memory(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """传递者拿到「谁收到几份」的结果，且不代述卡牌玩法效果。"""
         source = _make_actor(context, "角色.无名")
@@ -399,7 +399,7 @@ class TestTransferCardsActionSystem:
         assert "伤害" not in content
 
     async def test_self_transfer_memory_says_copy_returned(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """自传递的文案要说明「副本回到你自己手牌」，不能反说成别人递给你。"""
         source = _make_actor(context, "角色.无名")
@@ -420,7 +420,7 @@ class TestTransferCardsActionSystem:
         assert "你自己 1 份" in outcome
 
     async def test_no_memory_when_nothing_transferred(
-        self, context: Context, mock_game: Any, system: TransferCardsActionSystem
+        self, context: ECSContext, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """战斗未进行中时不写记忆（本系统整体跳过）。"""
         set_combat_state(mock_game, CombatState.COMPLETE)
@@ -441,7 +441,7 @@ class TestTransferOutcomeTag:
     """给出方的「传递结果」消息带 `transfer_outcome` 标记（牌名 + 每人份数）。"""
 
     async def test_transfer_outcome_tag_records_deliveries(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         giver = _make_actor(context, "角色.无名")
         receiver = _make_actor(context, "怪物.渡口野狗")

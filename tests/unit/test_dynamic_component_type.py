@@ -14,8 +14,9 @@ from typing import Any, Iterator, cast
 import pytest
 from pydantic import ValidationError
 
-from ai_dbg.entitas import Context, Entity
+from ai_dbg.entitas import Context
 from ai_dbg.entitas.components import Component
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.entities import (
     create_entity,
     create_stage_entities,
@@ -62,11 +63,10 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
 # create_component_type
 ############################################################################################################
 class _GameImpl:
-    """最小 DBGGame 替身：只提供函数所需的 ecs 与 entity_index。"""
+    """最小 DBGGame 替身：只提供函数所需的 ECS context。"""
 
     def __init__(self) -> None:
-        self.ecs = Context()
-        self.entity_index: dict[str, Entity] = {}
+        self.ecs = ECSContext()
         self.world = SimpleNamespace(agent_memories={})
 
 

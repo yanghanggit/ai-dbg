@@ -3,8 +3,8 @@
 from typing import Any, List
 from unittest.mock import MagicMock
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     EquippedGearComponent,
     GearItem,
@@ -18,7 +18,7 @@ def _make_gear(name: str) -> GearItem:
     return GearItem(name=name, description="测试装备")
 
 
-def _make_player(context: Context, name: str, items: List[GearItem]) -> Entity:
+def _make_player(context: ECSContext, name: str, items: List[GearItem]) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(InventoryComponent, name, list(items))
@@ -26,7 +26,7 @@ def _make_player(context: Context, name: str, items: List[GearItem]) -> Entity:
     return entity
 
 
-def _make_gear_holder(context: Context, name: str, gears: List[GearItem]) -> Entity:
+def _make_gear_holder(context: ECSContext, name: str, gears: List[GearItem]) -> Entity:
     """创建携带 EquippedGearComponent 的角色实体。"""
     entity = context.create_entity()
     entity._name = name
@@ -34,17 +34,16 @@ def _make_gear_holder(context: Context, name: str, gears: List[GearItem]) -> Ent
     return entity
 
 
-def _make_mock_game(context: Context, player: Entity) -> Any:
+def _make_mock_game(context: ECSContext, player: Entity) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.get_group.side_effect = context.get_group
     return game
 
 
 class TestReturnEquippedGear:
     def test_returns_gear_to_player_inventory(self) -> None:
-        context = Context()
+        context = ECSContext()
         player = _make_player(context, "player", [])
         gear = _make_gear("装备.测试")
         holder = _make_gear_holder(context, "角色.测试", [gear])
@@ -56,7 +55,7 @@ class TestReturnEquippedGear:
         assert not holder.has(EquippedGearComponent)
 
     def test_multiple_holders_gear_all_returned(self) -> None:
-        context = Context()
+        context = ECSContext()
         player = _make_player(context, "player", [])
         gear_a = _make_gear("装备.A")
         gear_b = _make_gear("装备.B")
@@ -73,7 +72,7 @@ class TestReturnEquippedGear:
         assert not holder_b.has(EquippedGearComponent)
 
     def test_noop_when_no_equipped_gear(self) -> None:
-        context = Context()
+        context = ECSContext()
         player = _make_player(context, "player", [])
         system = CombatPileTeardownSystem(_make_mock_game(context, player))
 

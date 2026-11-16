@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -28,8 +28,8 @@ from dungeon_support import install_combat
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 _PLAY_MODULE = "ai_dbg.systems.play_cards_action_system"
@@ -48,7 +48,7 @@ def _make_card() -> Card:
     )
 
 
-def _make_actor(context: Context, name: str, card: Card) -> Entity:
+def _make_actor(context: ECSContext, name: str, card: Card) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.河湾芦苇丛")
@@ -60,7 +60,6 @@ def _make_actor(context: Context, name: str, card: Card) -> Entity:
 def _make_game(actor: Entity, stage: Entity) -> Any:
     game = MagicMock()
     game.ecs = actor._context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(
@@ -71,14 +70,14 @@ def _make_game(actor: Entity, stage: Entity) -> Any:
     return game
 
 
-def _make_stage(context: Context) -> Entity:
+def _make_stage(context: ECSContext) -> Entity:
     stage = context.create_entity()
     stage._name = "场景.河湾芦苇丛"
     stage.add(StageComponent, stage.name)
     return stage
 
 
-async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
+async def test_play_cards_broadcast_excludes_actor(context: ECSContext) -> None:
     """出牌是行动类广播：出牌者已有决策记录，广播必须排除他本人。"""
     from ai_dbg.systems.play_cards_action_system import PlayCardsActionSystem
 
@@ -102,7 +101,7 @@ async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
     assert broadcast_kwargs["exclude_entities"] == {actor, stage}
 
 
-async def test_pass_turn_broadcast_keeps_actor(context: Context) -> None:
+async def test_pass_turn_broadcast_keeps_actor(context: ECSContext) -> None:
     """过牌是观察类广播：过牌者没有其他记录，必须保留他本人。"""
     from ai_dbg.models import PassTurnAction
     from ai_dbg.systems import pass_turn_action_system as pass_module

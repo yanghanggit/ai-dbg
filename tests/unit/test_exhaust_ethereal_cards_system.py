@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -38,7 +38,7 @@ def _make_card(name: str, *, ethereal: bool = False) -> Card:
     )
 
 
-def _make_entity(context: Context, name: str) -> Entity:
+def _make_entity(context: ECSContext, name: str) -> Entity:
     """创建带必要战斗组件的角色实体。"""
     entity = context.create_entity()
     entity._name = name
@@ -55,15 +55,14 @@ def _make_entity(context: Context, name: str) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -86,7 +85,7 @@ class TestExhaustEtherealCardsSystemSkip:
     @pytest.mark.asyncio
     async def test_skips_when_not_ongoing(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
@@ -108,7 +107,7 @@ class TestExhaustEtherealCardsSystemEtherealTrue:
     @pytest.mark.asyncio
     async def test_ethereal_card_moves_to_exhaust_pile(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
@@ -132,7 +131,7 @@ class TestExhaustEtherealCardsSystemEtherealTrue:
     @pytest.mark.asyncio
     async def test_exhaust_pile_accumulates(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
@@ -159,7 +158,7 @@ class TestExhaustEtherealCardsSystemEtherealFalse:
     @pytest.mark.asyncio
     async def test_normal_card_stays_in_hand(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
@@ -175,7 +174,7 @@ class TestExhaustEtherealCardsSystemEtherealFalse:
     @pytest.mark.asyncio
     async def test_mixed_hand_only_ethereal_moved(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:

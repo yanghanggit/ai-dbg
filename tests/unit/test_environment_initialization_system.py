@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ai_dbg.deepseek import DeepSeekError
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
 from ai_dbg.models import (
     AIMessage,
@@ -33,7 +33,7 @@ from ai_dbg.systems.environment_initialization_system import (
 # ---------------------------------------------------------------------------
 
 
-def _make_stage(context: Context, name: str, *, dungeon: bool = True) -> Entity:
+def _make_stage(context: ECSContext, name: str, *, dungeon: bool = True) -> Entity:
     stage = context.create_entity()
     stage._name = name
     stage.add(StageComponent, name)
@@ -60,15 +60,14 @@ def _fake_request(name: str) -> Any:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     return game
@@ -88,7 +87,7 @@ class TestObservedStagesOnly:
     @pytest.mark.asyncio
     async def test_lobby_stage_is_skipped(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
@@ -113,7 +112,7 @@ class TestObservedStagesOnly:
     @pytest.mark.asyncio
     async def test_dungeon_stage_without_player_is_skipped(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
@@ -137,7 +136,7 @@ class TestObservedStagesOnly:
     @pytest.mark.asyncio
     async def test_dungeon_stage_with_player_is_inferred(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
@@ -171,7 +170,7 @@ class TestObservedStagesOnly:
     @pytest.mark.asyncio
     async def test_no_observed_stages_skips_inference(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
@@ -199,7 +198,7 @@ class TestFailureAccounting:
     @pytest.mark.asyncio
     async def test_writes_successes_and_skips_failed(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:

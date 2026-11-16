@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas import GroupEvent
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -54,7 +54,7 @@ def _make_card() -> Card:
 
 
 def _make_actor(
-    context: Context, name: str, *, party: bool = True, dead: bool = False
+    context: ECSContext, name: str, *, party: bool = True, dead: bool = False
 ) -> Entity:
     entity = context.create_entity()
     entity._name = name
@@ -70,15 +70,14 @@ def _make_actor(
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def game(context: Context) -> Any:
+def game(context: ECSContext) -> Any:
     mock = MagicMock()
     mock.ecs = context
-    mock.entity_index = {}
     mock.world.agent_memories = {}
     mock.events = MagicMock()
     install_combat(mock)
@@ -96,7 +95,7 @@ def _records(game: Any) -> List[Any]:
 
 class TestPartyDecisionRecord:
     async def test_play_writes_same_shape_as_monster(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         actor = _make_actor(context, "角色.无名")
         card = _make_card()
@@ -123,7 +122,9 @@ class TestPartyDecisionRecord:
             "forced": False,
         }
 
-    async def test_pass_writes_pass_record(self, context: Context, game: Any) -> None:
+    async def test_pass_writes_pass_record(
+        self, context: ECSContext, game: Any
+    ) -> None:
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 
@@ -135,7 +136,7 @@ class TestPartyDecisionRecord:
         assert json.loads(records[0].combat_decision)["action"] == "pass"
 
     async def test_unplayable_card_records_blocked_play(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         """结算层会拦下不可出的牌，记录必须同步：本想打、没打出去（与怪物侧同形）。"""
         actor = _make_actor(context, "角色.无名")
@@ -160,7 +161,7 @@ class TestPartyDecisionRecord:
         assert tag["forced"] is True
 
     async def test_pass_after_play_is_not_recorded_again(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         """出完牌后交出行动权是机械步骤，不是第二次决策：不再写一条「不出牌」。"""
         actor = _make_actor(context, "角色.无名")
@@ -186,7 +187,7 @@ class TestPartyDecisionRecord:
         assert len(_records(game)) == 1
 
     async def test_pass_in_a_new_round_is_still_recorded(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         """上一回合出过牌不影响本回合：本回合只过牌，就是一次真的过牌决策。"""
         append_combat_round(game)
@@ -216,7 +217,7 @@ class TestPartyDecisionRecord:
         assert json.loads(records[-1].combat_decision)["round"] == 2
 
     async def test_skips_when_combat_not_ongoing(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         set_combat_state(game, CombatState.COMPLETE)
         actor = _make_actor(context, "角色.无名")
@@ -227,7 +228,7 @@ class TestPartyDecisionRecord:
         assert len(_records(game)) == 0
 
     def test_filter_requires_party_member_and_liveness(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         system = PartyCombatDecisionSystem(game)
         alive_party = _make_actor(context, "角色.无名")
@@ -242,7 +243,7 @@ class TestPartyDecisionRecord:
         assert not system.filter(monster)
 
     def test_triggers_on_both_decision_actions(
-        self, context: Context, game: Any
+        self, context: ECSContext, game: Any
     ) -> None:
         """出牌与过牌共用同一触发集合（怪物侧两种决策都会记录）。"""
         triggers = PartyCombatDecisionSystem(game).get_trigger()

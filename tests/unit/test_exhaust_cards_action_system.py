@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -39,7 +39,7 @@ def _make_card(name: str, source: str, *, exhaust: bool = False) -> Card:
     )
 
 
-def _make_entity(context: Context, name: str) -> Entity:
+def _make_entity(context: ECSContext, name: str) -> Entity:
     """创建带必要战斗组件的角色实体。"""
     entity = context.create_entity()
     entity._name = name
@@ -55,15 +55,14 @@ def _make_entity(context: Context, name: str) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -86,7 +85,7 @@ class TestExhaustCardsActionSystemSkip:
     @pytest.mark.asyncio
     async def test_skips_when_not_ongoing(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
@@ -110,7 +109,7 @@ class TestExhaustCardsActionSystemExhaustTrue:
     @pytest.mark.asyncio
     async def test_exhaust_card_moves_to_exhaust_pile(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
@@ -136,7 +135,7 @@ class TestExhaustCardsActionSystemExhaustTrue:
     @pytest.mark.asyncio
     async def test_exhaust_pile_accumulates(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
@@ -165,7 +164,7 @@ class TestExhaustCardsActionSystemExhaustFalse:
     @pytest.mark.asyncio
     async def test_normal_card_not_moved(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
@@ -188,7 +187,7 @@ class TestExhaustCardsActionSystemForeignCard:
     @pytest.mark.asyncio
     async def test_foreign_exhaust_card_moves_to_exhaust_pile(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:

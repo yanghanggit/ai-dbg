@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import combat_round_view
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
@@ -45,7 +45,7 @@ def _make_card(name: str, *, turn_end: bool = False) -> Card:
     )
 
 
-def _make_actor(context: Context, name: str) -> Entity:
+def _make_actor(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.测试密室")
@@ -54,15 +54,14 @@ def _make_actor(context: Context, name: str) -> Entity:
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
+def mock_game(context: ECSContext, monkeypatch: pytest.MonkeyPatch) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {
         "场景.测试密室": SimpleNamespace(
             messages=[SystemMessage(content="你是本场景的仲裁者")]
@@ -103,7 +102,7 @@ def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
 
 class TestCollectHandTurnEndCards:
     def test_returns_only_turn_end_cards(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = TurnEndArbitrationSystem(mock_game)
         actor = _make_actor(context, "英雄")
@@ -122,7 +121,7 @@ class TestCollectHandTurnEndCards:
 
 class TestTurnEndArbitrationSystem:
     def test_filter_requires_pass_turn_action(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = TurnEndArbitrationSystem(mock_game)
         entity = context.create_entity()
@@ -133,7 +132,7 @@ class TestTurnEndArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_react_skips_when_not_ongoing(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         set_combat_state(mock_game, CombatState.COMPLETE)
         system = TurnEndArbitrationSystem(mock_game)
@@ -149,7 +148,7 @@ class TestTurnEndArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_react_skips_when_no_turn_end_cards(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = TurnEndArbitrationSystem(mock_game)
         pass_entity = _make_actor(context, "英雄")
@@ -165,7 +164,7 @@ class TestTurnEndArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_stage_arbitrates_turn_end(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = TurnEndArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")
@@ -227,7 +226,7 @@ class TestTurnEndLoopMemoryCompression:
 
     @pytest.mark.asyncio
     async def test_success_compresses_loop_span_into_summary(
-        self, context: Context, mock_game: Any
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         system = TurnEndArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")

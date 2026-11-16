@@ -8,7 +8,6 @@ from ...entitas import (
     Entity,
     dump_context,
     dump_entities,
-    load_context,
 )
 from ...models import COMPONENT_TYPES, resolve_component_type
 from ..context import DBGGame
@@ -32,6 +31,4 @@ def serialize_context(dbg_game: DBGGame) -> ContextData:
 
 def restore_context(dbg_game: DBGGame, data: ContextData) -> Dict[str, Entity]:
     """从 name-keyed 的 ContextData 还原 ECS context，并重建名称索引。"""
-    restored = load_context(dbg_game.ecs, data, resolve_component_type)
-    dbg_game.entity_index.update(restored)
-    return restored
+    return dbg_game.ecs.restore(data, resolve_component_type)

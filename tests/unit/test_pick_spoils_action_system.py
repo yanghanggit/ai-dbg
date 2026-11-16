@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -28,7 +28,7 @@ def _make_card(name: str) -> Card:
 
 
 def _make_actor(
-    context: Context,
+    context: ECSContext,
     name: str,
     candidate_cards: list[Card],
     claimed_cards: list[Card] | None = None,
@@ -52,15 +52,14 @@ def _make_actor(
 
 
 @pytest.fixture()
-def context() -> Context:
-    return Context()
+def context() -> ECSContext:
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     return game
@@ -87,7 +86,7 @@ def test_spoils_claimed_defaults_to_empty_queue() -> None:
 
 
 async def test_pick_moves_card_from_cards_to_claimed(
-    context: Context, mock_game: Any, system: PickSpoilsActionSystem
+    context: ECSContext, mock_game: Any, system: PickSpoilsActionSystem
 ) -> None:
     cards = [_make_card("斩击"), _make_card("格挡"), _make_card("突进")]
     actor = _make_actor(context, "勇者", cards)
@@ -112,7 +111,7 @@ async def test_pick_moves_card_from_cards_to_claimed(
 
 
 async def test_pick_rejected_when_already_claimed(
-    context: Context, mock_game: Any, system: PickSpoilsActionSystem
+    context: ECSContext, mock_game: Any, system: PickSpoilsActionSystem
 ) -> None:
     already = _make_card("已领")
     pending = _make_card("斩击")
@@ -130,7 +129,7 @@ async def test_pick_rejected_when_already_claimed(
 
 
 async def test_pick_rejected_when_card_not_in_queue(
-    context: Context, mock_game: Any, system: PickSpoilsActionSystem
+    context: ECSContext, mock_game: Any, system: PickSpoilsActionSystem
 ) -> None:
     stray = _make_card("不在队列")
     actor = _make_actor(context, "勇者", [_make_card("斩击")])

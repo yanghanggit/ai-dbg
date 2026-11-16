@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.context import ECSContext
 from ai_dbg.game.dungeon import (
     current_combat_entity,
 )
@@ -39,7 +39,7 @@ from dungeon_support import install_combat, set_combat_state
 
 
 def _make_actor(
-    context: Context,
+    context: ECSContext,
     name: str,
     *,
     is_ally: bool = False,
@@ -59,7 +59,7 @@ def _make_actor(
     return entity
 
 
-def _make_stage(context: Context, name: str) -> Entity:
+def _make_stage(context: ECSContext, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(StageComponent, name)
@@ -105,17 +105,16 @@ def _add_cards(
 
 
 @pytest.fixture()
-def context() -> Context:
+def context() -> ECSContext:
     """提供真实 ECS Context，保证组件操作正确生效。"""
-    return Context()
+    return ECSContext()
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> Any:
+def mock_game(context: ECSContext) -> Any:
     """MagicMock DBGGame，预设战斗 ONGOING。"""
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {}
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
@@ -152,20 +151,20 @@ class TestCountAvailableCards:
     """_count_available_cards 的单元测试。"""
 
     def test_empty_entity_returns_zero(
-        self, context: Context, system: CombatOutcomeSystem
+        self, context: ECSContext, system: CombatOutcomeSystem
     ) -> None:
         entity = context.create_entity()
         assert system._count_available_cards(entity) == 0
 
     def test_counts_draw_hand_discard(
-        self, context: Context, system: CombatOutcomeSystem
+        self, context: ECSContext, system: CombatOutcomeSystem
     ) -> None:
         entity = context.create_entity()
         _add_cards(entity, draw=1, hand=2, discard=3)
         assert system._count_available_cards(entity) == 6
 
     def test_exhaust_pile_not_counted(
-        self, context: Context, system: CombatOutcomeSystem
+        self, context: ECSContext, system: CombatOutcomeSystem
     ) -> None:
         entity = context.create_entity()
         _add_cards(entity, exhaust=5)
@@ -180,7 +179,7 @@ class TestCountAvailableCards:
 class TestIsEnemySideEliminated:
     """_is_enemy_side_eliminated 的单元测试。"""
 
-    def _setup(self, mock_game: Any, context: Context, actors: set[Entity]) -> None:
+    def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
         player = context.create_entity()
         player._name = "player"
         player.add(ActorComponent, "player", "stage")
@@ -192,7 +191,7 @@ class TestIsEnemySideEliminated:
             actor.replace(ActorComponent, actor.name, "stage")
 
     def test_no_enemies_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """场景内无怪物时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -200,7 +199,7 @@ class TestIsEnemySideEliminated:
         assert system._is_enemy_side_eliminated() is False
 
     def test_alive_enemy_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """有存活怪物时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -209,7 +208,7 @@ class TestIsEnemySideEliminated:
         assert system._is_enemy_side_eliminated() is False
 
     def test_partial_elimination_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """部分怪物死亡时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -219,7 +218,7 @@ class TestIsEnemySideEliminated:
         assert system._is_enemy_side_eliminated() is False
 
     def test_all_enemies_dead_returns_true(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """全部怪物死亡时应返回 True。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -232,7 +231,7 @@ class TestIsEnemySideEliminated:
 class TestIsPlayerSideEliminated:
     """_is_player_side_eliminated 的单元测试。"""
 
-    def _setup(self, mock_game: Any, context: Context, actors: set[Entity]) -> None:
+    def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
         player = context.create_entity()
         player._name = "player"
         player.add(ActorComponent, "player", "stage")
@@ -244,7 +243,7 @@ class TestIsPlayerSideEliminated:
             actor.replace(ActorComponent, actor.name, "stage")
 
     def test_no_allies_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """场景内无友方时应返回 False。"""
         monster = _make_actor(context, "哥布林", is_monster=True)
@@ -252,7 +251,7 @@ class TestIsPlayerSideEliminated:
         assert system._is_player_side_eliminated() is False
 
     def test_alive_ally_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """有存活友方时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -261,7 +260,7 @@ class TestIsPlayerSideEliminated:
         assert system._is_player_side_eliminated() is False
 
     def test_partial_elimination_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """部分友方死亡时应返回 False。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
@@ -271,7 +270,7 @@ class TestIsPlayerSideEliminated:
         assert system._is_player_side_eliminated() is False
 
     def test_all_allies_dead_returns_true(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """全部友方死亡时应返回 True。"""
         dead1 = _make_actor(context, "英雄", is_ally=True, is_dead=True)
@@ -289,7 +288,7 @@ class TestIsPlayerSideEliminated:
 class TestBothSidesCardless:
     """_is_both_sides_cardless 的单元测试。"""
 
-    def _setup(self, mock_game: Any, context: Context, actors: set[Entity]) -> None:
+    def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
         player = context.create_entity()
         player._name = "player"
         player.add(ActorComponent, "player", "stage")
@@ -301,7 +300,7 @@ class TestBothSidesCardless:
             actor.replace(ActorComponent, actor.name, "stage")
 
     def test_both_alive_cardless_returns_true(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """双方存活且均无可用卡牌时应返回 True。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -310,7 +309,7 @@ class TestBothSidesCardless:
         assert system._is_both_sides_cardless() is True
 
     def test_ally_has_cards_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """仅友方有卡牌时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -320,7 +319,7 @@ class TestBothSidesCardless:
         assert system._is_both_sides_cardless() is False
 
     def test_enemy_has_cards_returns_false(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """仅敌方有卡牌时应返回 False。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -330,7 +329,7 @@ class TestBothSidesCardless:
         assert system._is_both_sides_cardless() is False
 
     def test_dead_member_cards_ignored(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """死亡成员的牌堆不计入可用卡牌：死亡友方仍有牌，但存活双方均无牌时应返回 True。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
@@ -347,7 +346,7 @@ class TestExecute:
     def _setup(
         self,
         mock_game: Any,
-        context: Context,
+        context: ECSContext,
         actors: set[Entity],
     ) -> Entity:
         """配置 mock_game 所需返回值，返回 stage_entity。"""
@@ -362,7 +361,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_skip_when_not_ongoing(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """战斗非 ONGOING 时，complete_combat / clear_round_state 均不应调用。"""
         set_combat_state(mock_game, CombatState.COMPLETE)
@@ -376,7 +375,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_no_result_when_both_sides_alive(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """双方均有存活且至少一方还有可用卡牌时，不应结束战斗。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -392,7 +391,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_both_sides_cardless_triggers_lose(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """双方均无可用卡牌时，应调用 complete_combat(LOSE)。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -406,7 +405,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_enemy_eliminated_takes_priority_over_cardless(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """敌方全灭优先于卡牌耗尽：即使双方均无牌，敌方全灭仍应 WIN。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -420,7 +419,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_enemy_eliminated_triggers_win(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """敌方全灭时应调用 complete_combat(WIN) 和 clear_round_state。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -435,7 +434,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_enemy_eliminated_broadcasts_to_allies(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """敌方全灭时应向友方广播胜利消息（add_human_message 至少调用一次）。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -446,7 +445,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_ally_eliminated_triggers_lose(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """友方全灭时应调用 complete_combat(LOSE) 和 clear_round_state。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
@@ -461,7 +460,7 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_ally_eliminated_broadcasts_to_allies(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """友方全灭时应向（存活/死亡）友方广播失败消息。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
@@ -472,7 +471,7 @@ class TestExecute:
 
     # @pytest.mark.asyncio
     # async def test_clear_round_state_called_before_broadcast(
-    #     self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+    #     self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     # ) -> None:
     #     """clear_round_state 应在 add_human_message 之前调用。"""
     #     call_order: List[str] = []
@@ -497,7 +496,7 @@ class TestExecute:
 class TestCombatOutcomeNotice:
     """胜负通知发给全部参战者，文本按各自视角生成。"""
 
-    def _setup(self, context: Context, mock_game: Any, actors: set[Entity]) -> None:
+    def _setup(self, context: ECSContext, mock_game: Any, actors: set[Entity]) -> None:
         player = context.create_entity()
         player._name = "player"
         player.add(ActorComponent, "player", "测试场景")
@@ -508,7 +507,7 @@ class TestCombatOutcomeNotice:
 
     async def _collect(
         self,
-        context: Context,
+        context: ECSContext,
         mock_game: Any,
         system: CombatOutcomeSystem,
         actors: set[Entity],
@@ -523,7 +522,7 @@ class TestCombatOutcomeNotice:
 
     @pytest.mark.asyncio
     async def test_win_gives_party_victory_and_monster_defeat(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """队伍全胜：友方读「胜利」，怪物读「失败」，两侧都带 combat_outcome。"""
         ally = _make_actor(context, "英雄", is_ally=True)
@@ -538,7 +537,7 @@ class TestCombatOutcomeNotice:
 
     @pytest.mark.asyncio
     async def test_lose_gives_party_defeat_and_monster_victory(
-        self, context: Context, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """队伍全灭：友方读「失败」，怪物读「胜利」。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)

@@ -174,7 +174,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
     """`stats_update` 的值是「旧 HP->新 HP」，审计时不必再读正文。"""
     from unittest.mock import MagicMock
 
-    from ai_dbg.entitas.context import Context
+    from ai_dbg.game.context import ECSContext
     from ai_dbg.models import (
         ActorComponent,
         CharacterStats,
@@ -188,7 +188,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
         apply_arbitration_result,
     )
 
-    context = Context()
+    context = ECSContext()
     entity = context.create_entity()
     entity._name = "角色.无名"
     entity.add(ActorComponent, entity._name, "场景.河湾芦苇丛")
@@ -203,7 +203,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
     stage.add(StageComponent, stage.name)
     game = MagicMock()
     game.ecs = context
-    game.entity_index = {entity.name: entity}
+    game.ecs.register_entity(entity)
     game.world.agent_memories = {}
     game.events = MagicMock()
     install_combat(game)
