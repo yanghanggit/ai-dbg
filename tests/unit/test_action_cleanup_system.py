@@ -6,7 +6,7 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.game.rpg_game import RPGGame
-from ai_dbg.models import AnnounceAction, SpeakAction, WhisperAction
+from ai_dbg.models import DrawCardsAction, FillDrawPileAction, PassTurnAction
 from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
 
@@ -38,12 +38,12 @@ def system(mock_game: MagicMock) -> ActionCleanupSystem:
 # Helpers — positional args matching field declaration order in each Component
 # ---------------------------------------------------------------------------
 
-# SpeakAction(name, target_messages)
-_SPEAK_ARGS = ("alice", {"bob": "hello"})
-# WhisperAction(name, target_messages)
-_WHISPER_ARGS = ("alice", {"bob": "psst"})
-# AnnounceAction(name, message)
-_ANNOUNCE_ARGS = ("alice", "attention")
+# DrawCardsAction(name)
+_SPEAK_ARGS = ("alice",)
+# PassTurnAction(name)
+_WHISPER_ARGS = ("alice",)
+# FillDrawPileAction(name)
+_ANNOUNCE_ARGS = ("alice",)
 
 
 # ---------------------------------------------------------------------------
@@ -65,11 +65,11 @@ class TestActionCleanupSystem:
     ) -> None:
         """单实体持有一个动作组件，执行后该组件应被移除。"""
         entity = context.create_entity()
-        entity.add(SpeakAction, *_SPEAK_ARGS)
+        entity.add(DrawCardsAction, *_SPEAK_ARGS)
 
         await system.execute()
 
-        assert not entity.has(SpeakAction)
+        assert not entity.has(DrawCardsAction)
 
     @pytest.mark.asyncio
     async def test_execute_removes_multiple_actions_from_same_entity(
@@ -77,15 +77,15 @@ class TestActionCleanupSystem:
     ) -> None:
         """单实体同时持有多个动作组件，执行后应全部被移除。"""
         entity = context.create_entity()
-        entity.add(SpeakAction, *_SPEAK_ARGS)
-        entity.add(WhisperAction, *_WHISPER_ARGS)
-        entity.add(AnnounceAction, *_ANNOUNCE_ARGS)
+        entity.add(DrawCardsAction, *_SPEAK_ARGS)
+        entity.add(PassTurnAction, *_WHISPER_ARGS)
+        entity.add(FillDrawPileAction, *_ANNOUNCE_ARGS)
 
         await system.execute()
 
-        assert not entity.has(SpeakAction)
-        assert not entity.has(WhisperAction)
-        assert not entity.has(AnnounceAction)
+        assert not entity.has(DrawCardsAction)
+        assert not entity.has(PassTurnAction)
+        assert not entity.has(FillDrawPileAction)
 
     @pytest.mark.asyncio
     async def test_execute_removes_actions_from_multiple_entities(
@@ -93,19 +93,19 @@ class TestActionCleanupSystem:
     ) -> None:
         """多个实体各持不同动作组件，执行后应全部被清除。"""
         entity_a = context.create_entity()
-        entity_a.add(SpeakAction, *_SPEAK_ARGS)
+        entity_a.add(DrawCardsAction, *_SPEAK_ARGS)
 
         entity_b = context.create_entity()
-        entity_b.add(WhisperAction, *_WHISPER_ARGS)
+        entity_b.add(PassTurnAction, *_WHISPER_ARGS)
 
         entity_c = context.create_entity()
-        entity_c.add(AnnounceAction, *_ANNOUNCE_ARGS)
+        entity_c.add(FillDrawPileAction, *_ANNOUNCE_ARGS)
 
         await system.execute()
 
-        assert not entity_a.has(SpeakAction)
-        assert not entity_b.has(WhisperAction)
-        assert not entity_c.has(AnnounceAction)
+        assert not entity_a.has(DrawCardsAction)
+        assert not entity_b.has(PassTurnAction)
+        assert not entity_c.has(FillDrawPileAction)
 
     @pytest.mark.asyncio
     async def test_execute_preserves_non_action_components(
@@ -113,10 +113,10 @@ class TestActionCleanupSystem:
     ) -> None:
         """实体同时持有动作组件与非动作组件，执行后非动作组件应保留。"""
         entity = context.create_entity()
-        entity.add(SpeakAction, *_SPEAK_ARGS)
+        entity.add(DrawCardsAction, *_SPEAK_ARGS)
         entity.add(Position, 1.0, 2.0)
 
         await system.execute()
 
-        assert not entity.has(SpeakAction)
+        assert not entity.has(DrawCardsAction)
         assert entity.has(Position)

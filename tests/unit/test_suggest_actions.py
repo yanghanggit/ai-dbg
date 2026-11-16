@@ -46,3 +46,10 @@ def test_post_combat_lose_only_suggests_exit() -> None:
     assert "dungeon exit" in actions
     assert "combat collect-loot" not in actions
     assert "dungeon advance-stage" not in actions
+
+
+def test_lobby_suggests_dungeon_start() -> None:
+    actions = suggest_actions({"mode": "lobby", "dungeon": {}})
+
+    assert "dungeon-list" in actions
+    assert "dungeon start --dungeon <dungeon_name>" in actions

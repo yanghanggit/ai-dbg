@@ -1,5 +1,5 @@
 """
-副本退出模块 —— 退出副本并传送角色回家园
+副本退出模块 —— 退出副本并传送角色回大厅
 
 exit_dungeon 是退出副本的唯一入口。
 """
@@ -20,26 +20,25 @@ from ..models import (
     CombatRoom,
     DeathComponent,
     Dungeon,
-    HomeComponent,
     HumanMessage,
+    LobbyComponent,
     PartyMemberComponent,
     SpoilsComponent,
 )
 from ..utils import prompt_builder
-from .dungeon_archive_action import notify_dungeon_director_room_ended
 
 
 ###################################################################################################################################################################
 @prompt_builder
-def _build_dungeon_exit_message(dungeon_name: str, home_stage_name: str) -> str:
-    """生成退出副本返回家园场景的提示消息。"""
-    return f"# 提示！副本：{dungeon_name} 结束，返回家园场景：{home_stage_name}\n（关于「副本」及进出副本的具体设定，见你的「游戏设定」与「全局规则」。）"
+def _build_dungeon_exit_message(dungeon_name: str, lobby_stage_name: str) -> str:
+    """生成退出副本返回大厅的提示消息。"""
+    return f"# 提示！副本：{dungeon_name} 结束，返回大厅：{lobby_stage_name}\n（关于「副本」及进出副本的具体设定，见你的「游戏设定」与「全局规则」。）"
 
 
 ###################################################################################################################################################################
 def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     """
-    退出副本并将角色传送回家园。
+    退出副本并将角色传送回大厅。
 
     流程分为两个阶段：
       1) 检查阶段 —— 仅读取、验证，不修改任何状态，允许早期返回。
@@ -70,17 +69,15 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     ).entities.copy()
     assert len(party_member_entities) > 0, "没有找到队伍成员"
 
-    # 确保存在家园场景
-    home_stages = dbg_game.get_group(Matcher(all_of=[HomeComponent])).entities.copy()
-    assert len(home_stages) >= 1, "必须存在至少一个家园场景！"
-    dest_stage = next(iter(home_stages))
+    # 确保存在大厅场景
+    lobby_stages = dbg_game.get_group(Matcher(all_of=[LobbyComponent])).entities.copy()
+    assert len(lobby_stages) >= 1, "必须存在至少一个大厅场景！"
+    dest_stage = next(iter(lobby_stages))
 
     # =========================================================================
     # 阶段 2：执行（不可中断，不回退）
     # =========================================================================
-    # 当前房间已结束（退出副本）：向副本导演追加该房间的事实记忆
-    notify_dungeon_director_room_ended(dbg_game, dungeon, current_room)
-    # 传送队伍成员回家
+    # 传送队伍成员回大厅
     for party_member_entity in party_member_entities:
         dbg_game.add_human_message(
             party_member_entity,

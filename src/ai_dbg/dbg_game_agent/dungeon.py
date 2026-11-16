@@ -13,9 +13,6 @@ from ai_dbg.models import PlayerSession, WorldState
 from ai_dbg.services.dungeon_advance_action import (
     advance_dungeon,
 )
-from ai_dbg.services.dungeon_archive_action import (
-    archive_dungeon,
-)
 from ai_dbg.services.dungeon_enter_action import (
     enter_dungeon,
 )
@@ -106,7 +103,7 @@ async def enter_dungeon_game(
     dungeon_name: str,
     save_dir: Path,
 ) -> DBGGame:
-    """进入指定副本第一关并归档。需处于家园模式。"""
+    """进入指定副本第一关并归档。需处于大厅。"""
 
     # 创建 DBGGame 实例并从快照恢复游戏状态
     terminal_game = await restore_game(world, player_session)
@@ -146,12 +143,12 @@ async def enter_dungeon_game(
 
 
 ###############################################################################
-async def exit_dungeon_and_return_home_game(
+async def exit_dungeon_game(
     world: WorldState,
     player_session: PlayerSession,
     save_dir: Path,
 ) -> DBGGame:
-    """结束副本返回家园并归档。需战斗已结束（无论胜负），非战斗房间可直接退出。"""
+    """结束副本返回大厅并归档。需战斗已结束（无论胜负），非战斗房间可直接退出。"""
 
     # 创建 DBGGame 实例并从快照恢复游戏状态
     terminal_game = await restore_game(world, player_session)
@@ -170,15 +167,11 @@ async def exit_dungeon_and_return_home_game(
     elif terminal_game.is_current_room_dungeon_opening:
         logger.info("当前为非战斗房间，直接退出副本")
 
-    # 执行退出副本流程，返回家园
+    # 执行退出副本流程，返回大厅
     success, msg = exit_dungeon(terminal_game, terminal_game._world.dungeon)
     if not success:
         logger.error(f"exit_dungeon 失败: {msg}")
         return terminal_game
-
-    # 副本导演归档：基于其已积累的记忆总结本次副本，并重置该记忆
-    # （best-effort，失败不阻断退出）
-    await archive_dungeon(terminal_game, terminal_game._world.dungeon)
 
     # 销毁副本实体并重置副本数据
     teardown_dungeon(terminal_game, terminal_game._world.dungeon)

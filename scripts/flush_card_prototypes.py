@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """卡牌原型快刷脚本（开发 / 测试用）。
 
-把 `demo/card_prototypes.py` 的原型（可选：默认牌单）刷进 PostgreSQL，供
-`generate-spoils` / `craft-gear` / 组牌检索使用。**不** drop 数据库、**不**重刷
-蓝图 / 副本 / RAG / 用户，因此比 `scripts/setup_demo.py` 快得多，适合改完原型或
-词缀规范后，反复跑「刷原型 → generate-spoils → 看设计」这条开发循环。
+把 `demo/card_prototypes.py` 的原型刷进 PostgreSQL，供 `generate-spoils`、怪物牌库重建
+与调测检索使用。**不** drop 数据库、**不**重刷蓝图 / 副本 / 用户，因此比
+`scripts/setup_demo.py` 快得多，适合改完原型或词缀规范后，反复跑
+「刷原型 → generate-spoils → 看设计」这条开发循环。
 
 用法：
   uv run python -m scripts.flush_card_prototypes
@@ -23,14 +23,11 @@
       库中只留这些，其余删除；`generate-spoils` 的随机抽样随即退化为确定抽样，
       适合定点测试单个原型的词缀设计。
 
-  uv run python -m scripts.flush_card_prototypes --with-deck
-      同时刷默认牌单。
-
   uv run python -m scripts.flush_card_prototypes --only proto.pierce --dry-run
       只显示将发生的变化，不写库。
 
 注意：`--prune` 会删除库中不在本次集合里的**所有**原型（含 手牌 / 装备 两类）。
-      它只影响其它仍从库里读原型的流程（默认牌单物化、工坊合成示例检索）；对
+      它只影响其它仍从库里读原型的流程；对
       「已停在开场房间的存档 → generate-spoils」这条循环是安全的。要恢复全部，
       重跑一次不带 `--only/--prune` 的全量刷即可。
 """
@@ -46,9 +43,8 @@ from ai_dbg.pgsql import (
     get_card_prototype,
     list_card_prototype_index,
     save_card_prototype,
-    save_deck_build,
 )
-from demo import CARD_PROTOTYPES, DEFAULT_DECK_BUILD, CardPrototype
+from demo import CARD_PROTOTYPES, CardPrototype
 
 
 #######################################################################################################
@@ -147,18 +143,16 @@ def _flush_one(proto: CardPrototype, dry_run: bool) -> Tuple[str, List[str]]:
     is_flag=True,
     help="删除库中不在本次集合里的原型（清场，让 generate-spoils 定点抽样）",
 )
-@click.option("--with-deck", is_flag=True, help="同时刷默认牌单（DEFAULT_DECK_BUILD）")
 @click.option("--list", "list_only", is_flag=True, help="只列出当前库中的原型后退出")
 @click.option("--dry-run", is_flag=True, help="只显示将发生的变化，不写库")
 def main(
     only_ids: Tuple[str, ...],
     card_type: str,
     prune: bool,
-    with_deck: bool,
     list_only: bool,
     dry_run: bool,
 ) -> None:
-    """快刷卡牌原型到 PostgreSQL（不 drop 库、不刷 RAG / 蓝图 / 副本）。"""
+    """快刷卡牌原型到 PostgreSQL（不 drop 库、不刷蓝图 / 副本）。"""
 
     if list_only:
         _print_db_index()
@@ -213,14 +207,6 @@ def main(
             prefix = "[dry-run] " if dry_run else ""
             detail = f" ← {', '.join(changed)}" if changed and changed != ["*"] else ""
             print(f"{prefix}{status}: {proto.meta.prototype_id}{detail}")
-
-    if with_deck:
-        deck_ids = list(DEFAULT_DECK_BUILD.card_prototype_ids)
-        if dry_run:
-            print(f"[dry-run] 将刷默认牌单: {deck_ids}")
-        else:
-            save_deck_build(deck_ids)
-            print(f"默认牌单已刷新: {len(deck_ids)} 张")
 
     prune_note = planned_prune if dry_run else pruned
     prune_label = "将删除" if dry_run else "删除"

@@ -18,7 +18,7 @@ from ai_dbg.models import (
     CharacterStatsComponent,
     Dungeon,
     DungeonComponent,
-    HomeComponent,
+    LobbyComponent,
     OpeningRoom,
     PartyMemberComponent,
     SpoilsComponent,
@@ -60,11 +60,11 @@ def _make_stage_entity(game: Any, name: str) -> Entity:
     return entity
 
 
-def _make_home_entity(game: Any, name: str) -> Entity:
-    """创建带 StageComponent + HomeComponent 的家园场景实体。"""
+def _make_lobby_entity(game: Any, name: str) -> Entity:
+    """创建带 StageComponent + LobbyComponent 的大厅场景实体。"""
     entity: Entity = game._create_entity(name)
     entity.add(StageComponent, name)
-    entity.add(HomeComponent, name)
+    entity.add(LobbyComponent, name)
     return entity
 
 
@@ -190,7 +190,7 @@ class TestExitDungeonGuards:
     def test_exits_opening_room_without_initialization_flag(
         self, sample_game: Any
     ) -> None:
-        """非战斗房间无需初始化状态位即可退出并恢复队伍成员到家。"""
+        """非战斗房间无需初始化状态位即可退出并恢复队伍成员到大厅。"""
         room0 = OpeningRoom(stage=_make_stage_model("room0"))
         dungeon = _make_dungeon([room0], 0)
         sample_game._world.dungeon = dungeon
@@ -198,7 +198,7 @@ class TestExitDungeonGuards:
         _make_stage_entity(
             sample_game, "room0"
         )  # 当前场景实体（stage_transition 需要）
-        _make_home_entity(sample_game, "home")  # 家园目标场景
+        _make_lobby_entity(sample_game, "lobby")  # 大厅目标场景
         member = _make_party_member(sample_game, "hero", "room0")
 
         ok, msg = exit_dungeon(sample_game, dungeon)
@@ -206,7 +206,7 @@ class TestExitDungeonGuards:
         assert ok is True
         # 队伍标记被移除
         assert not member.has(PartyMemberComponent)
-        # 成员已被传送回家园
+        # 成员已被传送回大厅
         actor_comp = member.get(ActorComponent)
         assert actor_comp is not None
-        assert actor_comp.current_stage == "home"
+        assert actor_comp.current_stage == "lobby"

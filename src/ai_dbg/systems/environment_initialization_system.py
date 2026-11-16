@@ -13,8 +13,8 @@ from ..game.rpg_actor_appearances import get_actor_appearances_in_stage
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import (
     EnvironmentComponent,
-    HomeComponent,
     HumanMessage,
+    LobbyComponent,
     PlayerComponent,
     StageComponent,
 )
@@ -126,18 +126,18 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
     def _is_observed_stage(self, stage_entity: Entity) -> bool:
         """判断场景是否达到生成环境叙事的观察者门槛。
 
-        - Home 场景：场景内存在存活 Actor（有人）即可；
+        - Lobby 场景：不生成环境叙事；
         - Dungeon 场景：场景内存在存活 Actor，且玩家本人也在场（存活 Actor 中含 PlayerComponent）。
         """
+        # 大厅只是副本间落脚点，不做环境叙事
+        if stage_entity.has(LobbyComponent):
+            return False
+
         alive_actors = get_alive_actors_in_stage(self._game, stage_entity)
 
         # 无人：无观察者，保持惰性
         if not alive_actors:
             return False
-
-        # Home：有人即执行
-        if stage_entity.has(HomeComponent):
-            return True
 
         # Dungeon：除有人外，玩家本人必须在场
         return any(actor.has(PlayerComponent) for actor in alive_actors)

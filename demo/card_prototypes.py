@@ -76,8 +76,6 @@ class CardPrototype:
 # 它们是保底发放，不属于「选型」的成长/特殊牌；角色专属特殊牌另计（见 demo/world.py）。
 BASIC_ATTACK_PROTOTYPE_ID: Final[str] = "proto.basic_attack"
 BASIC_DEFENSE_PROTOTYPE_ID: Final[str] = "proto.basic_defense"
-BASIC_ATTACK_COUNT: Final[int] = 3
-BASIC_DEFENSE_COUNT: Final[int] = 2
 
 
 #######################################################################################################################################
@@ -517,27 +515,3 @@ CARD_PROTOTYPES: Final[List[CardPrototype]] = [
         ),
     ),
 ]
-
-
-# ── 默认牌单 ────────────────────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class DeckBuild:
-    """一套默认牌库配置：按顺序引用原型 id，重复项表示副本份数。
-
-    作为兜底牌库（assemble_dungeon_deck_system.make_default_deck_cards）的数据来源，
-    使运行时无需硬编码任何卡名与份数。
-    """
-
-    card_prototype_ids: Tuple[str, ...]
-
-
-# 兜底/保底牌单：全部由 basic 层原型构成（基础攻击 × N + 基础防御 × M）。
-# 角色的实际开局牌组＝这份基础牌单的量 + 1 张角色专属特殊牌（见 demo/world.py）。
-DEFAULT_DECK_BUILD: Final[DeckBuild] = DeckBuild(
-    card_prototype_ids=(
-        (BASIC_ATTACK_PROTOTYPE_ID,) * BASIC_ATTACK_COUNT
-        + (BASIC_DEFENSE_PROTOTYPE_ID,) * BASIC_DEFENSE_COUNT
-    )
-)

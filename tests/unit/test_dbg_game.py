@@ -19,7 +19,7 @@ from ai_dbg.models import (
     CombatRoom,
     Dungeon,
     DungeonComponent,
-    HomeComponent,
+    LobbyComponent,
     NPCComponent,
     PlayerComponent,
     PlayerSession,
@@ -46,7 +46,6 @@ def _make_game(
             player_actor=actor_name,
             campaign_setting="",
             system_rules="",
-            knowledge_base={},
             stages=[],
             world_entities=[],
         )
@@ -61,10 +60,10 @@ def _make_game(
     return DBGGame(name="test", player_session=session, world=world)
 
 
-def _make_home_stage_entity(game: Any, name: str) -> Entity:
+def _make_lobby_stage_entity(game: Any, name: str) -> Entity:
     entity: Entity = cast(Entity, game._create_entity(name))
     entity.add(StageComponent, name)
-    entity.add(HomeComponent, name)
+    entity.add(LobbyComponent, name)
     return entity
 
 
@@ -115,7 +114,7 @@ def _make_actor_model(
 
 def _make_stage_model(
     name: str,
-    stage_type: StageType = StageType.HOME,
+    stage_type: StageType = StageType.LOBBY,
     actors: Optional[List[Actor]] = None,
 ) -> Stage:
     return Stage(
@@ -155,16 +154,16 @@ class TestCurrentDungeon:
 
 
 class TestIsPlayerInStage:
-    def test_player_in_home_stage_returns_true(self) -> None:
+    def test_player_in_lobby_stage_returns_true(self) -> None:
         game = _make_game()
-        home = _make_home_stage_entity(game, "home_stage")
-        _make_player_actor_entity(game, "hero", "p1", home.name)
-        assert game.is_player_in_home_stage is True
+        lobby = _make_lobby_stage_entity(game, "lobby_stage")
+        _make_player_actor_entity(game, "hero", "p1", lobby.name)
+        assert game.is_player_in_lobby_stage is True
 
-    def test_player_in_dungeon_stage_returns_false_for_home(self) -> None:
+    def test_player_in_dungeon_stage_returns_false_for_lobby(self) -> None:
         game = _make_game()
-        home = _make_home_stage_entity(game, "home_stage")
-        _make_player_actor_entity(game, "hero", "p1", home.name)
+        lobby = _make_lobby_stage_entity(game, "lobby_stage")
+        _make_player_actor_entity(game, "hero", "p1", lobby.name)
         assert game.is_player_in_dungeon_stage is False
 
     def test_player_in_dungeon_stage_returns_true(self) -> None:
@@ -173,16 +172,16 @@ class TestIsPlayerInStage:
         _make_player_actor_entity(game, "hero", "p1", dungeon.name)
         assert game.is_player_in_dungeon_stage is True
 
-    def test_player_in_home_stage_returns_false_for_dungeon(self) -> None:
+    def test_player_in_lobby_stage_returns_false_for_dungeon(self) -> None:
         game = _make_game()
         dungeon = _make_dungeon_stage_entity(game, "cave")
         _make_player_actor_entity(game, "hero", "p1", dungeon.name)
-        assert game.is_player_in_home_stage is False
+        assert game.is_player_in_lobby_stage is False
 
     def test_no_player_entity_raises(self) -> None:
         game = _make_game()
         with pytest.raises(AssertionError):
-            _ = game.is_player_in_home_stage
+            _ = game.is_player_in_lobby_stage
 
 
 # ---------------------------------------------------------------------------
@@ -193,14 +192,13 @@ class TestIsPlayerInStage:
 class TestBuildFromBlueprint:
     def _make_full_blueprint(self) -> Blueprint:
         ally = _make_actor_model("hero", ActorType.NPC)
-        home = _make_stage_model("home_stage", StageType.HOME, actors=[ally])
+        lobby = _make_stage_model("lobby_stage", StageType.LOBBY, actors=[ally])
         return Blueprint(
             name="full_test",
             player_actor="hero",
             campaign_setting="",
             system_rules="",
-            knowledge_base={},
-            stages=[home],
+            stages=[lobby],
             world_entities=[],
         )
 
@@ -224,7 +222,7 @@ class TestBuildFromBlueprint:
     # def test_stage_entity_created(self) -> None:
     #     game = self._make_game_for_build()
     #     game.build_from_blueprint()
-    #     assert game.get_stage_entity("home_stage") is not None
+    #     assert game.get_stage_entity("lobby_stage") is not None
 
     # def test_player_component_assigned(self) -> None:
     #     game = self._make_game_for_build()

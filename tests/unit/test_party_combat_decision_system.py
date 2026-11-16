@@ -1,8 +1,7 @@
 """`PartyCombatDecisionSystem` 单测：队员的决策记录与怪物侧同构，原因用占位句。
 
 队员的决策来自玩家（前端指令），计算端没有决策 LLM，所以本系统只写记录、不做推理：
-形状对齐（做了什么 + 目标 + 原因），原因留占位——与 `home_player_plan_system` 用空 `mind`
-对齐 `home_npc_plan_system` 是同一原则。
+形状对齐（做了什么 + 目标 + 原因），原因留占位——与队伍决策的记录形状保持一致。
 """
 
 import json

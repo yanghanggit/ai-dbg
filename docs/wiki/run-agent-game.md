@@ -2,128 +2,41 @@
 
 ---
 
-## 设计定位
+## 定位
 
-`ai-dbg-agent-game`（源码 `ai_dbg/cli/dbg_agent_game.py`）是专门面向 **AI 代理**（而非人类玩家）的游戏操作入口。常驻的游戏服务端（`ai-dbg-server`）持有游戏实例并跨请求维持状态，服务器 API 的走查交给 `ai-dbg-agent-api`；而本脚本不经过该服务端，直接通过本脚本进行**无状态、快照驱动**的推进。
+`ai-dbg-agent-game` 是离线、快照驱动的副本推进工具：一次调用只完成一个动作，世界状态不在进程内，而在 `.worlds/{user}/{game}/{timestamp}/`。每条命令都执行同一循环：读取快照 → `restore_game` → 触发动作 → 对应管道推进 → 写出新快照。命令之间没有持久内存，任意一份快照都可独立复位并继续。
 
-两者的根本区别：游戏服务端是长期运行的有状态进程，靠网络请求驱动；本脚本每次调用都是独立的一次性进程，直接读取本地存档 → 执行单次动作 → 写出新存档，进程退出后无任何残留状态，也不依赖服务端是否在运行。
+它不依赖常驻服务端，适合复现问题、做规则回归和逐步观察 ECS 状态。需要走真实 HTTP 契约时改用 API 路径。
 
----
+→ 参见：[DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](run-agent-api.md)
+→ 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 
-## 快照驱动的意义
+## 运行模型
 
-每条命令的结构固定为：**一个输入存档目录 → 一次动作 → 一个输出存档目录**。这使 AI 代理获得三项能力：
+新局由 `new` 直接进入副本首间，不再经过非副本场景。副本结束后 `exit-dungeon` 把角色送回极简大厅 `场景.营地`；大厅没有社交、合成、队伍或储物玩法，只作为下一次 `enter-dungeon` 的入口。
 
-- **回溯**：任意保留历史快照，随时从旧状态重新推进，不需要撤销机制。
-- **分支**：对同一快照多次调用不同命令，探索多条叙事路径而互不干扰。
-- **可复现**：相同快照 + 相同命令，可以在任何环境重放操作序列。
+副本内部按房间类型推进：开场房间执行 `opening-init`、生成并领取奖励；战斗房间执行 `combat-init`、抽牌与回合循环。`next-dungeon` 只推进房间，不初始化新房间；初始化始终由代理显式选择 `opening-init` 或 `combat-init`。
 
-存档按 `.worlds/{user}/{game}/{timestamp}/` 路径组织，时间戳即为本次操作的唯一标识。
+## 命令面
 
----
+顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`、`generate-spoils`、`pick-card`、`remove-spoils`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。卡牌调测命令 `card-prototypes`、`design-cards`、`rebuild-deck` 只读或只改副本文件，不写对局状态。
 
-## CLI 与动作逻辑的分层
+## 职责分层
 
-`ai_dbg/cli/dbg_agent_game.py`（入口 `ai-dbg-agent-game`）只负责 Click 层：参数解析、日志初始化、世界恢复与存档路径构造。“存档复位 → 触发动作 → pipeline 推进 → 归档新存档”这套流程按游戏模式拆分到 `ai_dbg/dbg_game_agent/` 包内的动作模块：`core.py`（游戏实例创建/复位等共享基础设施）、`home.py`（家园剧情推进、对话、场景切换、副本生成、队伍名单）、`dungeon.py`（副本生命周期：进入/下一关/退出）、`opening.py`（副本开场房间：初始化、奖励生成与领卡）、`combat.py`（副本战斗动作，含战斗房间初始化）、`items.py`（背包道具移动、合成、时装）、`compact.py`（记忆压缩）。
+Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 与 `spoils.py` 负责开场与奖励，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩，`cards.py` 负责卡牌调测。
 
-这些动作模块本身只是薄封装，真正的游戏规则校验与 ECS 动作触发集中在 `ai_dbg.services.*`（如 `home_actions.py`、`dungeon_combat_actions.py`，以及副本生命周期按阶段拆分的 `dungeon_setup_action.py` / `dungeon_enter_action.py` / `dungeon_advance_action.py` / `dungeon_exit_action.py` / `dungeon_teardown_action.py` / `dungeon_archive_action.py`）。这一层与 CLI 完全解耦，同时被游戏服务端（`home_api.py`、`dungeon_lifecycle_api.py`、`dungeon_combat_api.py`、`dungeon_combat_tasks.py`）及测试套件直接复用——真正的复用边界在 `services` 层，而非 CLI 脚本本身。
+真正的规则校验与 ECS 动作触发在 `ai_dbg/services/`。这一层与 CLI 解耦，同时被服务端 API 与测试复用；CLI 不是规则实现处，只是快照读写与动作选择的薄壳。
 
----
+## 管道骨架
 
-## 状态机与命令可用性
+每份快照恢复后，游戏实例会重新创建所有管道；动作入口只调用与当前房间匹配的那一条。开场与战斗共享同一副骨架：`PrologueSystem`、`EnvironmentInitializationSystem`、`ActionCleanupSystem`、`DestroyEntitySystem`、`ContextCompactionSystem`、`EpilogueSystem`。中间段才是模式差异：开场插入角色开场初始化、奖励生成与领取；战斗插入牌堆初始化、回合开始/抽牌、怪物与队伍决策、出牌与仲裁、死亡判定、回合清理、胜负判定、掉落与牌堆拆除。
 
-脚本的命令集对应游戏的**两种模式**，命令本身即是状态机的边界声明：
+顺序就是因果链：回合开始必须先于抽牌，死亡判定必须先于胜负判定，胜负判定必须先于掉落，后战斗转换必须先于牌堆拆除。工厂函数中的相邻注释是对这些不可交换顺序的显式约束。
 
-- **家园模式**：`advance` / `speak` / `switch-stage` / `enter-dungeon` 等
-- **副本模式**：`combat-init` / `opening-init` / `draw-cards` / `play-cards-specified` / `use-consumable` / `equip-gear` / `exit-dungeon` 等
+→ 参见：[战斗管道（Combat Pipeline）](combat-pipeline.md)
 
-其中副本房间的推进严格对齐服务端 API 的两步式调用：
+## 与测试的分工
 
-1. `enter-dungeon` / `next-dungeon` 只负责**传送/推进房间**（对应 `/api/home/enter_dungeon/v1/` 与 `/api/dungeon/progress/advance_stage/v1/`），不初始化新房间；
-2. 房间初始化需由代理根据新房间类型再显式发起一步：战斗房间用 `combat-init`（对应 `/api/dungeon/combat/init/v1/`），开场房间用 `opening-init`（对应 `/api/dungeon/opening/init/v1/`）。
+CLI 的端到端走查依赖 LLM，结果不可完全复现，不能替代固定回归。规则与契约由单元/集成测试锁定；CLI 用于探索新副本、验证卡牌设计与观察完整快照差异。卡牌开发循环使用 `card-prototypes` 查原型、`design-cards` 预览设计、`rebuild-deck` 定点改写预置副本的怪物牌库。
 
-除两种模式的状态推进外，还有一组**调测命令**不参与状态机：`card-prototypes` 与 `design-cards` 不写新快照，可在任意快照上反复调用。
-
-### 战斗回合的推进粒度：出牌 ≠ 过牌
-
-战斗内每个角色的**行动窗口**都只由显式 `pass-turn` 关闭；出牌、用消耗品、装备物化都不结束窗口：
-
-- `play-cards-specified` 只打出一张牌，**不交出行动权**；`use-consumable`（把消耗品内置卡牌物化进手牌） / `equip-gear`（把装备物化为手牌）同样不推进——它们只改变手牌，效果要靠之后的出牌结算。
-- `pass-turn --actor X` 把 X 记入本回合 `completed_actors`、清空其剩余能量并推进 `current_actor`；当所有存活角色都已过牌，本回合结束，需再次 `draw-cards` 开启下一回合。
-- 该规则**对我方与怪物同等适用**。轮到怪物时，`play-cards-specified --actor 怪物.X`（**省略 `--card`**）触发其 AI 决策（选一张牌或过牌）；我方角色则必须用 `--card C` 显式指定手牌：
-  - AI **决定出牌** → 行动权仍在该怪物，需再执行 `pass-turn --actor 怪物.X` 才交出行动权；
-  - AI **决定过牌** → 系统在同一次调用内已完成过牌，此时**不要**再对该怪物 `pass-turn`（它已不是当前行动者，调用会失败）。
-
-因此代理的稳定做法是：每执行一个战斗动作后重新读取 `current_actor`，再据此选择下一步。`ai_dbg/dbg_api_agent/flow.py::suggest_actions` 对当前行动者同时给出 `play-cards` 与 `pass-turn` 两种建议，即体现这一协议；服务端本地任务层的 `execute_pass_turn_task` 也接受任意角色名。
-
-→ 参见：[战斗管道（Combat Pipeline）](combat-pipeline.md) 的「回合（Round）与行动（turn）」。
-
-AI 代理无需感知内部游戏对象，只需根据当前存档的模式选择合法命令；`services` 层的前置条件校验失败时直接返回错误，动作模块据此提前 return，不会调用归档、不产出损坏存档。
-
----
-
-## 卡牌原型的开发循环
-
-改动 `demo/card_skeletons.py` / `demo/card_prototypes.py`（含各原型的 `design`）后，若想反复观察「角色 agent 把原型设计成了什么」，完整的 `scripts/setup_demo.py` 太重——它会 drop 数据库并重刷蓝图 / 副本 / RAG；开发循环只需要「把原型刷进库」这一小步。
-
-`scripts/flush_card_prototypes.py` 就是这一步：只 upsert 原型（可选默认牌单），并逐条打印「新增 / 更新 / 未变」与变化的字段；`--only` / `--card-type` 收敛刷写范围，`--prune` 把库收敛到指定集合，`--dry-run` 只看不写。
-
-关键能力是 `--prune`：库被收敛成「只剩要测的原型」后，`generate-spoils` 的随机抽样退化为确定抽样，于是可以定点复现同一原型的词缀设计。观测端配 `scripts/inspect_spoils.py`，它打印某个快照里 Spoils 候选的完整字段与逐条词缀的校验结果。
-
-循环形态：改原型 → 刷库 → 对停在开场房间的存档 `generate-spoils` → 读设计结果与 `.chat_dumps`。`--prune` 只影响其它仍从库读原型的流程（默认牌单物化、工坊选型），重跑一次全量刷即可恢复。
-
-### 显式候选规格（不必再靠 `--prune` 收敛库）
-
-`generate-spoils` 可以直接指定候选原型，于是「低概率原型抽不到」不再是问题。三种给法可混用：具体原型 id（可重复）、按开放槽（如自主运行槽）、按关键词；默认严格——数量必须刚好凑满候选，显式要求时才随机补足，补足部分可用种子固定（LLM 措辞仍不可复现）。
-
-规格只随本次动作传递、不落库；解析与校验（id 合法性、卡牌类型匹配、数量越界）都在开发入口完成，不合法时在进管道前失败。两条路径的失败语义不同：战利品在规格物化失败或设计未全部落地时**不写入**待领取队列（LLM 出错就没有结果）；怪物牌库则整副回退默认牌单。
-
-配套两个纯只读入口：`card-prototypes` 按卡牌类型 / 开放槽 / 关键词列出原型索引，用来查「该指定哪个 id」；`design-cards` 对指定原型直接跑设计会话并打印结果——读角色的设定与艺术锚点，走与生产相同的设计入口，但不写 Spoils / Deck，也不产生新快照，适合反复调人设与提示词。
-
-**怪物牌库的精确控制放在生成之后**：怪物名是副本生成过程中由 LLM 产出的，命令行阶段无法按名字指定。因此 `rebuild-deck` 对**已生成副本**里的某只怪物重做牌库并直接改写副本文件：可以整副重建（张数 = 给定原型数），也可以只换指定的那一两张、其余原样保留（按 1 起序号或唯一卡名指定）。它只影响下一次进入，不写快照，设计未完成时不改文件——「先看生成结果、再定点调整」由此成为开发期的常规回路。开发入口的显式规格一律「给多少就多少」，游戏默认张数只用于未指定的默认路径。
-
-→ 参见：[卡牌设计指南（Card Design）](card-design.md)、[副本生成](dungeon-generation.md)
-
----
-
-## 副本生成的调测规格
-
-`generate-dungeon` 可在开发入口指定副本结构（房间总数、开场房间数、每战斗房间怪物数）与怪物牌库的原型规格。**结构由代码决定，不由 LLM 自报**：规格只改变提示词与工具 schema 的约束强度，LLM 仍只负责房间名与场景描写；牌库规格非空时跳过怪物的自选阶段。
-
-正式入口无法使用这些规格：服务端请求模型不含对应字段，服务端任务也不传规格，动作入口在写入前还会做自洽校验（如开场房数必须小于总数）。这条边界由单元测试锁定——往请求模型加规格字段会立即失败。
-
-### 怪物母题与卡牌取材
-
-生成型副本的怪物与扮演设定、外观在同一次创作里产出「艺术锚点」（母题 / 意象 / 禁忌 / 命名口吻），随角色数据进入 `MotifComponent`。牌库组建阶段从副本中间数据读取它（此时怪物尚未成为实体），设计会话据此取材；种子副本的锚点是手写的。角色没有锚点时，设计口径回退到「只用角色设定」。
-
-→ 参见：[卡牌设计指南（Card Design）](card-design.md)、[副本生成](dungeon-generation.md)
-
----
-
-## 日志追溯
-
-每次调用生成独立日志文件，路径为 `logs/run_agent_game_{timestamp}.log`，时间戳与新存档一致，便于将一条存档与其对应的完整执行日志一一对应。
-
-### 记忆与牌堆对账（`scripts/inspect_memory.py`）
-
-记忆条目除正文外可带结构化标记，用于区分“谁写入的、属于哪一类”；词表以 `models/memory_tags.py` 为唯一来源，此处不复制。两道闸门：写入时校验，以及存档落盘前对全部记忆兜底校验（覆盖工具循环直写路径）——未登记的标记直接失败，不会静默丢失。查询时按标记过滤看「哪一类记录」，按关键词过滤看「正文里提到了什么」；广播类消息带事件类型与广播场景，私发只带事件类型，据此区分「全场景广播」与「只写给我」。
-
-牌堆之间的流转（抽牌、回合末清手牌与 retain 归还、消耗、虚无消散、洗牌、子堆拆除）会对**容器主人**各写一条说明（见[卡牌数据模型（Card）](card.md) 的「牌堆变更对谁可见」），`.chat_dumps` 里能看到；要回答「这次动作为谁写了记忆」「哪条堆变了多少」，仍建议两侧一起对账：`memories/{agent}.jsonl`（记忆）与 `entities/{agent}.json`（`Deck` / `DrawPile`（含 `retained_cards`）/ `Hand` / `Discard` / `Exhaust` / `Spoils`）。`scripts/inspect_memory.py` 就是这两个目录的只读视图，不依赖游戏运行时（纯 stdlib，不需要 `.env`）。
-
-```bash
-# 单个 agent：完整记忆 + 当前各堆内容
-uv run python -m scripts.inspect_memory --snapshot .worlds/e2e/Game1/2026-... --agent 角色.无名
-
-# 全量扫描：只打有变化的 agent（缺省遍历快照内所有 agent）
-uv run python -m scripts.inspect_memory --snapshot <新> --diff <旧>
-
-# 对账：只列新增记忆 + 各堆数量/内容变化
-uv run python -m scripts.inspect_memory --snapshot <新> --diff <旧> --agent 角色.无名
-
-# 只看某类消息（如「获得卡牌」/「传递卡牌」）
-uv run python -m scripts.inspect_memory --snapshot <快照> --keyword 获得卡牌
-```
-
-`--diff` 里记忆的增量基线取「上一个快照的条数」，条数变少时自动退回全量打印并提示可能发生了压缩/重制（见 [上下文窗口管理](context-window-management.md)）。对账结论应写成「记忆 delta + 牌堆 delta」两句：前者回答 agent 知不知道，后者回答世界变了多少。
-
-→ 相关：[卡牌与牌堆](card.md)、[战斗管道](combat-pipeline.md)
+→ 参见：[卡牌设计指南（Card Design）](card-design.md)

@@ -30,13 +30,13 @@ dependencies = [
     # HTTP client libraries
     "aiohttp>=3.9.3",
     "requests>=2.32.2",
-    # Text-to-image generation
+    # Text-to-image generation (infrastructure)
     "replicate>=1.0.7",
-    # AI and embeddings
-    "sentence-transformers>=4.1.0",
+    # Embeddings (infrastructure)
+    "sentence-transformers==5.2.0",
     # Database
     "sqlalchemy>=2.0.27",
-    "pgvector>=0.4.1",
+    "pgvector==0.4.2",
     "psycopg2-binary>=2.9.10",
     # Validation and serialization
     "pydantic>=2.11.7",

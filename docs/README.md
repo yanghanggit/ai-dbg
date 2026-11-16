@@ -35,13 +35,10 @@
 | ------ | ------ |
 | [消耗品系统（ConsumableItem）](wiki/consumable-item.md) | 消耗品的数据模型、内置卡牌与战斗使用管道 |
 | [装备系统（GearItem）](wiki/gear-item.md) | 装备的数据模型、装备物化为手牌的管道、战斗结束归还 |
-| [工坊合成管道（Craft Pipeline）](wiki/craft-pipeline.md) | 工坊合成的核心哲学：机制与内容分离、配置注入路径、材料驱动的创意生成 |
-| [材料系统（MaterialItem）](wiki/material-item.md) | 材料的数据模型、工坊合成管道（消耗品/装备/时装三类产物）、与其他物品类型的关系 |
-| [DBG AI 操作 CLI（ai-dbg-agent-game）](wiki/run-agent-game.md) | 快照驱动设计的意图、AI 代理操作工具与服务器 API 工具的分工 |
+| [材料系统（MaterialItem）](wiki/material-item.md) | 战斗掉落材料的数据模型、堆叠规则与当前无消费端的定位 |
+| [DBG AI 操作 CLI（ai-dbg-agent-game）](wiki/run-agent-game.md) | 离线快照驱动的副本推进：新局直达副本、开场/战斗/奖励流程、管道骨架与开发调测命令 |
 | [DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
 | [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |
-| [副本生成管道（Dungeon Generation Pipeline）](wiki/dungeon-generation.md) | 核心哲学：机制与内容分离、四步接力管道的分工意图与设计决策、与工坊合成的架构对比 |
-| [副本导演（Dungeon Director）](wiki/dungeon-director.md) | 全局单例、俯瞰当前副本的有状态记忆积累设计：入口身份锁定、逐房间事实追加、副本结束总结移交世界导演并重置 |
 | [战斗管道（Combat Pipeline）](wiki/combat-pipeline.md) | ECS 处理器链的架构设计：管道心跳驱动、牌库预置与抽牌堆确定性填充、仲裁的三方归属、回合行动序列与生命周期阶段 |
 | [神器（Artifact）](wiki/artifact.md) | 第一公民实体：内容作者写修正规则，由 `ReliquaryComponent` 声明归属，运行点由标记组件表达，出牌仲裁后由神器自身实体作为临时 agent 自行判定并执行，机制与内容分离 |
 | [卡牌数据模型（Card）](wiki/card.md) | Card 字段的三层结构（确定性骨架 / 语义词缀 / 生命周期流转）、来源引用（source）与「确定性骨架 + LLM 语义」的设计取舍 |
@@ -50,9 +47,6 @@
 | [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
 | [手牌（HandComponent）](wiki/hand.md) | 手牌的双重身份：作为出牌者的行动选择集、作为被命中者的当前状态，及其与牌堆/仲裁/装备的关联 |
 | [DBG 核心概念定义与逻辑关系总结](<wiki/DBG 核心概念定义与逻辑关系总结.md>) | Modifiers（对局级规则）与 Affixes（一次性效果词缀）二者的定义、归属与逻辑关系：宏观-微观模型 |
-| [公共知识检索系统（RAG）](wiki/rag-knowledge-base.md) | 公共记忆与私人记忆的二元分离、Blueprint.knowledge_base 的编排约束、pgvector 两阶段生命周期、query 工具即时回流 |
 | [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段（精简提示词、阈值触发压缩）；以及仅作用于地下城场景实体的仲裁 loop 逐次压缩与失败不回滚策略 |
-| [角色自持内容生成（Actor Intrinsic Generation）](wiki/actor-intrinsic-generation.md) | 以角色为 agent 生成自身持久内容（候选卡、外观）时的取材边界：只取内化身份，排除当前场景等易变外部信息 |
-| [家园规划系统（Home Plan Action）](wiki/home-plan-action.md) | PlanAction 信号驱动的行动规划：工具调用式决策、query 先查后决策、玩家影子工具轨迹对齐 |
-| [奇幻故事设计草稿（作品名待定）](wiki/fantasy-story-draft.md) | 作者头脑风暴草稿：多文化奇幻世界、穿越者/失忆主角、佣兵接单循环、据点与首个副本、扩展方向 |
-| [战役设定与全局规则（CAMPAIGN_SETTING / SYSTEM_RULES）](wiki/campaign-setting-rules-bridge.md) | 故事层两字段的分层（均封存在 demo/）、抽象设定的惰性知识问题、事件级引用提示的桥接方案、插图风格改由世界实体承载 |
+| [角色自持内容生成（Actor Intrinsic Generation）](wiki/actor-intrinsic-generation.md) | 以角色/怪物为 agent 生成候选卡与牌库时的取材边界：只取内化身份，排除当前场景等易变外部信息 |
+| [战役设定与全局规则（CAMPAIGN_SETTING / SYSTEM_RULES）](wiki/campaign-setting-rules-bridge.md) | 故事层两字段的分层（均封存在 demo/）、抽象设定的惰性知识与内容无关边界 |

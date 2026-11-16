@@ -30,7 +30,7 @@ async def get_stages_state(
 
     # 检查房间是否存在
     if not game_server.has_room(user_name):
-        # logger.error(f"view_home: {user_name} has no room")
+        # logger.error(f"stages_state: {user_name} has no room")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="没有房间",
@@ -59,7 +59,9 @@ async def get_stages_state(
 
     # 获取场景与角色的分布映射
     actors_by_stage_as_names = rpg_game.get_actors_by_stage_as_names()
-    logger.info(f"view_home: {user_name} actors_by_stage: {actors_by_stage_as_names}")
+    logger.info(
+        f"stages_state: {user_name} actors_by_stage: {actors_by_stage_as_names}"
+    )
 
     # 返回场景状态
     return StagesStateResponse(

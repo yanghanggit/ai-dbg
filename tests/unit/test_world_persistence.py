@@ -16,8 +16,8 @@ from ai_dbg.models import (
     Blueprint,
     Dungeon,
     HumanMessage,
+    NoneEvent,
     PlayerSession,
-    SpeakEvent,
     WorldState,
 )
 
@@ -32,7 +32,6 @@ def _make_blueprint(name: str = "demo") -> Blueprint:
         player_actor="hero",
         campaign_setting="setting",
         system_rules="",
-        knowledge_base={},
         stages=[],
         world_entities=[],
     )
@@ -50,15 +49,7 @@ def _make_world(entity_counter: int = 1) -> WorldState:
 
 def _make_player_session() -> PlayerSession:
     ps = PlayerSession(name="user", actor="hero", game="demo")
-    ps.add_agent_event(
-        SpeakEvent(
-            message="m",
-            actor="hero",
-            stage="stage_1",
-            target="npc",
-            content="hello",
-        )
-    )
+    ps.add_agent_event(NoneEvent(message="hello"))
     return ps
 
 
@@ -96,8 +87,8 @@ class TestRoundTrip:
         assert len(restored_session.session_messages) == 1
         msg = restored_session.session_messages[0]
         assert msg.sequence_id == 1
-        assert isinstance(msg.agent_event, SpeakEvent)
-        assert msg.agent_event.content == "hello"
+        assert isinstance(msg.agent_event, NoneEvent)
+        assert msg.agent_event.message == "hello"
 
     def test_agent_memories_round_trip(self, tmp_path: Path) -> None:
         world = _make_world()

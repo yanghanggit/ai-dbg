@@ -4,8 +4,7 @@
 .DEFAULT_GOAL := help
 
 # 游戏运行时临时目录（对应 src/ai_dbg/paths.py 的 WORLDS_DIR / DEBUG_CACHE_DIR / CHAT_DUMP_DIR / LOGS_DIR）
-# 注意：.blueprints / .dungeons（启动配置）与 .assets/image（图像资产）不在此列，不会被清理。
-GAME_TEMP_DIRS := .worlds .debug_cache .chat_dumps logs .dungeons_drafts
+GAME_TEMP_DIRS := .worlds .debug_cache .chat_dumps logs
 
 # 推荐：uv 环境完整设置
 install:

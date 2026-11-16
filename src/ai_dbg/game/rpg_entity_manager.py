@@ -14,7 +14,7 @@ from ..models import (
     COMPONENT_TYPES,
     ActorComponent,
     DungeonComponent,
-    HomeComponent,
+    LobbyComponent,
     PlayerComponent,
     StageComponent,
     WorldComponent,
@@ -180,16 +180,16 @@ class RPGEntityManager(Context):
         return ret
 
     ###############################################################################################################################################
-    def is_actor_in_home_stage(self, actor_entity: Entity) -> bool:
-        """判断 Actor 是否在家园场景中。"""
+    def is_actor_in_lobby_stage(self, actor_entity: Entity) -> bool:
+        """判断 Actor 是否在大厅/营地场景中。"""
         assert actor_entity.has(ActorComponent), "actor_entity must have ActorComponent"
         stage_entity = self.resolve_stage_entity(actor_entity)
         assert stage_entity is not None, "stage_entity is None"
         assert not (
-            stage_entity.has(HomeComponent) and stage_entity.has(DungeonComponent)
-        ), "stage_entity has both HomeComponent and DungeonComponent!"
+            stage_entity.has(LobbyComponent) and stage_entity.has(DungeonComponent)
+        ), "stage_entity has both LobbyComponent and DungeonComponent!"
 
-        return stage_entity.has(HomeComponent)
+        return stage_entity.has(LobbyComponent)
 
     ###############################################################################################################################################
     def is_actor_in_dungeon_stage(self, actor_entity: Entity) -> bool:
@@ -198,8 +198,8 @@ class RPGEntityManager(Context):
         stage_entity = self.resolve_stage_entity(actor_entity)
         assert stage_entity is not None, "stage_entity is None"
         assert not (
-            stage_entity.has(DungeonComponent) and stage_entity.has(HomeComponent)
-        ), "stage_entity has both DungeonComponent and HomeComponent!"
+            stage_entity.has(DungeonComponent) and stage_entity.has(LobbyComponent)
+        ), "stage_entity has both DungeonComponent and LobbyComponent!"
 
         return stage_entity.has(DungeonComponent)
 

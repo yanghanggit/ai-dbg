@@ -15,7 +15,6 @@ from .card import Card
 class ItemType(StrEnum):
 
     GEAR_ITEM = "GearItem"
-    COSTUME_ITEM = "CostumeItem"
     CONSUMABLE_ITEM = "ConsumableItem"
     MATERIAL_ITEM = "MaterialItem"
 
@@ -43,18 +42,6 @@ class GearItem(Item):
     cards: List[Card] = (
         []
     )  # GearItem => 可转化为手牌的卡牌列表；当前合成/蓝图仅放入 1 张，未来可支持多张
-
-
-#######################################################################################################################################
-class CostumeItem(Item):
-    """时装类，仅改变角色外观（AppearanceComponent.appearance），不参与属性计算"""
-
-    type: Literal[ItemType.COSTUME_ITEM] = Field(
-        default=ItemType.COSTUME_ITEM, frozen=True
-    )
-    resources: Sequence["AnyItem"] = Field(
-        default_factory=list
-    )  # 合成时消耗的原料列表；未必是 MaterialItem（保留 AnyItem 扩展余地）
 
 
 #######################################################################################################################################
@@ -101,13 +88,12 @@ class MaterialItem(Item):
 
 ###############################################################################################################################################
 AnyItem = Annotated[
-    Union[GearItem, CostumeItem, ConsumableItem, MaterialItem],
+    Union[GearItem, ConsumableItem, MaterialItem],
     Field(discriminator="type"),
 ]
 
-# 解决前向引用：AnyItem 定义后重新编译依赖它的三个模型
+# 解决前向引用：AnyItem 定义后重新编译依赖它的模型
 GearItem.model_rebuild()
-CostumeItem.model_rebuild()
 ConsumableItem.model_rebuild()
 
 

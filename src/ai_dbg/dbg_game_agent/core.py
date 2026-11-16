@@ -4,6 +4,7 @@
 """
 
 from pathlib import Path
+from typing import Dict, List
 
 from loguru import logger
 
@@ -14,6 +15,8 @@ from ai_dbg.paths import (
     BLUEPRINTS_DIR,
     DUNGEONS_DIR,
 )
+from ai_dbg.services.dungeon_enter_action import enter_dungeon
+from ai_dbg.services.dungeon_setup_action import setup_dungeon
 
 
 ###############################################################################
@@ -67,6 +70,15 @@ async def create_and_initialize_game(
 
     # 初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
     await terminal_game.initialize()
+
+    # 加载预置副本并直接进入首间：新局不再经过大厅中转
+    success, error_detail = setup_dungeon(terminal_game, dungeon_name)
+    if not success:
+        raise RuntimeError(f"副本实体创建失败: {error_detail}")
+    success, error_detail = enter_dungeon(terminal_game, terminal_game.current_dungeon)
+    if not success:
+        raise RuntimeError(f"进入副本失败: {error_detail}")
+
     logger.info(
         f"游戏创建并初始化完成：user={user}, game={game}, dungeon={dungeon_name}"
     )
@@ -76,6 +88,16 @@ async def create_and_initialize_game(
 
     # 返回游戏实例
     return terminal_game
+
+
+###############################################################################
+async def stages_game(
+    world: WorldState,
+    player_session: PlayerSession,
+) -> Dict[str, List[str]]:
+    """返回当前各场景内角色名单（只读，不归档）。"""
+    terminal_game = await restore_game(world, player_session)
+    return terminal_game.get_actors_by_stage_as_names()
 
 
 ###############################################################################

@@ -44,32 +44,10 @@ from ..models import (
     DungeonSpoilsPickCardResponse,
     DungeonSpoilsRemoveRequest,
     DungeonSpoilsRemoveResponse,
+    DungeonStartRequest,
+    DungeonStartResponse,
     DungeonStateResponse,
     EntitiesDetailsResponse,
-    HomeAdvanceRequest,
-    HomeAdvanceResponse,
-    HomeCraftItemRequest,
-    HomeCraftItemResponse,
-    HomeEnterDungeonRequest,
-    HomeEnterDungeonResponse,
-    HomeGenerateDungeonRequest,
-    HomeGenerateDungeonResponse,
-    HomeItemMoveToInventoryRequest,
-    HomeItemMoveToInventoryResponse,
-    HomeItemMoveToStorageRequest,
-    HomeItemMoveToStorageResponse,
-    HomeRemoveCostumeRequest,
-    HomeRemoveCostumeResponse,
-    HomeRosterAddRequest,
-    HomeRosterAddResponse,
-    HomeRosterRemoveRequest,
-    HomeRosterRemoveResponse,
-    HomeSpeakRequest,
-    HomeSpeakResponse,
-    HomeSwitchStageRequest,
-    HomeSwitchStageResponse,
-    HomeWearCostumeRequest,
-    HomeWearCostumeResponse,
     LoginRequest,
     LoginResponse,
     LogoutRequest,
@@ -128,12 +106,18 @@ async def login(user_name: str, game_name: str) -> str:
         return LoginResponse.model_validate(response.json()).message
 
 
-async def new_game(user_name: str, game_name: str) -> NewGameResponse:
-    """创建新游戏，返回服务器响应。"""
+async def new_game(
+    user_name: str, game_name: str, dungeon_name: str
+) -> NewGameResponse:
+    """创建新游戏并直接进入副本，返回服务器响应。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/game/new/v1/",
-            json=NewGameRequest(user_name=user_name, game_name=game_name).model_dump(),
+            json=NewGameRequest(
+                user_name=user_name,
+                game_name=game_name,
+                dungeon_name=dungeon_name,
+            ).model_dump(),
         )
         response.raise_for_status()
         return NewGameResponse.model_validate(response.json())
@@ -221,7 +205,7 @@ async def fetch_dungeon_list() -> DungeonListResponse:
     """获取可用副本列表。"""
     async with build_client(10) as client:
         response = await client.get(
-            "/api/home/dungeon-list/v1/",
+            "/api/dungeon/list/v1/",
         )
         response.raise_for_status()
         return DungeonListResponse.model_validate(response.json())
@@ -287,40 +271,6 @@ async def watch_task_until_done(
     raise TimeoutError(f"任务 {job_id} 等待超时")
 
 
-async def home_advance(
-    user_name: str, game_name: str, actors: List[str]
-) -> HomeAdvanceResponse:
-    """触发家园推进流程，为 actors 指定的角色激活行动计划，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/advance/v1/",
-            json=HomeAdvanceRequest(
-                user_name=user_name,
-                game_name=game_name,
-                actors=actors,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeAdvanceResponse.model_validate(response.json())
-
-
-async def home_enter_dungeon(
-    user_name: str, game_name: str, dungeon_name: str
-) -> HomeEnterDungeonResponse:
-    """传送玩家进入指定副本（同步，无任务）。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/enter_dungeon/v1/",
-            json=HomeEnterDungeonRequest(
-                user_name=user_name,
-                game_name=game_name,
-                dungeon_name=dungeon_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeEnterDungeonResponse.model_validate(response.json())
-
-
 async def fetch_dungeon_state(user_name: str, game_name: str) -> DungeonStateResponse:
     """查询当前副本完整状态。"""
     async with build_client(10) as client:
@@ -339,6 +289,23 @@ async def fetch_dungeon_room(user_name: str, game_name: str) -> DungeonRoomRespo
         )
         response.raise_for_status()
         return DungeonRoomResponse.model_validate(response.json())
+
+
+async def start_dungeon(
+    user_name: str, game_name: str, dungeon_name: str
+) -> DungeonStartResponse:
+    """从大厅进入指定副本（仅传送到首间，不初始化房间）。"""
+    async with build_client(10) as client:
+        response = await client.post(
+            "/api/dungeon/start/v1/",
+            json=DungeonStartRequest(
+                user_name=user_name,
+                game_name=game_name,
+                dungeon_name=dungeon_name,
+            ).model_dump(),
+        )
+        response.raise_for_status()
+        return DungeonStartResponse.model_validate(response.json())
 
 
 async def dungeon_exit(user_name: str, game_name: str) -> DungeonExitResponse:
@@ -579,216 +546,6 @@ async def dungeon_combat_equip_gear(
         )
         response.raise_for_status()
         return DungeonCombatEquipGearItemResponse.model_validate(response.json())
-
-
-async def home_generate_dungeon(
-    user_name: str, game_name: str
-) -> HomeGenerateDungeonResponse:
-    """触发副本生成流程，返回任务ID."""
-    async with build_client(30) as client:
-        response = await client.post(
-            "/api/home/generate_dungeon/v1/",
-            json=HomeGenerateDungeonRequest(
-                user_name=user_name,
-                game_name=game_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeGenerateDungeonResponse.model_validate(response.json())
-
-
-async def home_speak(
-    user_name: str,
-    game_name: str,
-    target: str,
-    content: str,
-) -> HomeSpeakResponse:
-    """触发家园玩家对话动作，返回任务ID。"""
-    async with build_client(30) as client:
-        response = await client.post(
-            "/api/home/player/speak/v1/",
-            json=HomeSpeakRequest(
-                user_name=user_name,
-                game_name=game_name,
-                target=target,
-                content=content,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeSpeakResponse.model_validate(response.json())
-
-
-async def home_switch_stage(
-    user_name: str,
-    game_name: str,
-    stage_name: str,
-) -> HomeSwitchStageResponse:
-    """触发家园玩家场景切换动作，返回任务ID。"""
-    async with build_client(30) as client:
-        response = await client.post(
-            "/api/home/player/switch_stage/v1/",
-            json=HomeSwitchStageRequest(
-                user_name=user_name,
-                game_name=game_name,
-                stage_name=stage_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeSwitchStageResponse.model_validate(response.json())
-
-
-async def home_roster_add(
-    user_name: str, game_name: str, member_name: str
-) -> HomeRosterAddResponse:
-    """将成员加入队伍。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/roster/add/v1/",
-            json=HomeRosterAddRequest(
-                user_name=user_name,
-                game_name=game_name,
-                member_name=member_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeRosterAddResponse.model_validate(response.json())
-
-
-async def home_roster_remove(
-    user_name: str, game_name: str, member_name: str
-) -> HomeRosterRemoveResponse:
-    """将成员从队伍移除。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/roster/remove/v1/",
-            json=HomeRosterRemoveRequest(
-                user_name=user_name,
-                game_name=game_name,
-                member_name=member_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeRosterRemoveResponse.model_validate(response.json())
-
-
-async def home_item_move_to_inventory(
-    user_name: str, game_name: str, item_names: List[str]
-) -> HomeItemMoveToInventoryResponse:
-    """将道具从储物箱移入随身背包。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/item/move_to_inventory/v1/",
-            json=HomeItemMoveToInventoryRequest(
-                user_name=user_name,
-                game_name=game_name,
-                item_names=item_names,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeItemMoveToInventoryResponse.model_validate(response.json())
-
-
-async def home_item_move_to_storage(
-    user_name: str, game_name: str, item_names: List[str]
-) -> HomeItemMoveToStorageResponse:
-    """将道具从随身背包移入储物箱。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/item/move_to_storage/v1/",
-            json=HomeItemMoveToStorageRequest(
-                user_name=user_name,
-                game_name=game_name,
-                item_names=item_names,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeItemMoveToStorageResponse.model_validate(response.json())
-
-
-async def home_wear_costume(
-    user_name: str, game_name: str, item_name: str, target_name: str
-) -> HomeWearCostumeResponse:
-    """为指定角色穿戴或移除时装，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/costume/wear/v1/",
-            json=HomeWearCostumeRequest(
-                user_name=user_name,
-                game_name=game_name,
-                item_name=item_name,
-                target_name=target_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeWearCostumeResponse.model_validate(response.json())
-
-
-async def home_remove_costume(
-    user_name: str, game_name: str, target_name: str
-) -> HomeRemoveCostumeResponse:
-    """为指定角色脱下当前穿戴的时装，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/costume/remove/v1/",
-            json=HomeRemoveCostumeRequest(
-                user_name=user_name,
-                game_name=game_name,
-                target_name=target_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeRemoveCostumeResponse.model_validate(response.json())
-
-
-async def home_craft_consumable(
-    user_name: str, game_name: str, materials: List[str]
-) -> HomeCraftItemResponse:
-    """从储物箱材料合成消耗品，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/craft/consumable/v1/",
-            json=HomeCraftItemRequest(
-                user_name=user_name,
-                game_name=game_name,
-                materials=materials,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeCraftItemResponse.model_validate(response.json())
-
-
-async def home_craft_gear_item(
-    user_name: str, game_name: str, materials: List[str]
-) -> HomeCraftItemResponse:
-    """从储物箱材料在装备工坊锻造一件装备，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/craft/gear/v1/",
-            json=HomeCraftItemRequest(
-                user_name=user_name,
-                game_name=game_name,
-                materials=materials,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeCraftItemResponse.model_validate(response.json())
-
-
-async def home_craft_costume_item(
-    user_name: str, game_name: str, materials: List[str]
-) -> HomeCraftItemResponse:
-    """从储物箱材料在工坊制作一件时装，返回任务ID。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/home/craft/costume/v1/",
-            json=HomeCraftItemRequest(
-                user_name=user_name,
-                game_name=game_name,
-                materials=materials,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return HomeCraftItemResponse.model_validate(response.json())
 
 
 async def compact_context(

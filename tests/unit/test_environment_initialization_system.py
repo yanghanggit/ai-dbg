@@ -1,7 +1,7 @@
 """EnvironmentInitializationSystem 的「无观察 = 无推理」观察者门槛测试。
 
 观察者门槛：
-- Home 场景：场景内存在存活 Actor（有人）即请求环境叙事；
+- Lobby 场景：不做环境叙事；
 - Dungeon 场景：场景内存在存活 Actor，且玩家本人在场，才请求；
 其余场景保持惰性，跳过推理。
 """
@@ -19,7 +19,7 @@ from ai_dbg.models import (
     AIMessage,
     DungeonComponent,
     EnvironmentComponent,
-    HomeComponent,
+    LobbyComponent,
     PlayerComponent,
     StageComponent,
 )
@@ -32,11 +32,11 @@ from ai_dbg.systems.environment_initialization_system import (
 # ---------------------------------------------------------------------------
 
 
-def _make_stage(context: Context, name: str, *, dungeon: bool = False) -> Entity:
+def _make_stage(context: Context, name: str, *, dungeon: bool = True) -> Entity:
     stage = context.create_entity()
     stage._name = name
     stage.add(StageComponent, name)
-    stage.add(DungeonComponent if dungeon else HomeComponent, name)
+    stage.add(DungeonComponent if dungeon else LobbyComponent, name)
     return stage
 
 
@@ -80,31 +80,21 @@ def system(mock_game: MagicMock) -> EnvironmentInitializationSystem:
 
 class TestObservedStagesOnly:
     @pytest.mark.asyncio
-    async def test_home_stage_with_actors_is_inferred(
+    async def test_lobby_stage_is_skipped(
         self,
         context: Context,
         mock_game: MagicMock,
         system: EnvironmentInitializationSystem,
     ) -> None:
-        """Home 场景：有 Actor 即构建请求；无 Actor 的 Home 场景被跳过。"""
-        observed = _make_stage(context, "场景.酒馆")
-        empty = _make_stage(context, "场景.佣兵公会")
-        mock_game.get_group.return_value.entities.copy.return_value = {observed, empty}
-
-        def _has_actors(_game: DBGGame, stage: Entity) -> set[MagicMock]:
-            return {_fake_actor()} if stage is observed else set()
+        """Lobby 场景：即使有 Actor，也不构建环境叙事请求。"""
+        lobby = _make_stage(context, "场景.营地", dungeon=False)
+        mock_game.get_group.return_value.entities.copy.return_value = {lobby}
 
         with (
             patch(
                 "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
-                side_effect=_has_actors,
+                return_value={_fake_actor()},
             ),
-            patch.object(
-                system,
-                "_build_request",
-                side_effect=lambda stage: _fake_request(stage.name),
-            ),
-            patch.object(system, "_process_environment_response"),
             patch(
                 "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(),
@@ -112,8 +102,7 @@ class TestObservedStagesOnly:
         ):
             await system.execute()
 
-        sent_names = [r.label for r in mock_batch.call_args.args[0]]
-        assert sent_names == ["场景.酒馆"]
+        mock_batch.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_dungeon_stage_without_player_is_skipped(
@@ -238,7 +227,7 @@ class TestFailureAccounting:
         with (
             patch(
                 "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
-                return_value={_fake_actor()},
+                return_value={_fake_actor(is_player=True)},
             ),
             patch.object(system, "_build_request", side_effect=_build),
             patch(

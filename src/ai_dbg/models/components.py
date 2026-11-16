@@ -8,7 +8,7 @@ from ..entitas.components import Component
 from .artifact import Artifact
 from .card import Card
 from .character_stats import CharacterStats
-from .items import AnyItem, CostumeItem, GearItem
+from .items import AnyItem, GearItem
 from .registry import register_component_type
 
 
@@ -83,7 +83,7 @@ class DestroyComponent(Component):
 @final
 @register_component_type
 class AppearanceComponent(Component):
-    """存储角色外观描述。`appearance` 由 LLM 基于 `base_body` 与装备合成。"""
+    """存储角色外观描述；当前无时装系统，`appearance` 初始等于 `base_body`。"""
 
     name: str
     base_body: str  # 基础身体形态描述（不含装备）
@@ -93,21 +93,8 @@ class AppearanceComponent(Component):
 ############################################################################################################
 @final
 @register_component_type
-class AppearanceSynthesisComponent(Component):
-    """标记世界实体具有「外观合成」职责：把基础体型与时装描述合成为可观察外观。
-
-    属纯文本改写任务，每次推理只用该实体的 system prompt + 任务提示词，
-    结果只写回 `AppearanceComponent`，不进入任何 agent 记忆。
-    """
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class HomeComponent(Component):
-    """标记场景为家园类型。"""
+class LobbyComponent(Component):
+    """标记场景为大厅/营地：两次副本之间的极简落脚点，不承载任何非副本玩法。"""
 
     name: str
 
@@ -140,19 +127,8 @@ class PartyMemberComponent(Component):
 
 
 ############################################################################################################
-@final
-@register_component_type
-class PartyRosterComponent(Component):
-    """挂载在玩家实体，记录本次副本预选同伴名单；为空时玩家独自冒险。
-
-    roster 即「名单」，对应 CLI 的 roster / roster-add / roster-remove 命令。
-    """
-
-    name: str
-    members: List[str]  # 其他队伍成员名称（不含玩家自身）
 
 
-############################################################################################################
 @final
 @register_component_type
 class MonsterComponent(Component):
@@ -191,19 +167,6 @@ class DeathComponent(Component):
 
 
 ############################################################################################################
-@final
-@register_component_type
-class StressComponent(Component):
-    """压力（死亡计数）：角色每经历一次战败（战死/超时判负/撤退）累加 1。
-
-    与 DeathComponent 不同：DeathComponent 在复活时会被移除，且不带任何惩罚；
-    StressComponent 跨副本持久保留，用于记录角色累计死亡次数，供后续 gameplay 读取。
-    """
-
-    name: str
-    value: int  # 累计压力值（即累计死亡次数）
-
-
 ############################################################################################################
 @final
 @register_component_type
@@ -236,62 +199,8 @@ class MotifComponent(Component):
 
 
 ############################################################################################################
-@final
-@register_component_type
-class PlayerAuditComponent(Component):
-    """标记世界实体具有玩家行动审计功能。"""
-
-    name: str
 
 
-############################################################################################################
-@final
-@register_component_type
-class DungeonGenerationComponent(Component):
-    """标记世界实体具有副本图片生成职责。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class IllustrationComponent(Component):
-    """标记世界实体具有插图提示词编排职责（LLM 驱动，把副本场景设定转化为文生图提示词）。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class GearWorkshopComponent(Component):
-    """标记世界实体具有装备工坊职责（LLM 驱动，仅合成装备）。"""
-
-    name: str
-
-
-############################################################################################################
-
-
-@final
-@register_component_type
-class ConsumableWorkshopComponent(Component):
-    """标记世界实体具有消耗品工坊职责（LLM 驱动，仅合成消耗品）。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class CostumeWorkshopComponent(Component):
-    """标记世界实体具有时装工坊职责（LLM 驱动，仅制作时装）。"""
-
-    name: str
-
-
-############################################################################################################
 @final
 @register_component_type
 class CardDesignComponent(Component):
@@ -315,24 +224,8 @@ class ReliquaryComponent(Component):
 
 
 ############################################################################################################
-@final
-@register_component_type
-class DungeonDirectorComponent(Component):
-    """标记世界实体为副本导演，扮演当前正在游玩的副本，随房间进程积累记忆，副本结束时总结并压缩本次副本经过。"""
-
-    name: str
 
 
-############################################################################################################
-@final
-@register_component_type
-class WorldDirectorComponent(Component):
-    """标记世界实体为世界导演（桌游 GM），负责统筹世界演进与新副本创作。"""
-
-    name: str
-
-
-############################################################################################################
 @final
 @register_component_type
 class DrawPileComponent(Component):
@@ -406,16 +299,8 @@ class InventoryComponent(Component):
 
 
 ############################################################################################################
-@final
-@register_component_type
-class StorageComponent(Component):
-    """储物箱；存储角色全部道具，为备用库存；初始内容来自蓝图 items。"""
-
-    name: str
-    items: List[AnyItem]  # 全部库存道具
 
 
-############################################################################################################
 @final
 @register_component_type
 class LootComponent(Component):
@@ -428,16 +313,6 @@ class LootComponent(Component):
 ############################################################################################################
 
 
-@final
-@register_component_type
-class WornCostumeComponent(Component):
-    """时装组件，记录当前穿戴的时装（CostumeItem）"""
-
-    name: str
-    item: CostumeItem
-
-
-############################################################################################################
 @final
 @register_component_type
 class EquippedGearComponent(Component):

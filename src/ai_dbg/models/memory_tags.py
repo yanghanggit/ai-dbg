@@ -36,19 +36,11 @@ MEMORY_TAGS: Final[FrozenSet[str]] = frozenset(
         "dungeon_lifecycle_stage_advance",  # 推进关卡
         "dungeon_lifecycle_completion",  # 完成副本并离场
         "dungeon_lifecycle_retreat",  # 战斗撤退
-        "dungeon_directive",  # 副本导演的创作指令问答
-        "dungeon_room_archive",  # 房间结束归档
-        "dungeon_world_archive",  # 副本结束归档（写入世界导演）
         "opening_initialization",  # 副本开场场景感知
         "environment_initialization",  # 场景环境描述生成
-        "invalid_stage",  # 场景转移目标非法
-        # ---- 家园 ----
-        "home_plan",  # 家园行动计划问答
         # ---- 物品与状态 ----
         "spoils_pick",  # 从战利品中领取卡牌（值 = 卡牌名）
         "card_pile_change",  # 牌堆变更说明（值 = {change, deltas}，只写给容器主人）
-        "appearance_update",  # 外观自我状态说明（值 = "self"）
-        "invalid_target",  # 交互目标不存在
         # ---- 记忆自身维护 ----
         "loop_id",  # agent_loop 起止标记
         "loop_id_end",

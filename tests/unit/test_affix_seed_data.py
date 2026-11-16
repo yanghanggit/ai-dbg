@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from ai_dbg.models import AFFIX_FIELDS, Card
 from demo.card_prototypes import CARD_PROTOTYPES
 from demo.card_skeletons import AOE_BUFF_SKELETON
-from demo.world import create_badluck, create_nameless
+from demo.world import create_nameless
 
 _AFFIX_RE = re.compile(r"^\[[^\[\]]+\]\s*[:：]\s*\S")
 _SENTENCE_END_RE = re.compile(r"[。！？]")
@@ -31,7 +31,7 @@ def _iter_seed_affixes() -> Iterator[Tuple[str, str, str]]:
     `create_*()` 产出的是待写入蓝图的分量字典（`dump_components` 的结果），
     所以这里按序列化后的形状读，而不是按实体组件读。
     """
-    for factory in (create_nameless, create_badluck):
+    for factory in (create_nameless,):
         actor = factory()
         deck = (actor.components or {}).get("DeckComponent")
         assert deck is not None, f"{actor.name} 缺少 DeckComponent"

@@ -7,7 +7,7 @@
 - 非战斗房间顺序（初始化 → 生成奖励 → 领卡 → 推进）
 
 输入是 :func:`ai_dbg.dbg_api_agent.status.build_status` 产出的快照 dict，
-输出是建议的 CLI 子命令字符串列表（含 home/dungeon/opening/spoils/combat 组前缀，
+输出是建议的 CLI 子命令字符串列表（含 dungeon/opening/spoils/combat 组前缀，
 可直接作为 ``ai_dbg/cli/dbg_agent_api.py``（入口 ``ai-dbg-agent-api``）的参数；不含全局的 --user/--game）。
 代理据此决策，但仍以服务端的实际校验为准。
 """
@@ -31,23 +31,10 @@ def suggest_actions(status: Dict[str, Any]) -> List[str]:
     actions: List[str] = []
 
     match mode:
-        case "home":
-            actions.append("home advance --actor <actor>")
-            actions.append("home speak --target <actor> --content <text>")
-            actions.append("home switch-stage --stage <stage_name>")
-            actions.append("home generate-dungeon")
-            actions.append("home enter-dungeon --dungeon <dungeon_name>")
+        case "lobby":
             actions.append("dungeon-list")
+            actions.append("dungeon start --dungeon <dungeon_name>")
             actions.append("blueprint-list")
-            actions.append("home roster-add --member <actor>")
-            actions.append("home roster-remove --member <actor>")
-            actions.append("home item-to-inventory --item <item>")
-            actions.append("home item-to-storage --item <item>")
-            actions.append("home craft-consumable --material <m> [--material <m> ...]")
-            actions.append("home craft-gear --material <m> [--material <m> ...]")
-            actions.append("home craft-costume --material <m> [--material <m> ...]")
-            actions.append("home wear-costume --item <costume> --target <actor>")
-            actions.append("home remove-costume --target <actor>")
             actions.append("compact --target <entity>")
 
         case "dungeon":

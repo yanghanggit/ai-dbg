@@ -13,9 +13,6 @@ def create_dungeon_combat_room_pipeline(
 
     ### 不这样就循环引用
     from ..systems.action_cleanup_system import ActionCleanupSystem
-    from ..systems.appearance_synthesis_system import (
-        AppearanceSynthesisSystem,
-    )
     from ..systems.artifact_post_arbitration_system import ArtifactPostArbitrationSystem
     from ..systems.autonomous_arbitration_system import (
         AutonomousArbitrationSystem,
@@ -76,9 +73,6 @@ def create_dungeon_combat_room_pipeline(
 
     # 起始系统。
     processors.add(PrologueSystem(dbg_game))
-
-    # 角色外观生成系统
-    processors.add(AppearanceSynthesisSystem(dbg_game))
 
     # 战斗环境初始化系统
     processors.add(EnvironmentInitializationSystem(dbg_game))

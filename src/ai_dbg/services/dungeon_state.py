@@ -108,7 +108,7 @@ async def get_dungeon_room(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @dungeon_state_api_router.get(
-    path="/api/home/dungeon-list/v1/", response_model=DungeonListResponse
+    path="/api/dungeon/list/v1/", response_model=DungeonListResponse
 )
 async def list_dungeons() -> DungeonListResponse:
     """获取可用副本列表接口"""

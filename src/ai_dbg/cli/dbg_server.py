@@ -15,11 +15,7 @@ from loguru import logger
 from starlette.types import Scope
 
 from ai_dbg.game.game_server import GameServer
-from ai_dbg.models import (
-    ASSETS_URL_PREFIX,
-    ApiRouteInfo,
-    ServerInfoResponse,
-)
+from ai_dbg.models import ASSETS_URL_PREFIX, ApiRouteInfo, ServerInfoResponse
 from ai_dbg.paths import ASSETS_DIR, LOGS_DIR
 from ai_dbg.pgsql import procrastinate_app
 from ai_dbg.services.compact_api import compact_api_router
@@ -42,7 +38,6 @@ from ai_dbg.services.entity_details import (
 )
 from ai_dbg.services.game_server_runtime import bind_runtime_game_server
 from ai_dbg.services.gameplay_scheduler import run_gameplay_scheduler
-from ai_dbg.services.home_api import home_api_router
 from ai_dbg.services.login import login_api_router
 from ai_dbg.services.new_game import new_game_api_router
 from ai_dbg.services.player_session import player_session_api_router
@@ -191,7 +186,6 @@ app.include_router(router=dungeon_state_api_router)
 app.include_router(router=tasks_api_router)
 app.include_router(router=login_api_router)
 app.include_router(router=new_game_api_router)
-app.include_router(router=home_api_router)
 app.include_router(router=compact_api_router)
 app.include_router(router=dungeon_lifecycle_api_router)
 app.include_router(router=dungeon_combat_api_router)

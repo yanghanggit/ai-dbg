@@ -26,8 +26,3 @@ class GameNotFoundError(GameStateError):
 
 
 ###############################################################################################################################################
-class PlayerNotAtHomeError(GameStateError):
-    """玩家不处于家园状态。"""
-
-    status_code = 400
-    detail = "当前不在家园状态，不能进行家园操作"

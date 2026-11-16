@@ -15,6 +15,8 @@ from ..models import (
     WorldState,
 )
 from ..paths import BLUEPRINTS_DIR
+from .dungeon_enter_action import enter_dungeon
+from .dungeon_setup_action import setup_dungeon
 from .game_server_dependencies import CurrentGameServer
 
 ###################################################################################################################################################################
@@ -106,8 +108,26 @@ async def new_game(
         # 执行游戏初始化逻辑，确保游戏状态正确设置，准备好接受玩家的操作
         await game.initialize()
 
+        # 加载预置副本并直接进入首间：新局不再经过大厅中转
+        success, error_detail = setup_dungeon(game, payload.dungeon_name)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"副本实体创建失败: {error_detail}",
+            )
+        success, error_detail = enter_dungeon(game, game.current_dungeon)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"进入副本失败: {error_detail}",
+            )
+
         # 存档初始世界状态，便于调试和回放
         await store_game_async(game)
 
     # 返回成功响应
-    return NewGameResponse(blueprint=blueprint_data, player_session=player_session)
+    return NewGameResponse(
+        blueprint=blueprint_data,
+        player_session=player_session,
+        dungeon=game.current_dungeon,
+    )

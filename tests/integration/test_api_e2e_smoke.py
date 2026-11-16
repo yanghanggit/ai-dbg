@@ -1,7 +1,7 @@
 """API 端到端冒烟测试（集成测试）。
 
 启动真实游戏服务端（uvicorn 子进程），模拟客户端走一遍核心 HTTP 链路，
-验证：家园 → 副本（开场房间）→ 战斗房间 的完整流转，以及战斗动作的同步校验行为。
+验证：新局直接进入副本 → 战斗初始化 → 抽牌 → 出牌的完整流转，以及战斗动作的同步校验行为。
 
 依赖：
 - DEEPSEEK_API_KEY（真实 LLM 调用，较慢）
@@ -188,23 +188,17 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     code, _ = _post(client, "/api/login/v1/", {"user_name": user, "game_name": GAME})
     assert code == 200
 
-    # 2. 新建游戏（家园态）
+    # 2. 新建游戏并直接进入副本（腐谷鼠穴首间即战斗房间，enter 时战斗进入 INITIALIZATION）
     code, data = _post(
-        client, "/api/game/new/v1/", {"user_name": user, "game_name": GAME}
+        client,
+        "/api/game/new/v1/",
+        {"user_name": user, "game_name": GAME, "dungeon_name": DUNGEON},
     )
     assert code == 200
     player_actor = data.get("player_session", {}).get("actor")
     assert player_actor, f"new game 未返回 player_session.actor: {data}"
 
-    # 3. 进入副本（setup + 传送至第一关；腐谷鼠穴首间即战斗房间，enter 时战斗进入 INITIALIZATION）
-    code, _ = _post(
-        client,
-        "/api/home/enter_dungeon/v1/",
-        {"user_name": user, "game_name": GAME, "dungeon_name": DUNGEON},
-    )
-    assert code == 200
-
-    # 4. 战斗初始化
+    # 3. 战斗初始化
     code, data = _post(
         client, "/api/dungeon/combat/init/v1/", {"user_name": user, "game_name": GAME}
     )
@@ -212,7 +206,7 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     assert data.get("job_id")
     _poll_task(client, data["job_id"])
 
-    # 5. 全员抽牌
+    # 4. 全员抽牌
     code, data = _post(
         client,
         "/api/dungeon/combat/draw_cards/v1/",
@@ -222,11 +216,11 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     assert data.get("job_id")
     _poll_task(client, data["job_id"])
 
-    # 6. 查询玩家手牌
+    # 5. 查询玩家手牌
     hand_cards = _get_hand_cards(client, user, player_actor)
     assert hand_cards, "抽牌后玩家应有手牌"
 
-    # 7. 非法出牌：接口同步返回 200（异步任务），任务本身应失败
+    # 6. 非法出牌：接口同步返回 200（异步任务），任务本身应失败
     code, data = _post(
         client,
         "/api/dungeon/combat/play_cards/v1/",
@@ -242,14 +236,15 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     assert data.get("job_id")
     assert _poll_task_status(client, data["job_id"]) == "failed", "非法出牌任务应失败"
 
-    # 8. 合法出牌应正常启动任务并完成
-    # 优先选一张 SELF 牌：验证「锁定自身、无需 targets」的出牌通路（种子牌库里无名必有 2 张基础防御）。
+    # 7. 合法出牌应正常启动任务并完成
+    # 优先选一张 SELF 牌验证「锁定自身、无需 targets」；手牌没有 SELF 牌时退化为任意可出牌。
     playable = [c for c in hand_cards if c.get("playable", True)]
     assert playable, "手牌中应存在可打出的卡牌"
     self_cards = [c for c in playable if c.get("target_type") == "self"]
-    assert self_cards, "手牌中应包含 target_type=self 的牌，用于验证自身出牌通路"
-    card = self_cards[0]
-    targets: List[str] = []  # SELF 牌无需目标
+    card = self_cards[0] if self_cards else playable[0]
+    targets: List[str] = []
+    if card.get("target_type") != "self":
+        targets = [MONSTER]
     code, data = _post(
         client,
         "/api/dungeon/combat/play_cards/v1/",
@@ -265,7 +260,7 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     assert data.get("job_id")
     _poll_task(client, data["job_id"])
 
-    # 9. 再打一张需要锚点的牌（若手牌里还有），验证非 SELF 通路
+    # 8. 再打一张需要锚点的牌（若手牌里还有），验证非 SELF 通路
     hand_cards = _get_hand_cards(client, user, player_actor)
     anchored = [
         c

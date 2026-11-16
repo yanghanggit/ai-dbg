@@ -22,7 +22,6 @@ from ai_dbg.models import (
     HumanMessage,
     IdentityComponent,
     NoneEvent,
-    SpeakEvent,
     StageComponent,
     SystemMessage,
 )
@@ -298,19 +297,13 @@ class TestBroadcastToStage:
         """广播消息盖两个标记：agent_event（事件类型）与 broadcast_stage（广播范围）。"""
         stage = _make_stage(game, "Stage_4")
         actor = _make_actor(game, "NPC_6", "Stage_4")
-        event = SpeakEvent(
-            message="喊了一声",
-            actor="NPC_6",
-            stage="Stage_4",
-            target="NPC_6",
-            content="喊了一声",
-        )
+        event = NoneEvent(message="喊了一声")
 
         game.broadcast_to_stage(actor, event)
 
         for entity in (stage, actor):
             message = game.get_agent_memory(entity).messages[-1]
-            assert message.agent_event == "speak"
+            assert message.agent_event == "none"
             assert message.broadcast_stage == "Stage_4"
 
     def test_broadcast_asserts_on_entity_without_stage(self, game: Any) -> None:

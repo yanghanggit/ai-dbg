@@ -21,10 +21,8 @@ from ..models import (
     DungeonComponent,
     HumanMessage,
     PartyMemberComponent,
-    PartyRosterComponent,
 )
 from ..utils import prompt_builder
-from .dungeon_archive_action import notify_dungeon_director_entered
 from .dungeon_spoils_actions import clear_party_spoils
 
 
@@ -98,14 +96,6 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     assert player_entity is not None, "玩家实体不存在！"
     party_member_entities: Set[Entity] = {player_entity}
     logger.info(f"玩家 {player_entity.name} 将参与本次副本")
-    if player_entity.has(PartyRosterComponent):
-        for member_name in player_entity.get(PartyRosterComponent).members:
-            member_entity = dbg_game.get_actor_entity(member_name)
-            assert (
-                member_entity is not None
-            ), f"队伍名单中的成员 {member_name!r} 不存在！"
-            party_member_entities.add(member_entity)
-            logger.info(f"按名单将 {member_name} 加入队伍")
     logger.info(
         f"最终队伍成员 ({len(party_member_entities)}): {[e.name for e in party_member_entities]}"
     )
@@ -157,9 +147,6 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
         logger.info(
             f"enter_dungeon: 首间为 {current_room.type!r} 房间，跳过战斗初始化，等待玩家手动推进"
         )
-
-    # 副本导演开局记录：以首个房间的起始设定作为其记忆的第一条事实
-    notify_dungeon_director_entered(dbg_game, dungeon, current_room)
 
     logger.info(f"enter_dungeon 完成: {dungeon.name}")
     return True, f"成功进入副本: {dungeon.name}"

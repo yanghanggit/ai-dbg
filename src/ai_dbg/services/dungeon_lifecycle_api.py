@@ -12,8 +12,8 @@ from ..models import (
     DungeonAdvanceStageResponse,
     DungeonExitRequest,
     DungeonExitResponse,
-    HomeEnterDungeonRequest,
-    HomeEnterDungeonResponse,
+    DungeonStartRequest,
+    DungeonStartResponse,
 )
 from .dungeon_advance_action import (
     advance_dungeon,
@@ -28,9 +28,6 @@ from .dungeon_setup_action import (
     setup_dungeon,
 )
 from .game_server_dependencies import CurrentGameServer
-from .home_tasks import (
-    _validate_player_at_home,
-)
 from .task_dispatch import defer_room_task
 
 ###################################################################################################################################################################
@@ -82,6 +79,39 @@ def _validate_dungeon_prerequisites(
             detail="只能在副本状态下使用",
         )
 
+    return dbg_game
+
+
+###################################################################################################################################################################
+def _validate_dungeon_prerequisites_lobby(
+    user_name: str,
+    game_server: GameServer,
+) -> DBGGame:
+    """验证开始副本的前置条件：房间、游戏实例存在，玩家在大厅且没有进行中的副本。"""
+    if not game_server.has_room(user_name):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="没有登录，请先登录",
+        )
+
+    current_room = game_server.get_room(user_name)
+    if current_room is None or current_room.game is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="游戏实例不存在，请重新登录",
+        )
+
+    dbg_game = current_room.game
+    if not dbg_game.is_player_in_lobby_stage:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只能在大厅开始副本",
+        )
+    if dbg_game.current_dungeon.current_room_index >= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前已有进行中的副本",
+        )
     return dbg_game
 
 
@@ -197,7 +227,7 @@ async def dungeon_exit(
     # 若当前为战斗房间，验证战斗是否已结束
     if dbg_game.is_current_room_dungeon_combat:
         if not dbg_game.current_dungeon_combat_room.combat.is_post_combat:
-            logger.error(f"玩家 {payload.user_name} 返回家园失败: 战斗未结束")
+            logger.error(f"玩家 {payload.user_name} 返回大厅失败: 战斗未结束")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="只能在战斗结束后回家",
@@ -220,17 +250,17 @@ async def dungeon_exit(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @dungeon_lifecycle_api_router.post(
-    path="/api/home/enter_dungeon/v1/", response_model=HomeEnterDungeonResponse
+    path="/api/dungeon/start/v1/", response_model=DungeonStartResponse
 )
-async def dungeon_enter(
-    payload: HomeEnterDungeonRequest,
+async def dungeon_start(
+    payload: DungeonStartRequest,
     game_server: CurrentGameServer,
-) -> HomeEnterDungeonResponse:
+) -> DungeonStartResponse:
     """
-    副本进入接口（从家园传送至副本第一关）
+    副本开始接口（从大厅传送至副本第一关）
     """
 
-    logger.info(f"/api/home/enter_dungeon/v1/: user={payload.user_name}")
+    logger.info(f"/api/dungeon/start/v1/: user={payload.user_name}")
 
     current_room = game_server.get_room(payload.user_name)
     if current_room is None:
@@ -240,10 +270,10 @@ async def dungeon_enter(
         )
 
     async with current_room.transaction():
-        # 验证前置条件（玩家必须处于家园模式）
-        rpg_game = await _validate_player_at_home(
-            payload.user_name,
-            game_server,
+        # 验证前置条件（玩家必须在大厅，且没有进行中的副本）
+        rpg_game = _validate_dungeon_prerequisites_lobby(
+            user_name=payload.user_name,
+            game_server=game_server,
         )
 
         # 第一步：从文件加载副本并创建实体（幂等）
@@ -265,8 +295,8 @@ async def dungeon_enter(
             )
 
         # 返回传送成功响应
-        return HomeEnterDungeonResponse(
-            message=payload.model_dump_json(),
+        return DungeonStartResponse(
+            message=f"已进入副本: {payload.dungeon_name}",
         )
 
 

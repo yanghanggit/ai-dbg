@@ -26,56 +26,6 @@ class NoneEvent(AgentEvent):
 
 
 ####################################################################################################################################
-# 说话事件
-@final
-class SpeakEvent(AgentEvent):
-    """说话事件"""
-
-    type: Literal["speak"] = "speak"
-    actor: str
-    stage: str
-    target: str
-    content: str
-
-
-####################################################################################################################################
-# 耳语事件
-@final
-class WhisperEvent(AgentEvent):
-    """耳语事件"""
-
-    type: Literal["whisper"] = "whisper"
-    actor: str
-    stage: str
-    target: str
-    content: str
-
-
-####################################################################################################################################
-# 宣布事件
-@final
-class AnnounceEvent(AgentEvent):
-    """宣布事件"""
-
-    type: Literal["announce"] = "announce"
-    actor: str
-    stage: str
-    content: str
-
-
-####################################################################################################################################
-# 心灵语音事件
-@final
-class MindEvent(AgentEvent):
-    """心灵语音事件"""
-
-    type: Literal["mind"] = "mind"
-    actor: str
-    stage: str
-    content: str
-
-
-####################################################################################################################################
 @final
 class TransStageEvent(AgentEvent):
     """场景转换事件"""
@@ -98,29 +48,14 @@ class CombatArbitrationEvent(AgentEvent):
 
 
 ####################################################################################################################################
-@final
-class AppearanceUpdateEvent(AgentEvent):
-    """外观更新事件"""
-
-    type: Literal["appearance_update"] = "appearance_update"
-    actor: str
-    stage: str
-    appearance: str
-
-
 ####################################################################################################################################
 # 具体事件的判别联合类型：基于 type 字段（Literal 值）进行精确的反序列化。
 # 每个成员（含兜底的 NoneEvent）都以 Literal 作为判别键，因此是标准 discriminated union；
 # 未知 type 会明确报 ValidationError，不再靠 smart-union 兜。
 _ConcreteAgentEvent = Annotated[
     Union[
-        SpeakEvent,
-        WhisperEvent,
-        AnnounceEvent,
-        MindEvent,
         TransStageEvent,
         CombatArbitrationEvent,
-        AppearanceUpdateEvent,
         NoneEvent,
     ],
     Field(discriminator="type"),

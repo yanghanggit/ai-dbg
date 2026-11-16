@@ -22,7 +22,7 @@ class ActorType(StrEnum):
 @unique
 class StageType(StrEnum):
     NONE = "None"
-    HOME = "Home"
+    LOBBY = "Lobby"
     DUNGEON = "Dungeon"
 
 

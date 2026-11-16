@@ -23,7 +23,6 @@ def sample_game() -> DBGGame:
         player_actor="test_player_actor",
         campaign_setting="test_setting",
         system_rules="",
-        knowledge_base={},
         stages=[],
         world_entities=[],
     )

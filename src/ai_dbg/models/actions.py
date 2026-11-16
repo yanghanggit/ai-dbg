@@ -1,28 +1,16 @@
 """游戏动作组件。添加到实体后由对应系统处理执行。"""
 
 from enum import StrEnum, unique
-from typing import Dict, List, Optional, final
-
-from pydantic import Field
+from typing import List, Optional, final
 
 from ..entitas.components import Component
 from .card import Card
-from .dungeon_draft import DungeonGenerationSpec
-from .items import ConsumableItem, CostumeItem, GearItem, MaterialItem
+from .items import ConsumableItem, GearItem
 from .registry import register_action_component_type, register_component_type
 
-
 ############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class PlanAction(Component):
-    """触发角色在家园场景中生成 AI 行动规划。"""
-
-    name: str
 
 
-############################################################################################################
 @final
 @register_action_component_type
 @register_component_type
@@ -37,72 +25,8 @@ class CompactContextAction(Component):
 
 
 ############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class SpeakAction(Component):
-    """触发角色向目标角色发送对话消息，广播到整个场景。"""
-
-    name: str
-    target_messages: Dict[str, str]  # 目标角色名 → 消息内容
 
 
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class WhisperAction(Component):
-    """触发角色向目标角色发送私密消息，只有双方可见。"""
-
-    name: str
-    target_messages: Dict[str, str]  # 目标角色名 → 消息内容
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class AnnounceAction(Component):
-    """触发角色向当前场景类型的所有场景广播公告。"""
-
-    name: str
-    message: str
-
-
-################################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class TransStageAction(Component):
-    """触发角色移动到目标场景。"""
-
-    name: str
-    target_stage_name: str
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class WearCostumeAction(Component):
-    """触发角色穿上指定时装：从玩家 StorageComponent 取出指定时装挂载 WornCostumeComponent（若已穿戴其他时装，先自动脱下归还）。"""
-
-    name: str
-    costume_item_name: str  # 指向玩家 StorageComponent 中 CostumeItem 的名称
-    costume_item: CostumeItem  # 检索出的时装对象
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class RemoveCostumeAction(Component):
-    """触发角色脱下当前穿戴的时装：移除 WornCostumeComponent 并将时装归还玩家 StorageComponent。"""
-
-    name: str
-
-
-############################################################################################################
 @final
 @register_action_component_type
 @register_component_type
@@ -155,75 +79,8 @@ class MonsterTurnAction(Component):
 
 
 ############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class GenerateDungeonAction(Component):
-    """副本生成流程入口。
-
-    由 home_actions.activate_generate_dungeon() 在家园状态下添加到副本生成系统实体，
-    驱动 dungeon_generate_pipeline 在本次 process() 内顺序跑完整个副本创建流程。
-
-    ``spec`` 为本次生成的显式结构规格（调测专用，见 `DungeonGenerationSpec`）：
-    房间数 / 开场房间数 / 每房间怪物数 / 怪物牌库原型。默认全空 = 完全走默认口径。
-    该规格只由开发入口写入，正式 API 的请求模型不暴露对应字段。
-
-    动作组件由 ``ActionCleanupSystem`` 每帧清理，不随着存档持久化，仅用于本次传递。
-    """
-
-    name: str
-    spec: DungeonGenerationSpec = Field(default_factory=DungeonGenerationSpec)
 
 
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class CraftConsumableItemAction(Component):
-    """触发玩家在消耗品工坊用储物箱内的材料合成消耗品，由 LLM（ConsumableWorkshopComponent agent）推理生成结果。"""
-
-    name: str
-    material_names: List[
-        str
-    ]  # 参与合成的材料名称列表（精确匹配 StorageComponent 中的 MaterialItem）
-    material_items: List[MaterialItem] = (
-        []
-    )  # 预填充的材料对象列表（count = 本次使用量）
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class CraftGearItemAction(Component):
-    """触发玩家在装备工坊用储物箱内的材料合成装备，由 LLM（GearWorkshopComponent agent）推理生成结果。"""
-
-    name: str
-    material_names: List[
-        str
-    ]  # 参与合成的材料名称列表（精确匹配 StorageComponent 中的 MaterialItem）
-    material_items: List[MaterialItem] = (
-        []
-    )  # 预填充的材料对象列表（count = 本次使用量）
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class CraftCostumeItemAction(Component):
-    """触发玩家在时装工坊用储物箱内的材料制作时装，由 LLM（CostumeWorkshopComponent agent）推理生成结果。"""
-
-    name: str
-    material_names: List[
-        str
-    ]  # 参与制作的材料名称列表（精确匹配 StorageComponent 中的 MaterialItem）
-    material_items: List[MaterialItem] = (
-        []
-    )  # 预填充的材料对象列表（count = 本次使用量）
-
-
-############################################################################################################
 @final
 @register_action_component_type
 @register_component_type

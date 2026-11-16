@@ -7,12 +7,11 @@ import asyncio
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Final, List, Optional, final
+from typing import Final, List, Optional, final
 
 from loguru import logger
 from pydantic import BaseModel
 
-from ai_dbg.embedding_model.sentence_transformer import embedding_model
 from ai_dbg.models import (
     Blueprint,
     Dungeon,
@@ -27,13 +26,10 @@ from ai_dbg.pgsql import (
     postgresql_config,
     procrastinate_app,
     save_card_prototype,
-    save_deck_build,
 )
 from ai_dbg.pgsql.user_operations import has_user, save_user
-from ai_dbg.rag import add_documents
 from demo import (
     CARD_PROTOTYPES,
-    DEFAULT_DECK_BUILD,
     create_beast_lair_dungeon,
     create_broken_bridge_dungeon,
     create_demo_blueprint,
@@ -59,9 +55,7 @@ TEST_USER = UserAccount(
 
 ###########################################################################################################################################
 # 默认游戏名称
-GAME_1: Final[str] = (
-    "Game1"  # unity 客户端目前是一定会链接到这个游戏的，所以这个名字暂时不能改。
-)
+GAME_1: Final[str] = "Game1"
 
 ###########################################################################################################################################
 # 系统提示词快照输出目录（项目根目录下）
@@ -255,56 +249,6 @@ def _setup_user() -> None:
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-def _setup_rag() -> None:
-    """
-    初始化 RAG 系统
-
-    注意：vector_documents 表已在 PostgreSQL 初始化阶段随数据库一并重建，此处无需再清空。
-    """
-    logger.info("🚀 初始化RAG系统...")
-
-    # 读取 BLUEPRINTS_DIR 下所有蓝图文件为 Blueprint 实例
-    blueprints = [
-        Blueprint.model_validate_json(path.read_text(encoding="utf-8"))
-        for path in sorted(BLUEPRINTS_DIR.glob("*.json"))
-    ]
-    logger.info(f"📂 发现蓝图文件: {[blueprint.name for blueprint in blueprints]}")
-
-    if not blueprints:
-        logger.warning("⚠️ BLUEPRINTS_DIR 下没有蓝图文件，跳过RAG加载")
-        logger.success("✅ RAG系统初始化完成!")
-        return
-
-    # 为每个蓝图分别加载其自带的知识库
-    for blueprint in blueprints:
-        if not blueprint.knowledge_base:
-            logger.warning(f"⚠️ 蓝图 {blueprint.name} 的知识库为空，跳过加载")
-            continue
-
-        # 准备文档数据：将 Dict[str, List[str]] 展开为 flat lists
-        documents_list: List[str] = []
-        metadatas_list: List[Dict[str, str]] = []
-
-        for category, docs in blueprint.knowledge_base.items():
-            for doc in docs:
-                documents_list.append(doc)
-                metadatas_list.append({"category": category})
-
-        logger.info(f"📚 为 {blueprint.name} 加载知识库...")
-        success = add_documents(
-            collection=blueprint.name,
-            embedding_model=embedding_model,
-            documents=documents_list,
-            metadatas=metadatas_list,
-        )
-        if not success:
-            logger.error(f"❌ {blueprint.name} 知识库加载失败!")
-            raise Exception(f"{blueprint.name} 知识库加载失败")
-        logger.success(f"✅ {blueprint.name} 知识库加载成功!")
-
-    logger.success("✅ RAG系统初始化完成!")
-
-
 def _setup_card_prototypes() -> None:
     """将卡牌原型刷入 PostgreSQL，供后续 Agent 检索「选择核心 + 润色」。"""
     logger.info("🚀 初始化卡牌原型...")
@@ -329,24 +273,6 @@ def _setup_card_prototypes() -> None:
     logger.success(f"✅ 卡牌原型初始化完成（{len(CARD_PROTOTYPES)} 个）")
 
 
-########################################################################################################
-def _setup_deck_build() -> None:
-    """将默认牌单刷入 PostgreSQL，作为牌库组建失败时的兜底牌库。"""
-    logger.info("🚀 初始化默认牌单...")
-
-    known_ids = {proto.meta.prototype_id for proto in CARD_PROTOTYPES}
-    for prototype_id in DEFAULT_DECK_BUILD.card_prototype_ids:
-        assert (
-            prototype_id in known_ids
-        ), f"默认牌单引用了不存在的原型 id: {prototype_id}"
-
-    save_deck_build(list(DEFAULT_DECK_BUILD.card_prototype_ids))
-    logger.success(
-        f"✅ 默认牌单初始化完成（{len(DEFAULT_DECK_BUILD.card_prototype_ids)} 张）"
-    )
-
-
-########################################################################################################
 ########################################################################################################
 def main() -> None:
     """主函数：执行完整的开发环境初始化流程"""
@@ -392,12 +318,6 @@ def main() -> None:
 
         logger.info("🎴 初始化卡牌原型...")
         _setup_card_prototypes()
-
-        logger.info("🃏 初始化默认牌单...")
-        _setup_deck_build()
-
-        logger.info("🚀 初始化RAG系统...")
-        _setup_rag()
 
         logger.success("✅ PostgreSQL 初始化完成")
 

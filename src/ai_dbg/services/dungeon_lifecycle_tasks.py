@@ -6,9 +6,6 @@ from procrastinate import JobContext
 from ..game.dbg_game import DBGGame
 from ..game.dbg_store import store_game_async
 from ..pgsql import procrastinate_app, save_task_error
-from .dungeon_archive_action import (
-    archive_dungeon,
-)
 from .dungeon_exit_action import (
     exit_dungeon,
 )
@@ -26,7 +23,7 @@ async def execute_exit_dungeon_task(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行退出副本任务（返回家园 + 副本导演归档 + 实体销毁）。"""
+    """执行退出副本任务（返回大厅 + 实体销毁）。"""
     job_id = context.job.id
     assert job_id is not None, "运行中的任务必然有 job id"
     try:
@@ -44,14 +41,10 @@ async def execute_exit_dungeon_task(
                 raise ValueError(f"游戏实例不存在: user={user_name}")
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
-            # 退出副本并返回家园（同步，内部自带状态守卫）
+            # 退出副本并返回大厅（同步，内部自带状态守卫）
             success, msg = exit_dungeon(rpg_game, rpg_game._world.dungeon)
             if not success:
                 raise ValueError(f"退出副本失败: {msg}")
-
-            # 副本导演归档：基于其已积累的记忆总结本次副本，并重置该记忆
-            # （异步 LLM，best-effort，失败不阻断退出）
-            await archive_dungeon(rpg_game, rpg_game._world.dungeon)
 
             # 销毁副本实体并重置副本数据（同步）
             teardown_dungeon(rpg_game, rpg_game._world.dungeon)

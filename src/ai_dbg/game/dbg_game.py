@@ -8,7 +8,7 @@ from typing import Final, List, Optional
 
 from loguru import logger
 
-from ..entitas import Entity, Matcher
+from ..entitas import Entity
 from ..models import (
     COMPONENT_TYPES,
     Actor,
@@ -20,10 +20,9 @@ from ..models import (
     DeckComponent,
     Dungeon,
     DungeonComponent,
-    DungeonDraft,
-    HomeComponent,
     IdentityComponent,
     InventoryComponent,
+    LobbyComponent,
     MonsterComponent,
     NPCComponent,
     OpeningRoom,
@@ -32,7 +31,6 @@ from ..models import (
     Stage,
     StageComponent,
     StageType,
-    StorageComponent,
     SystemMessage,
     World,
     WorldComponent,
@@ -41,10 +39,7 @@ from ..models import (
 )
 from .dbg_compact_pipeline import create_compact_pipeline
 from .dbg_dungeon_combat_room_pipeline import create_dungeon_combat_room_pipeline
-from .dbg_dungeon_generate_pipeline import create_dungeon_generate_pipeline
 from .dbg_dungeon_opening_room_pipeline import create_dungeon_opening_room_pipeline
-from .dbg_home_craft_pipeline import create_home_craft_pipeline
-from .dbg_home_pipeline import create_home_pipeline
 from .rpg_game import RPGGame
 from .rpg_game_pipeline_manager import RPGGameProcessPipeline
 
@@ -86,17 +81,6 @@ class DBGGame(RPGGame):
         # 必须按着此顺序实现父类
         RPGGame.__init__(self, name, player_session, world)
 
-        # 副本生成的中间过程数据（与 _world 平级，不落盘，流程结束即清空）
-        self._dungeon_draft: Optional[DungeonDraft] = None
-
-        # 家园流程（NPC 与玩家共用）
-        self._home_pipeline: Final[RPGGameProcessPipeline] = create_home_pipeline(self)
-
-        # 家园制作流程（仅处理 craft 动作）
-        self._home_craft_pipeline: Final[RPGGameProcessPipeline] = (
-            create_home_craft_pipeline(self)
-        )
-
         # 副本开场流程（叙事 + 牌库初始化，无战斗；奖励生成由外部显式触发）
         self._dungeon_opening_room_pipeline: Final[RPGGameProcessPipeline] = (
             create_dungeon_opening_room_pipeline(self)
@@ -107,22 +91,14 @@ class DBGGame(RPGGame):
             create_dungeon_combat_room_pipeline(self)
         )
 
-        # 副本生成流程（LLM 文本生成 + 图片生成）
-        self._dungeon_generate_pipeline: Final[RPGGameProcessPipeline] = (
-            create_dungeon_generate_pipeline(self)
-        )
-
         # 上下文压缩流程（仅处理手动触发的 CompactContextAction，与场景状态无关）
         self._compact_pipeline: Final[RPGGameProcessPipeline] = create_compact_pipeline(
             self
         )
 
         # 注册所有管道到管道管理器
-        self.register_pipeline(self._home_pipeline)
-        self.register_pipeline(self._home_craft_pipeline)
         self.register_pipeline(self._dungeon_opening_room_pipeline)
         self.register_pipeline(self._dungeon_combat_room_pipeline)
-        self.register_pipeline(self._dungeon_generate_pipeline)
         self.register_pipeline(self._compact_pipeline)
 
     ###############################################################################################################################################
@@ -150,11 +126,11 @@ class DBGGame(RPGGame):
 
     ###############################################################################################################################################
     @property
-    def is_player_in_home_stage(self) -> bool:
-        """检查玩家是否在家园场景中"""
+    def is_player_in_lobby_stage(self) -> bool:
+        """检查玩家是否在大厅/营地场景中。"""
         player_entity = self.get_player_entity()
         assert player_entity is not None, "player_entity is None"
-        return self.is_actor_in_home_stage(player_entity)
+        return self.is_actor_in_lobby_stage(player_entity)
 
     ###############################################################################################################################################
     @property
@@ -196,18 +172,6 @@ class DBGGame(RPGGame):
         return isinstance(self._world.dungeon.current_room, OpeningRoom)
 
     ###############################################################################################################################################
-    def get_storage_entity(self) -> Optional[Entity]:
-        """获取全局储物箱实体。"""
-        storage_entities = self.get_group(
-            Matcher(
-                all_of=[WorldComponent, StorageComponent],
-            )
-        ).entities
-
-        assert len(storage_entities) == 1, "There should be exactly one storage entity."
-        return next(iter(storage_entities), None)
-
-    ###############################################################################################################################################
     def build_from_blueprint(self) -> "DBGGame":
         """创建并初始化新游戏世界，包括世界、角色和场景"""
         assert len(self._world.entities) == 0, "游戏中有实体，不能创建新的游戏"
@@ -217,7 +181,7 @@ class DBGGame(RPGGame):
             )
             return self
 
-        ## 第1步，创建world（含全局储物箱世界实体，其 StorageComponent 由 world_entities 数据驱动挂载）
+        ## 第1步，创建world实体
         self._create_world_entities(self._world.blueprint.world_entities)
 
         ## 第2步，创建actor（含牌组与关键词组件挂载）
@@ -335,7 +299,7 @@ class DBGGame(RPGGame):
                 AppearanceComponent,
                 actor_model.name,
                 actor_model.base_body,
-                actor_model.base_body,  # 初始外观与基础身体相同，后续可通过装备 CostumeItem 挂载 CostumeComponent 来改变外观，但不影响基础身体（base_body）
+                actor_model.base_body,  # 初始外观与基础身体相同，当前无时装系统，外观与基础身体一致
             )
 
             # 必要组件：基础属性，这里用浅拷贝，不能动原有的。
@@ -406,8 +370,8 @@ class DBGGame(RPGGame):
             match stage_model.type:
                 case StageType.DUNGEON:
                     stage_entity.add(DungeonComponent, stage_model.name)
-                case StageType.HOME:
-                    stage_entity.add(HomeComponent, stage_model.name)
+                case StageType.LOBBY:
+                    stage_entity.add(LobbyComponent, stage_model.name)
                 case _:
                     assert False, f"未知的 StageType: {stage_model.type}"
 

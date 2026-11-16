@@ -1,7 +1,7 @@
 # AI-DBG
 
-一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 RPG 框架：
-以 ECS 承载世界与规则，以 LLM（DeepSeek）驱动剧情、卡牌与战斗中的动态决策与内容生成。
+一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 DBG（Deck Building Game）框架：
+以 ECS 承载副本、卡牌与战斗规则，以 LLM（DeepSeek）驱动卡牌设计、战斗决策与叙事生成。
 
 > 本仓库是**引擎 + 常驻服务端 + 服务端真相**，同时自带两个面向 AI 代理的命令行工具。
 
@@ -9,8 +9,8 @@
 
 - **Python 3.12+** / **FastAPI** / **Pydantic v2**
 - **DeepSeek**（chat + reasoner）
-- **PostgreSQL**（pgvector）
-- **Sentence Transformers** / **Replicate**（图像生成）
+- **PostgreSQL**（pgvector 为基建，当前业务未调用）
+- **Sentence Transformers** / **Replicate**（嵌入与文生图基建，当前业务未调用）
 - **uv** / **Black** / **Ruff** / **MyPy** / **Pytest**
 
 ## 🚀 快速开始
@@ -18,7 +18,7 @@
 ### 环境要求
 
 - Python 3.12+
-- PostgreSQL（启用 pgvector 扩展）
+- PostgreSQL
 - [uv](https://github.com/astral-sh/uv)
 
 ### 安装
@@ -42,7 +42,7 @@ source .venv/bin/activate        # macOS/Linux
 ### 首次初始化演示数据
 
 ```bash
-python -m scripts.setup_demo     # 把 demo/ 的硬编码设定刷入 .blueprints/ 与数据库
+python -m scripts.setup_demo     # 把 demo/ 的硬编码设定刷入 .blueprints/、.dungeons/ 与数据库
 ```
 
 > `demo/` 在仓库根，故须**从项目根目录**以模块方式运行。

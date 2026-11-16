@@ -25,12 +25,9 @@ from ..models import (
     MonsterComponent,
     NPCComponent,
     OpeningRoom,
-    PartyRosterComponent,
     PlayerComponent,
     RoundStatsComponent,
     SpoilsComponent,
-    StorageComponent,
-    WorldComponent,
     compute_effective_stats,
     compute_hand_block,
 )
@@ -177,30 +174,8 @@ def _round_summary(combat: Combat) -> Optional[Dict[str, Any]]:
 
 
 ########################################################################################################################
-async def _fetch_storage_items(user_name: str, game_name: str) -> List[Dict[str, Any]]:
-    """读取全局储物箱（WorldComponent + StorageComponent）内的道具列表。"""
-    resp = await fetch_entities_group(
-        user_name,
-        game_name,
-        all_of=[WorldComponent.__name__, StorageComponent.__name__],
-        any_of=[],
-        none_of=[],
-    )
-    if not resp.entities:
-        return []
-    components = next(iter(resp.entities.values()))
-    storage_data = component_data(components, StorageComponent.__name__)
-    if storage_data is None:
-        return []
-    storage = StorageComponent(**storage_data)
-    return [item.model_dump(mode="json") for item in storage.items]
-
-
-########################################################################################################################
 def _player_extras(components: EntityData) -> Dict[str, Any]:
-    """从玩家实体取队伍名单与随身背包。"""
-    roster_data = component_data(components, PartyRosterComponent.__name__)
-    roster = list(PartyRosterComponent(**roster_data).members) if roster_data else []
+    """从玩家实体取随身背包。"""
     inventory_data = component_data(components, InventoryComponent.__name__)
     inventory = (
         [
@@ -210,7 +185,7 @@ def _player_extras(components: EntityData) -> Dict[str, Any]:
         if inventory_data
         else []
     )
-    return {"roster": roster, "inventory": inventory}
+    return {"inventory": inventory}
 
 
 ########################################################################################################################
@@ -310,14 +285,13 @@ async def build_status(
     dungeon_resp = await fetch_dungeon_state(user_name, game_name)
     dungeon = dungeon_resp.dungeon
     room = dungeon.current_room
-    mode = "dungeon" if room is not None else "home"
+    mode = "dungeon" if room is not None else "lobby"
     status["mode"] = mode
     status["dungeon"] = {
         "name": dungeon.name,
         "current_room_index": dungeon.current_room_index,
         "room_count": len(dungeon.rooms),
         "room_type": room.type if room is not None else None,
-        "archive_summary": dungeon.archive_summary,
     }
 
     party_entities = [
@@ -331,14 +305,10 @@ async def build_status(
     elif isinstance(room, OpeningRoom):
         status["dungeon"]["spoils"] = _spoils_info(party_entities)
 
-    # 家园附加信息（仅在非副本态查询储物箱，避免多余往返）
+    # 玩家随身背包
     player_entity = entities_by_name.get(player_actor)
     if player_entity is not None:
         status["player"] = _player_extras(player_entity)
-    if mode == "home":
-        status["home"] = {
-            "storage": await _fetch_storage_items(user_name, game_name),
-        }
 
     # 会话消息
     messages_resp = await fetch_session_messages(user_name, game_name, messages_since)

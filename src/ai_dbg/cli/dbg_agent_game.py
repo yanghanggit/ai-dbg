@@ -1,31 +1,15 @@
-"""DBG AI 操作工具 —— 基于快照的无状态游戏推进 CLI。
+"""DBG AI 操作工具 —— 基于快照的无状态副本推进 CLI。
 
 每条命令 = 读快照 → 执行动作 → 写新快照。命令间无持久内存，状态全在 .worlds/ 中。
 存档位置：.worlds/{user}/{game}/{timestamp}/（含 world_state.json / player_session.json）
 查存档：find .worlds -mindepth 3 -maxdepth 3 -type d | sort
 日志：logs/run_agent_game_{timestamp}.log
 
-==== 家园模式命令 ====
-  new             --game GAME --dungeon DUNGEON [--user NAME]   创建新游戏
+==== 顶层命令 ====
+  new             --game GAME --dungeon DUNGEON [--user NAME]   创建新游戏并直接进入副本首间
   stages          --snapshot PATH                                列出场景-角色映射（只读）
-  advance         --snapshot PATH --actors A [--actors B ...]   推进一轮剧情
-  speak           --snapshot PATH --target NPC --content TEXT    与 NPC 对话
-  switch-stage    --snapshot PATH --stage STAGE                  切换场景
   compact-context --snapshot PATH --target ENTITY               手动压缩指定实体的 LLM 记忆
-  generate-dungeon --snapshot PATH [-d ID ...] [--slot SLOT] [--keyword K] [--deck-size N] [--fill-random]
-                   [--rooms N] [--opening-rooms N] [--monsters-per-room N]
-                                      LLM 动态生成副本（可选显式结构 / 怪物牌库规格，调测用）
-  roster          --snapshot PATH                                查看队伍名单（只读）
-  roster-add      --snapshot PATH --member NPC                  添加队伍成员
-  roster-remove   --snapshot PATH --member NPC                  移除队伍成员
-  storage-to-inventory  --snapshot PATH --item ITEM             储物箱→随身背包
-  inventory-to-storage  --snapshot PATH --item ITEM             随身背包→储物箱
-  wear-costume    --snapshot PATH --item ITEM --target ACTOR    穿时装
-  remove-costume  --snapshot PATH --target ACTOR                脱时装
-  craft-item      --snapshot PATH --materials M1 [--materials M2 ...]  合成消耗品
-  craft-gear      --snapshot PATH --materials M1 [--materials M2 ...]  锻造装备
-  craft-costume   --snapshot PATH --materials M1 [--materials M2 ...]  制作时装
-  enter-dungeon   --snapshot PATH --dungeon NAME                进入副本第一关（仅进入，不初始化房间）→ 副本模式
+  enter-dungeon   --snapshot PATH --dungeon NAME                从大厅进入指定副本
 
 ==== 副本模式命令 ====
   combat-init     --snapshot PATH                               战斗房间初始化（INITIALIZATION → ONGOING）
@@ -34,15 +18,16 @@
   play-cards-specified --snapshot PATH --actor A [--card C] [--targets T...]
                        我方角色出一张牌（须给 --card）；怪物由 AI 决策出牌或过牌（可省略 --card）
   pass-turn       --snapshot PATH --actor A                     过牌/交出行动权（我方与怪物均适用）
-  use-consumable  --snapshot PATH --item I [--targets T...]  使用消耗品
+  use-consumable  --snapshot PATH --item I [--targets T...]     使用消耗品
   equip-gear      --snapshot PATH --item I                      装备 GearItem
   retreat         --snapshot PATH                               主动撤退（结算为失败，成员死亡）
   collect-loot    --snapshot PATH                               收战利品（胜利后）
   next-dungeon    --snapshot PATH                               下一关（仅推进，不初始化新房间）
-  exit-dungeon    --snapshot PATH                               退出副本 → 家园模式（无论胜负）
+  exit-dungeon    --snapshot PATH                               退出副本 → 大厅（无论胜负）
   generate-spoils --snapshot PATH [--prototype ID ...] [--slot SLOT] [--keyword K] [--count N] [--fill-random] [--seed N]
                                      生成候选奖励（默认随机；可选显式规格）
   pick-card       --snapshot PATH --actor A --card C            从 Spoils 领取一张卡加入牌库
+  remove-spoils   --snapshot PATH                               清理当前副本队伍成员的奖励状态
 
 ==== 卡牌调测命令（只读 / 不落存档） ====
   card-prototypes [--card-type 手牌] [--slot SLOT] [--keyword K]   列出原型（id / 分类 / 摘要 / 开放槽）
@@ -52,8 +37,8 @@
                                      重做已生成副本里某只怪物的牌库（整副重建 / 定点替换），改写 .dungeons 文件
 
 ==== 典型流程 ====
-  家园：new → stages → advance(循环) / speak / switch-stage → enter-dungeon
-  副本（战斗房间）：enter-dungeon → combat-init → draw-cards
+  新局：new --game Game1 --dungeon 副本.断桥渡口
+  副本（战斗房间）：combat-init → draw-cards
         → 循环：按当前行动者 play-cards-specified / use-consumable / equip-gear，随后 pass-turn 交出行动权
           —— 出牌、用消耗品、装备均不结束行动窗口；所有存活角色都过牌后本回合结束，需再 draw-cards
           —— 怪物：play-cards-specified 触发 AI 决策。若 AI 出牌，需再 pass-turn(怪物) 交出行动权；
@@ -61,8 +46,9 @@
         胜利 → collect-loot → next-dungeon → combat-init（或 opening-init，视新房间类型）
         失败 → exit-dungeon
         战斗中途撤退 → retreat → exit-dungeon
-  副本（开场房间）：enter-dungeon → opening-init；（奖励已与开场房解耦）generate-spoils → pick-card
-  任意非战斗房间：generate-spoils → pick-card（可选 remove-spoils 复位）"""
+  副本（开场房间）：opening-init → generate-spoils → pick-card → next-dungeon
+  任意非战斗房间：generate-spoils → pick-card（可选 remove-spoils 复位）
+  退出副本：exit-dungeon → 回到大厅；再从大厅 enter-dungeon 开下一局"""
 
 import asyncio
 import datetime
@@ -75,10 +61,6 @@ from loguru import logger
 
 from ai_dbg.dbg_game_agent.core import restore_game
 from ai_dbg.game import restore_world
-from ai_dbg.models import (
-    DungeonGenerationSpec,
-    validate_generation_spec,
-)
 from ai_dbg.paths import LOGS_DIR, WORLDS_DIR
 
 LOG_LEVEL: Final[str] = "DEBUG"
@@ -116,30 +98,11 @@ from ai_dbg.dbg_game_agent.combat import (
     use_consumable_game,
 )
 from ai_dbg.dbg_game_agent.compact import compact_context_game
-from ai_dbg.dbg_game_agent.core import create_and_initialize_game
+from ai_dbg.dbg_game_agent.core import create_and_initialize_game, stages_game
 from ai_dbg.dbg_game_agent.dungeon import (
     enter_dungeon_game,
-    exit_dungeon_and_return_home_game,
+    exit_dungeon_game,
     next_dungeon_game,
-)
-from ai_dbg.dbg_game_agent.home import (
-    add_party_member_game,
-    advance_game,
-    generate_dungeon_game,
-    get_party_roster_game,
-    remove_party_member_game,
-    speak_game,
-    stages_game,
-    switch_stage_game,
-)
-from ai_dbg.dbg_game_agent.items import (
-    craft_consumable_game,
-    craft_costume_game,
-    craft_gear_item_game,
-    move_item_to_inventory_game,
-    move_item_to_storage_game,
-    remove_costume_game,
-    wear_costume_game,
 )
 from ai_dbg.dbg_game_agent.opening import (
     init_opening_game,
@@ -180,7 +143,7 @@ def main() -> None:
     help="副本名称（对应 DUNGEONS_DIR 下的文件名，如 Dungeon1）。",
 )
 def new_game(user: str, game: str, dungeon: str) -> None:
-    """创建新游戏实例并写入初始存档。执行后处于家园模式。"""
+    """创建新游戏实例并写入初始存档。执行后直接位于副本首间。"""
 
     _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
@@ -204,7 +167,7 @@ def new_game(user: str, game: str, dungeon: str) -> None:
     help="存档目录路径",
 )
 def stages(snapshot: str) -> None:
-    """打印各场景内角色名单（只读，不写新存档）。advance 前用于确认 --actors 参数。"""
+    """打印各场景内角色名单（只读，不写新存档）。"""
     snapshot_path = Path(snapshot)
     if not snapshot_path.exists():
         raise click.BadParameter(
@@ -223,86 +186,6 @@ def stages(snapshot: str) -> None:
     mapping = asyncio.run(stages_game(world, player_session))
     for stage_name, actor_names in mapping.items():
         click.echo(f"{stage_name}: {', '.join(actor_names)}")
-
-
-###############################################################################################################################################
-@main.command("advance")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径（如 .worlds/玩家名/Game1/2026-03-12_12-53-25）",
-)
-@click.option(
-    "--actors",
-    multiple=True,
-    required=True,
-    help="本轮需要真正触发行动规划的角色全名，可重复使用（如 --actors 角色.A --actors 角色.B）。调用前建议先用 stages --snapshot PATH 查询当前场景内的角色名单。",
-)
-def advance(snapshot: str, actors: Tuple[str, ...]) -> None:
-    """推进一轮家园剧情，仅为 --actors 指定角色激活行动规划并归档。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(advance_game(world, player_session, list(actors), _save_dir))
-
-
-###############################################################################################################################################
-@main.command("speak")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--target",
-    required=True,
-    help="对话目标角色名（如 角色.某某）",
-)
-@click.option(
-    "--content",
-    required=True,
-    help="对话内容",
-)
-def speak(snapshot: str, target: str, content: str) -> None:
-    """玩家向指定 NPC 说话并归档。需处于家园模式。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(speak_game(world, player_session, target, content, _save_dir))
 
 
 ###############################################################################################################################################
@@ -340,43 +223,6 @@ def compact_context(snapshot: str, target: str) -> None:
     logger.info(f"本次存档目录：{_save_dir}")
 
     asyncio.run(compact_context_game(world, player_session, target, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("switch-stage")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--stage",
-    required=True,
-    help="目标场景名（如 场景.某某居所）",
-)
-def switch_stage(snapshot: str, stage: str) -> None:
-    """玩家切换到指定场景并归档。需处于家园模式。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(switch_stage_game(world, player_session, stage, _save_dir))
 
 
 ###############################################################################################################################################
@@ -664,7 +510,7 @@ def equip_gear(snapshot: str, item: str) -> None:
     help="存档目录路径",
 )
 def exit_dungeon(snapshot: str) -> None:
-    """退出副本返回家园并归档。需战斗已结束（无论胜负）。"""
+    """退出副本返回大厅并归档。需战斗已结束（无论胜负）。"""
 
     snapshot_path = Path(snapshot)
     if not snapshot_path.exists():
@@ -685,7 +531,7 @@ def exit_dungeon(snapshot: str) -> None:
     logger.info(f"读取存档：{snapshot_path}")
     logger.info(f"本次存档目录：{_save_dir}")
 
-    asyncio.run(exit_dungeon_and_return_home_game(world, player_session, _save_dir))
+    asyncio.run(exit_dungeon_game(world, player_session, _save_dir))
 
 
 ###############################################################################################################################################
@@ -753,253 +599,6 @@ def collect_loot(snapshot: str) -> None:
 
 
 ###############################################################################################################################################
-@main.command("generate-dungeon")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--deck-prototype",
-    "-d",
-    "deck_prototype_ids",
-    multiple=True,
-    help="显式指定怪物牌库的原型 id（可重复；每只怪物都按此规格组建）。未加 --fill-random 时必须凑满一副。",
-)
-@click.option(
-    "--slot",
-    default=None,
-    help="按开放槽选择原型（如 on_autonomous_affixes）",
-)
-@click.option(
-    "--keyword",
-    default=None,
-    help="按关键词选择原型（匹配 name / summary / 分类 / keywords）",
-)
-@click.option(
-    "--fill-random",
-    is_flag=True,
-    help="指定不足一副牌库时，剩余随机补足（默认严格：必须凑满）",
-)
-@click.option(
-    "--seed",
-    type=int,
-    default=None,
-    help="随机补足的随机种子（仅 --fill-random 生效）",
-)
-@click.option(
-    "--deck-size",
-    type=int,
-    default=None,
-    help="怪物牌库张数（不指定 = 给几个原型就是几张；--fill-random 需要它作为补足目标）",
-)
-@click.option(
-    "--rooms",
-    type=int,
-    default=0,
-    help="副本房间总数（含开场房间）；0 = 默认结构。调测专用。",
-)
-@click.option(
-    "--opening-rooms",
-    type=int,
-    default=0,
-    help="开场房间数（须小于房间总数）；0 = 默认。调测专用。",
-)
-@click.option(
-    "--monsters-per-room",
-    type=int,
-    default=0,
-    help="每个战斗房间的怪物数；0 = 默认（1）。调测专用。",
-)
-def generate_dungeon_cmd(
-    snapshot: str,
-    deck_prototype_ids: Tuple[str, ...],
-    slot: str,
-    keyword: str,
-    deck_size: int,
-    fill_random: bool,
-    seed: int,
-    rooms: int,
-    opening_rooms: int,
-    monsters_per_room: int,
-) -> None:
-    """LLM 动态生成副本并归档。需处于家园模式。
-
-    不给任何规格时，怪物自己从原型库挑选牌库；给了 --deck-prototype / --slot / --keyword
-    就跳过选型，每只怪物都按规格组建。
-    `--rooms` / `--opening-rooms` / `--monsters-per-room` 直接指定副本结构，
-    用于调测（如「2 战斗房 × 2 怪」）。这些开关只存在于本 CLI，正式 API 无法传入。
-    """
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    # 显式牌库规格（可空）：默认严格，必须凑满一副
-    resolved: List[str] = []
-    if deck_prototype_ids or slot or keyword:
-        try:
-            resolved = resolve_candidate_ids(
-                count=deck_size,
-                prototype_ids=deck_prototype_ids,
-                slot=slot,
-                keyword=keyword,
-                fill_random=fill_random,
-                seed=seed,
-            )
-        except ValueError as e:
-            raise click.BadParameter(str(e))
-        click.echo(f"显式怪物牌库规格（{len(resolved)} 张）: {resolved}")
-    else:
-        click.echo("未指定牌库规格：每只怪物自行挑选原型")
-
-    # 结构规格（可空）：0 表示不覆盖，走系统默认
-    spec = DungeonGenerationSpec(
-        room_count=rooms,
-        opening_room_count=opening_rooms,
-        monsters_per_combat_room=monsters_per_room,
-        deck_prototype_ids=resolved,
-    )
-    spec_error = validate_generation_spec(spec)
-    if spec_error:
-        raise click.BadParameter(spec_error, param_hint="--rooms/--opening-rooms")
-    if rooms or opening_rooms or monsters_per_room:
-        total = spec.resolved_room_count()
-        opening = spec.resolved_opening_room_count()
-        per_room = spec.resolved_monsters_per_combat_room()
-        click.echo(
-            f"副本结构规格: 房间 {total} 个（开场 {opening} + 战斗 {total - opening} 个）、每战斗房间 {per_room} 个怪物"
-        )
-    else:
-        click.echo("未指定结构规格：使用默认房间结构")
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(generate_dungeon_game(world, player_session, _save_dir, spec))
-
-
-###############################################################################################################################################
-@main.command("roster-add")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--member",
-    required=True,
-    help="要加入队伍的盟友角色名称",
-)
-def roster_add(snapshot: str, member: str) -> None:
-    """将指定盟友加入队伍名单并归档。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(add_party_member_game(world, player_session, member, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("roster-remove")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--member",
-    required=True,
-    help="要移除的盟友角色名称",
-)
-def roster_remove(snapshot: str, member: str) -> None:
-    """将指定盟友从队伍名单移除并归档。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(remove_party_member_game(world, player_session, member, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("roster")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-def roster(snapshot: str) -> None:
-    """打印队伍名单（只读，不归档）。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-
-    members = asyncio.run(get_party_roster_game(world, player_session))
-    if members:
-        click.echo("\n队伍当前名单：")
-        for m in members:
-            click.echo(f"  - {m}")
-    else:
-        click.echo("（名单为空，玩家将独自冒险）")
-
-
-###############################################################################################################################################
 @main.command("retreat")
 @click.option(
     "--snapshot",
@@ -1007,7 +606,7 @@ def roster(snapshot: str) -> None:
     help="存档目录路径",
 )
 def retreat(snapshot: str) -> None:
-    """主动撤退（结算为失败、成员死亡）并归档。需战斗进行中；随后用 exit-dungeon 返回家园。"""
+    """主动撤退（结算为失败、成员死亡）并归档。需战斗进行中；随后用 exit-dungeon 返回大厅。"""
 
     snapshot_path = Path(snapshot)
     if not snapshot_path.exists():
@@ -1237,268 +836,6 @@ def remove_spoils(snapshot: str) -> None:
 
 
 ###############################################################################################################################################
-@main.command("storage-to-inventory")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--item",
-    required=True,
-    help="要从储物箱取出的道具名称（精确匹配）",
-)
-def storage_to_inventory(snapshot: str, item: str) -> None:
-    """将指定道具从储物箱移入随身背包并归档。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(move_item_to_inventory_game(world, player_session, item, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("inventory-to-storage")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--item",
-    required=True,
-    help="要从随身背包存回的道具名称（精确匹配）",
-)
-def inventory_to_storage(snapshot: str, item: str) -> None:
-    """将指定道具从随身背包移回储物箱并归档。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(move_item_to_storage_game(world, player_session, item, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("wear-costume")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--item",
-    required=True,
-    help="时装名称（精确匹配 CostumeItem.name）",
-)
-@click.option(
-    "--target",
-    required=True,
-    help="目标角色全名（如 角色.某某；若作用于自己则传入玩家全名）",
-)
-def wear_costume(snapshot: str, item: str, target: str) -> None:
-    """为指定角色穿装并归档。需处于家园模式。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(wear_costume_game(world, player_session, item, _save_dir, target))
-
-
-###############################################################################################################################################
-@main.command("remove-costume")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--target",
-    required=True,
-    help="目标角色全名（如 角色.某某；若作用于自己则传入玩家全名）",
-)
-def remove_costume(snapshot: str, target: str) -> None:
-    """移除指定角色的时装并归档。需处于家园模式。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(remove_costume_game(world, player_session, _save_dir, target))
-
-
-###############################################################################################################################################
-@main.command("craft-item")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--materials",
-    multiple=True,
-    required=True,
-    help="参与合成的材料名称，可重复使用（如 --materials 材料.草药.薄荷 --materials 材料.矿石.铁粉）",
-)
-def craft_item(snapshot: str, materials: Tuple[str, ...]) -> None:
-    """使用储物箱材料合成消耗品并归档。需处于家园模式。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(
-        craft_consumable_game(world, player_session, list(materials), _save_dir)
-    )
-
-
-###############################################################################################################################################
-@main.command("craft-gear")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--materials",
-    multiple=True,
-    required=True,
-    help="参与锻造的材料名称，可重复使用（如 --materials 材料.遗迹铁片 --materials 材料.硬化兽骨）",
-)
-def craft_gear(snapshot: str, materials: Tuple[str, ...]) -> None:
-    """使用储物箱材料锻造装备并归档。需处于家园模式。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(craft_gear_item_game(world, player_session, list(materials), _save_dir))
-
-
-###############################################################################################################################################
-@main.command("craft-costume")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--materials",
-    multiple=True,
-    required=True,
-    help="参与制作的材料名称，可重复使用（如 --materials 材料.丝质布料 --materials 材料.金线刺绣）",
-)
-def craft_costume(snapshot: str, materials: Tuple[str, ...]) -> None:
-    """使用储物箱材料制作时装并归档。需处于家园模式。"""
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = restore_world(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(craft_costume_game(world, player_session, list(materials), _save_dir))
-
-
-###############################################################################################################################################
 @main.command("card-prototypes")
 @click.option(
     "--card-type",
@@ -1548,7 +885,7 @@ def card_prototypes(card_type: str, slot: str, keyword: str) -> None:
 @click.option(
     "--actor",
     required=True,
-    help="为哪个角色设计（如 角色.坏运气）",
+    help="为哪个角色设计（如 角色.无名）",
 )
 @click.option(
     "--prototype",

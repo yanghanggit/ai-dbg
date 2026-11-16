@@ -18,8 +18,8 @@ from ai_dbg.entitas.components import Component
 from ai_dbg.game.rpg_entity_manager import RPGEntityManager
 from ai_dbg.models import (
     COMPONENT_TYPES,
-    HomeComponent,
     IdentityComponent,
+    LobbyComponent,
     Stage,
     StageComponent,
     StageType,
@@ -44,7 +44,7 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
     """构造一个挂载了指定动态组件的 Stage 模型。"""
     return Stage(
         name=name,
-        type=StageType.HOME,
+        type=StageType.LOBBY,
         profile="测试场景",
         system_message=f"{name} 的系统消息",
         actors=[],
@@ -132,7 +132,7 @@ class TestCreateStageEntitiesDynamicComponent:
         assert len(stage_entities) == 1
         stage_entity = stage_entities[0]
         assert stage_entity.has(StageComponent)
-        assert stage_entity.has(HomeComponent)
+        assert stage_entity.has(LobbyComponent)
         assert stage_entity.has(tag_cls)
         assert stage_entity.get(tag_cls).model_dump() == {"name": "场景.测试房"}
 

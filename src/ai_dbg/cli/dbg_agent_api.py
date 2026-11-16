@@ -8,9 +8,9 @@
 典型用法（入口 `ai-dbg-agent-api`，见 pyproject 的 [project.scripts]）：
     export AI_DBG_API_HOST=127.0.0.1 AI_DBG_API_PORT=8000
     uv run ai-dbg-agent-api login --user alice --game Game1
-    uv run ai-dbg-agent-api new-game --user alice --game Game1
+    uv run ai-dbg-agent-api new-game --user alice --game Game1 --dungeon 副本.断桥渡口
     uv run ai-dbg-agent-api status --user alice --game Game1
-    uv run ai-dbg-agent-api home enter-dungeon --user alice --game Game1 --dungeon 副本.坍塌庙祠
+    uv run ai-dbg-agent-api dungeon start --user alice --game Game1 --dungeon 副本.腐谷鼠穴
 
 HTTPS / JWT（连接层集中在一处）：
     --server-scheme https  （或 AI_DBG_API_SCHEME）
@@ -18,7 +18,7 @@ HTTPS / JWT（连接层集中在一处）：
     --token <jwt>          （或 AI_DBG_API_TOKEN，注入 Authorization: Bearer）
 
 日志：``logs/run_agent_api_<timestamp>.log``（DEBUG；控制台级别由 AI_DBG_API_LOG_LEVEL 决定）。
-命令分组：home / dungeon / opening / spoils / combat；`status` 会同时给出 suggested_actions。
+命令分组：dungeon / opening / spoils / combat；`status` 会同时给出 suggested_actions。
 """
 
 import asyncio
@@ -53,23 +53,10 @@ from ai_dbg.dbg_api_agent.server_client import (
     dungeon_spoils_remove,
     fetch_blueprint_list,
     fetch_dungeon_list,
-    home_advance,
-    home_craft_consumable,
-    home_craft_costume_item,
-    home_craft_gear_item,
-    home_enter_dungeon,
-    home_generate_dungeon,
-    home_item_move_to_inventory,
-    home_item_move_to_storage,
-    home_remove_costume,
-    home_roster_add,
-    home_roster_remove,
-    home_speak,
-    home_switch_stage,
-    home_wear_costume,
     login,
     logout,
     new_game,
+    start_dungeon,
     watch_task_until_done,
 )
 from ai_dbg.dbg_api_agent.status import build_status
@@ -272,15 +259,21 @@ def logout_cmd(user: str, game: str) -> None:
 
 @main.command("new-game")
 @identity_options
-def new_game_cmd(user: str, game: str) -> None:
-    """新建游戏（家园态）。需先 login。"""
+@click.option("--dungeon", "dungeon_name", required=True, help="副本名（新局直接进入）")
+def new_game_cmd(user: str, game: str, dungeon_name: str) -> None:
+    """新建游戏并直接进入副本首间。需先 login。"""
 
     async def go() -> Dict[str, Any]:
-        resp = await new_game(user, game)
+        resp = await new_game(user, game, dungeon_name)
         return {
             "message": "新游戏已创建",
             "player_session": resp.player_session.model_dump(mode="json"),
             "blueprint": resp.blueprint.name,
+            "dungeon": {
+                "name": resp.dungeon.name,
+                "current_room_index": resp.dungeon.current_room_index,
+                "room_count": len(resp.dungeon.rooms),
+            },
         }
 
     _run("new-game", go())
@@ -346,226 +339,29 @@ def compact_cmd(user: str, game: str, target: str) -> None:
 
 
 ########################################################################################################################
-# 家园命令组
-########################################################################################################################
-@main.group("home")
-def home_group() -> None:
-    """家园模式动作。"""
-
-
-@home_group.command("advance")
-@identity_options
-@click.option(
-    "--actor",
-    "actors",
-    multiple=True,
-    required=True,
-    help="要推进的角色名（可多次指定，至少一个）",
-)
-def home_advance_cmd(user: str, game: str, actors: Tuple[str, ...]) -> None:
-    """触发家园剧情推进。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(await home_advance(user, game, list(actors)))
-
-    _run("home advance", go())
-
-
-@home_group.command("speak")
-@identity_options
-@click.option("--target", "target", required=True, help="对话目标角色名")
-@click.option("--content", required=True, help="对话内容")
-def home_speak_cmd(user: str, game: str, target: str, content: str) -> None:
-    """玩家与目标角色对话。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(await home_speak(user, game, target, content))
-
-    _run("home speak", go())
-
-
-@home_group.command("switch-stage")
-@identity_options
-@click.option("--stage", "stage_name", required=True, help="目标场景名")
-def home_switch_stage_cmd(user: str, game: str, stage_name: str) -> None:
-    """切换玩家所在场景。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(await home_switch_stage(user, game, stage_name))
-
-    _run("home switch-stage", go())
-
-
-@home_group.command("generate-dungeon")
-@identity_options
-def home_generate_dungeon_cmd(user: str, game: str) -> None:
-    """生成新副本。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(await home_generate_dungeon(user, game))
-
-    _run("home generate-dungeon", go())
-
-
-@home_group.command("enter-dungeon")
-@identity_options
-@click.option("--dungeon", "dungeon_name", required=True, help="副本名")
-def home_enter_dungeon_cmd(user: str, game: str, dungeon_name: str) -> None:
-    """传送进入指定副本（仅传送到首间，不初始化房间）。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(await home_enter_dungeon(user, game, dungeon_name))
-
-    _run("home enter-dungeon", go())
-
-
-@home_group.command("roster-add")
-@identity_options
-@click.option("--member", "member_name", required=True, help="要加入队伍的角色名")
-def home_roster_add_cmd(user: str, game: str, member_name: str) -> None:
-    """把角色加入队伍。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(await home_roster_add(user, game, member_name))
-
-    _run("home roster-add", go())
-
-
-@home_group.command("roster-remove")
-@identity_options
-@click.option("--member", "member_name", required=True, help="要移出队伍的角色名")
-def home_roster_remove_cmd(user: str, game: str, member_name: str) -> None:
-    """把角色移出队伍。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(await home_roster_remove(user, game, member_name))
-
-    _run("home roster-remove", go())
-
-
-@home_group.command("item-to-inventory")
-@identity_options
-@click.option(
-    "--item", "item_names", multiple=True, required=True, help="道具名（可多次）"
-)
-def home_item_to_inventory_cmd(
-    user: str, game: str, item_names: Tuple[str, ...]
-) -> None:
-    """把道具从储物箱移入随身背包。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(
-            await home_item_move_to_inventory(user, game, list(item_names))
-        )
-
-    _run("home item-to-inventory", go())
-
-
-@home_group.command("item-to-storage")
-@identity_options
-@click.option(
-    "--item", "item_names", multiple=True, required=True, help="道具名（可多次）"
-)
-def home_item_to_storage_cmd(user: str, game: str, item_names: Tuple[str, ...]) -> None:
-    """把道具从随身背包移入储物箱。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(
-            await home_item_move_to_storage(user, game, list(item_names))
-        )
-
-    _run("home item-to-storage", go())
-
-
-@home_group.command("craft-consumable")
-@identity_options
-@click.option(
-    "--material", "materials", multiple=True, required=True, help="材料名（可多次）"
-)
-def home_craft_consumable_cmd(user: str, game: str, materials: Tuple[str, ...]) -> None:
-    """用储物箱材料合成消耗品。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(
-            await home_craft_consumable(user, game, list(materials))
-        )
-
-    _run("home craft-consumable", go())
-
-
-@home_group.command("craft-gear")
-@identity_options
-@click.option(
-    "--material", "materials", multiple=True, required=True, help="材料名（可多次）"
-)
-def home_craft_gear_cmd(user: str, game: str, materials: Tuple[str, ...]) -> None:
-    """用储物箱材料锻造装备。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(
-            await home_craft_gear_item(user, game, list(materials))
-        )
-
-    _run("home craft-gear", go())
-
-
-@home_group.command("craft-costume")
-@identity_options
-@click.option(
-    "--material", "materials", multiple=True, required=True, help="材料名（可多次）"
-)
-def home_craft_costume_cmd(user: str, game: str, materials: Tuple[str, ...]) -> None:
-    """用储物箱材料制作时装。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(
-            await home_craft_costume_item(user, game, list(materials))
-        )
-
-    _run("home craft-costume", go())
-
-
-@home_group.command("wear-costume")
-@identity_options
-@click.option("--item", "item_name", required=True, help="时装名")
-@click.option("--target", "target_name", required=True, help="目标角色名")
-def home_wear_costume_cmd(
-    user: str, game: str, item_name: str, target_name: str
-) -> None:
-    """为角色穿戴时装。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(
-            await home_wear_costume(user, game, item_name, target_name)
-        )
-
-    _run("home wear-costume", go())
-
-
-@home_group.command("remove-costume")
-@identity_options
-@click.option("--target", "target_name", required=True, help="目标角色名")
-def home_remove_costume_cmd(user: str, game: str, target_name: str) -> None:
-    """为角色脱下当前时装。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_task(await home_remove_costume(user, game, target_name))
-
-    _run("home remove-costume", go())
-
-
-########################################################################################################################
-# 副本生命周期命令组
+# 副本命令组
 ########################################################################################################################
 @main.group("dungeon")
 def dungeon_group() -> None:
     """副本生命周期动作。"""
 
 
+@dungeon_group.command("start")
+@identity_options
+@click.option("--dungeon", "dungeon_name", required=True, help="副本名")
+def dungeon_start_cmd(user: str, game: str, dungeon_name: str) -> None:
+    """从大厅进入指定副本首间。"""
+
+    async def go() -> Dict[str, Any]:
+        return _sync_result(await start_dungeon(user, game, dungeon_name))
+
+    _run("dungeon start", go())
+
+
 @dungeon_group.command("exit")
 @identity_options
 def dungeon_exit_cmd(user: str, game: str) -> None:
-    """退出副本，返回家园。"""
+    """退出副本，返回大厅。"""
 
     async def go() -> Dict[str, Any]:
         return await _await_task(await dungeon_exit(user, game))

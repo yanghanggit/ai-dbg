@@ -1,4 +1,4 @@
-from typing import Dict, List, final
+from typing import List, final
 
 from pydantic import BaseModel
 
@@ -13,9 +13,8 @@ class Blueprint(BaseModel):
     player_actor: str
     campaign_setting: str
     system_rules: str  # 全局规则（角色扮演契约、副本定义、场景移动、战斗机制等）
-    knowledge_base: Dict[str, List[str]]  # 蓝图关联的 RAG 知识库（按分类组织）
     stages: List[Stage]
-    # 含专责插图提示词编排的世界实体（画风/构图/负面词由其 system prompt 承载）
+    # 世界级实体（全局、唯一、独立于场景）
     world_entities: List[World]
 
 
