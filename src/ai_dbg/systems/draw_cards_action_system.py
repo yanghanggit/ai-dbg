@@ -6,9 +6,10 @@ from typing import Dict, Final, List, Tuple, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
 from ..models import (
     ActorComponent,
@@ -169,6 +170,8 @@ class DrawCardsActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，DrawCardsActionSystem 不执行")
             return

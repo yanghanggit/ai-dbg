@@ -7,15 +7,15 @@ from pathlib import Path
 
 from loguru import logger
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.dbg_store import store_game_async
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import (
     current_dungeon,
     current_dungeon_combat_room,
     is_current_room_dungeon_combat,
     is_current_room_dungeon_opening,
     is_player_in_dungeon_stage,
 )
+from ai_dbg.game.persistence.store import store_game_async
 from ai_dbg.models import PlayerSession, WorldState
 from ai_dbg.services.dungeon_advance_action import (
     advance_dungeon,

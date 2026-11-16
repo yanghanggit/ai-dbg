@@ -4,9 +4,9 @@ from typing import Optional, Set
 
 from ..entitas import Entity
 from ..models import AnyAgentEvent, HumanMessage
-from .dbg_game import DBGGame
-from .game_entities import get_actors_in_stage, resolve_stage_entity
-from .game_memory import add_human_message
+from .context import DBGGame
+from .entities import get_actors_in_stage, resolve_stage_entity
+from .memory import add_human_message
 
 
 #################################################################################################################################################

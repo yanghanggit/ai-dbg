@@ -8,19 +8,20 @@ from typing import Dict, List
 
 from loguru import logger
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.dbg_store import store_game_async
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.assembly import create_dbg_game
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import (
     current_dungeon,
 )
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     build_from_blueprint,
     get_actors_by_stage_as_names,
 )
-from ai_dbg.game.game_lifecycle import (
+from ai_dbg.game.lifecycle import (
     initialize_game,
-    restore_from_snapshot,
 )
+from ai_dbg.game.persistence.snapshot import restore_from_snapshot
+from ai_dbg.game.persistence.store import store_game_async
 from ai_dbg.models import Blueprint, Dungeon, PlayerSession, WorldState
 from ai_dbg.paths import (
     BLUEPRINTS_DIR,
@@ -65,7 +66,7 @@ async def create_and_initialize_game(
 
     # 创建 DBGGame 实例并初始化
     assert world_data is not None, "WorldState data must exist to create a game"
-    terminal_game = DBGGame(
+    terminal_game = create_dbg_game(
         name=game,
         player_session=PlayerSession(
             name=user,
@@ -120,7 +121,7 @@ async def restore_game(
 
     # 创建 DBGGame 实例并从快照恢复游戏状态
     game = str(world.blueprint.name)
-    terminal_game = DBGGame(
+    terminal_game = create_dbg_game(
         name=game,
         player_session=player_session,
         world=world,

@@ -6,9 +6,10 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
 from ..models import (
     ActorComponent,
@@ -53,6 +54,8 @@ class ExhaustEtherealCardsSystem(ReactiveProcessor):
     async def react(self, entities: List[Entity]) -> None:
         """pass turn 时，将仍在手牌中的虚无牌移入 ExhaustPile。"""
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("ExhaustEtherealCardsSystem: 战斗未进行中，跳过虚无牌处理")
             return

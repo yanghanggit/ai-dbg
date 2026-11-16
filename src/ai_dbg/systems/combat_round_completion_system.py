@@ -5,12 +5,13 @@ from typing import Final, final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor
-from ..game.dbg_combat_processor import get_alive_actors_in_stage
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.combat import get_alive_actors_in_stage
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_player_entity,
 )
 
@@ -27,6 +28,8 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
         # 守卫①：战斗未进行中 → 跳过
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             return
 

@@ -5,11 +5,11 @@
 from loguru import logger
 from procrastinate import JobContext
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     is_current_room_dungeon_opening,
 )
+from ..game.persistence.store import store_game_async
 from ..pgsql import procrastinate_app, save_task_error
 from .game_server_runtime import get_runtime_game_server
 
@@ -45,7 +45,7 @@ async def execute_opening_room_init_task(
                 raise ValueError("当前副本房间不是开场房间")
 
             # 推进开场房间流程（叙事 + 牌库初始化，无战斗）
-            await rpg_game.opening_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储开场房间初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

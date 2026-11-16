@@ -5,7 +5,7 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.game_dungeon import (
+from ..game.dungeon import (
     current_dungeon_combat_room,
     is_current_room_dungeon_combat,
 )

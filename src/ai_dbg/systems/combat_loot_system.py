@@ -8,16 +8,17 @@ from pydantic import BaseModel
 
 from ..deepseek import batch_complete
 from ..entitas import Entity, ExecuteProcessor, Matcher
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actors_in_stage,
     get_player_entity,
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_ai_message,
     add_human_message,
     get_agent_memory,
@@ -147,6 +148,8 @@ class CombatLootSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
         """每帧检查战斗是否胜利结束；未胜利则直接返回，胜利则推理掉落并写入 LootComponent。"""
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_combat_completed:
             return
 

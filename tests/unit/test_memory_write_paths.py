@@ -13,11 +13,11 @@ from typing import Any
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game import world_persistence
-from ai_dbg.game.game_entities import (
+from ai_dbg.game import persistence
+from ai_dbg.game.entities import (
     create_entity,
 )
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     get_agent_memory,
 )
 from ai_dbg.models import (
@@ -132,10 +132,10 @@ class TestTransferWritesRealMemory:
 
         # 标记能过存档闸门（真实校验路径）
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence.save_world(
             game.world, game.player_session, tmp_path, save_dir
         )
-        restored, _ = world_persistence.restore_world(save_dir)
+        restored, _ = persistence.restore_world(save_dir)
         assert any(
             getattr(m, "received_card", None) is not None
             for m in restored.agent_memories[receiver.name].messages
@@ -157,7 +157,7 @@ class TestSaveGateCatchesDirectWrites:
         )
 
         with pytest.raises(AssertionError, match="未登记的记忆标记"):
-            world_persistence.save_world(
+            persistence.save_world(
                 game.world, game.player_session, tmp_path, tmp_path / "snap"
             )
 
@@ -172,7 +172,7 @@ class TestSaveGateCatchesDirectWrites:
         )
 
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence.save_world(
             game.world, game.player_session, tmp_path, save_dir
         )
 
@@ -189,7 +189,7 @@ def test_agent_memory_direct_write_is_checked_at_save(
     )
 
     with pytest.raises(AssertionError, match="未登记的记忆标记"):
-        world_persistence.save_world(
+        persistence.save_world(
             world, sample_game.player_session, tmp_path, tmp_path / "snap"
         )
 
@@ -240,6 +240,6 @@ class TestPileChangeWritesRealMemory:
 
         # 标记能过存档闸门
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence.save_world(
             game.world, game.player_session, tmp_path, save_dir
         )

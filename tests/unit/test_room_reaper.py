@@ -4,14 +4,22 @@ import asyncio
 import time
 from typing import cast
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.game_server import GameServer
+from ai_dbg.game.context import DBGGame
+from ai_dbg.session.server import GameServer
+
+
+class _FakePipeline:
+    def __init__(self) -> None:
+        self.shutdown_called = False
+
+    def shutdown(self) -> None:
+        self.shutdown_called = True
 
 
 class _FakeGame:
     def __init__(self) -> None:
         self.exited = False
-        self.pipelines: list[object] = []
+        self.pipeline = _FakePipeline()
 
     def exit(self) -> None:
         self.exited = True

@@ -5,8 +5,8 @@
 from loguru import logger
 from procrastinate import JobContext
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
+from ..game.context import DBGGame
+from ..game.persistence.store import store_game_async
 from ..pgsql import procrastinate_app, save_task_error
 from .compact_action import activate_compact_context
 from .game_server_runtime import get_runtime_game_server
@@ -41,8 +41,8 @@ async def execute_compact_context_task(
             if not success:
                 raise ValueError(message)
 
-            # 执行 compact pipeline，仅处理手动触发的 CompactContextAction
-            await rpg_game.compact_pipeline.process()
+            # 执行全局 pipeline，由 CompactContextActionSystem 处理手动触发的压缩动作
+            await rpg_game.pipeline.process()
 
             # 存档压缩后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

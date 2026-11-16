@@ -2,15 +2,15 @@
 
 与场景状态无关：调用方传入目标实体名，本模块按名字解析实体并挂载
 CompactContextAction，实际压缩由 CompactContextActionSystem 在
-compact pipeline 中执行。
+全局 pipeline 中执行。
 """
 
 from typing import Tuple
 
 from loguru import logger
 
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.context import DBGGame
+from ..game.entities import (
     get_entity_by_name,
 )
 from ..models import CompactContextAction

@@ -14,7 +14,6 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from starlette.types import Scope
 
-from ai_dbg.game.game_server import GameServer
 from ai_dbg.models import ASSETS_URL_PREFIX, ApiRouteInfo, ServerInfoResponse
 from ai_dbg.paths import ASSETS_DIR, LOGS_DIR
 from ai_dbg.pgsql import procrastinate_app
@@ -44,6 +43,7 @@ from ai_dbg.services.player_session import player_session_api_router
 from ai_dbg.services.room_error_handlers import register_room_error_handlers
 from ai_dbg.services.stages_state import stages_state_api_router
 from ai_dbg.services.tasks_api import tasks_api_router
+from ai_dbg.session.server import GameServer
 
 load_dotenv()
 

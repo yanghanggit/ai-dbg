@@ -5,11 +5,11 @@
 from loguru import logger
 from procrastinate import JobContext
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     is_current_room_dungeon_combat,
 )
+from ..game.persistence.store import store_game_async
 from ..pgsql import procrastinate_app, save_task_error
 from .dungeon_spoils_actions import (
     activate_generate_spoils,
@@ -27,7 +27,7 @@ async def execute_generate_spoils_task(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行奖励生成任务（外部触发 GenerateSpoilsAction 后推动开场管道处理）"""
+    """执行奖励生成任务（外部触发 GenerateSpoilsAction 后推动全局 pipeline 处理）"""
     job_id = context.job.id
     assert job_id is not None, "运行中的任务必然有 job id"
     try:
@@ -53,7 +53,7 @@ async def execute_generate_spoils_task(
                 raise ValueError(f"奖励生成失败: {message}")
 
             # 推进开场房间流程，让 GenerateSpoilsActionSystem 响应并生成奖励
-            await rpg_game.opening_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 零产出即失败：设计会话出错时不会写入 SpoilsComponent（出错就没有结果）。
             # 这里显式报错，外部才能区分「发奖成功」与「什么都没发」，而不是静默返回。
@@ -83,7 +83,7 @@ async def execute_pick_spoils_card_task(
     actor_name: str,
     card_name: str,
 ) -> None:
-    """执行从 Spoils 领取一张卡牌任务（外部触发 PickSpoilsAction 后推动开场管道处理）"""
+    """执行从 Spoils 领取一张卡牌任务（外部触发 PickSpoilsAction 后推动全局 pipeline 处理）"""
     job_id = context.job.id
     assert job_id is not None, "运行中的任务必然有 job id"
     try:
@@ -113,7 +113,7 @@ async def execute_pick_spoils_card_task(
                 raise ValueError(f"从 Spoils 领卡失败: {message}")
 
             # 推进开场房间流程，让 PickSpoilsActionSystem 响应并把选中卡加入牌库
-            await rpg_game.opening_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储领卡后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

@@ -17,25 +17,27 @@ from typing import Any
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_broadcast import (
-    broadcast_to_stage,
-    notify_entities,
-)
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
     destroy_entity,
     get_entity_by_name,
 )
-from ai_dbg.game.game_lifecycle import (
+from ai_dbg.game.lifecycle import (
     exit_game,
-    flush_entities,
     initialize_game,
-    restore_from_snapshot,
 )
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     add_human_message,
     add_system_message,
     get_agent_memory,
+)
+from ai_dbg.game.messaging import (
+    broadcast_to_stage,
+    notify_entities,
+)
+from ai_dbg.game.persistence import (
+    flush_entities,
+    restore_from_snapshot,
 )
 from ai_dbg.models import (
     ActorComponent,
@@ -341,10 +343,10 @@ class TestBroadcastToStage:
 
 
 class TestLifecycle:
-    def test_exit_with_no_pipelines(self, game: Any) -> None:
-        """无管道时 exit() 不抛异常。"""
+    def test_exit_with_pipeline(self, game: Any) -> None:
+        """exit() 关闭唯一 pipeline 时不抛异常。"""
         exit_game(game)  # should not raise
 
-    async def test_initialize_with_no_pipelines(self, game: Any) -> None:
-        """无管道时 initialize() 不抛异常。"""
+    async def test_initialize_with_pipeline(self, game: Any) -> None:
+        """initialize() 激活唯一 pipeline 时不抛异常。"""
         await initialize_game(game)

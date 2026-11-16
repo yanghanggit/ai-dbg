@@ -14,28 +14,28 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from ..entitas import Entity
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     compute_character_hand_block,
     compute_character_stats,
     set_character_hp,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_broadcast import (
-    broadcast_to_stage,
-)
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actor_entity,
     get_entity_by_name,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
     add_human_message,
     get_agent_memory,
     replace_span,
+)
+from ..game.messaging import (
+    broadcast_to_stage,
 )
 from ..llm import LOOP_END_ATTR, LOOP_ID_ATTR, ToolDefinition, ToolFunction
 from ..models import (

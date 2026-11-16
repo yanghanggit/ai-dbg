@@ -8,7 +8,7 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.game_dungeon import (
+from ..game.dungeon import (
     is_current_room_dungeon_opening,
 )
 from ..models import (

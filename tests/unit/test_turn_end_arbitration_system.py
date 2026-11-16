@@ -9,10 +9,10 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.dungeon import (
     current_dungeon_combat_room,
 )
-from ai_dbg.game.game_memory import REPLACED_MESSAGES_ATTR
+from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,

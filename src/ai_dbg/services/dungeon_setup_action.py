@@ -8,12 +8,12 @@ from typing import Tuple
 
 from loguru import logger
 
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     is_dungeon_setup_entities,
     is_player_in_dungeon_stage,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     create_actor_entities,
     create_stage_entities,
     get_actor_entity,

@@ -2,7 +2,7 @@
 
 护栏一（Step 1）：entitas 核心的句柄 / pools 语义不变。
 护栏二（Stage C）：name-keyed 的 ``serialize_context`` / ``restore_context``
-与 ``world_persistence`` 之间的接口契约。
+与 ``game.persistence`` 之间的接口契约。
 """
 
 import json
@@ -13,7 +13,7 @@ from typing import Any, Iterator
 import pytest
 
 from ai_dbg.entitas import Component, Context, Entity
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
     destroy_entity,
     get_entity_by_name,

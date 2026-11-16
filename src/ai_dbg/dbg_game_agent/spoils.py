@@ -11,11 +11,11 @@ from typing import Optional, Sequence
 
 from loguru import logger
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.dbg_store import store_game_async
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import (
     is_current_room_dungeon_combat,
 )
+from ai_dbg.game.persistence.store import store_game_async
 from ai_dbg.models import PlayerSession, WorldState
 from ai_dbg.services.dungeon_spoils_actions import (
     activate_generate_spoils,
@@ -56,7 +56,7 @@ async def generate_spoils_game(
         return terminal_game
 
     # 推动房间管道处理，让 GenerateSpoilsActionSystem 响应并生成奖励
-    await terminal_game.opening_pipeline.process()
+    await terminal_game.pipeline.process()
 
     # 零产出：设计会话出错时不会写入 SpoilsComponent（出错就没有结果），可重试
     if not party_has_any_spoils(terminal_game):
@@ -94,7 +94,7 @@ async def pick_spoils_card_game(
         return terminal_game
 
     # 推动房间管道处理，让 PickSpoilsActionSystem 响应并把选中卡加入牌库
-    await terminal_game.opening_pipeline.process()
+    await terminal_game.pipeline.process()
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

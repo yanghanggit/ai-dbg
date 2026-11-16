@@ -15,11 +15,12 @@ from overrides import override
 
 from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     get_agent_memory,
 )
 from ..llm import ToolDefinition, ToolFunction
@@ -535,6 +536,8 @@ class CardOperationSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("CardOperationSystem: 战斗未进行中，跳过运转结算")
             return

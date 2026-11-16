@@ -5,10 +5,10 @@
 
 from typing import Dict
 
-from ..entitas import Entity, Matcher
-from ..models import AppearanceComponent
-from .dbg_game import DBGGame
-from .game_entities import get_actors_in_stage
+from ...entitas import Entity, Matcher
+from ...models import AppearanceComponent
+from ..context import DBGGame
+from ..entities import get_actors_in_stage
 
 
 ###############################################################################################################################################

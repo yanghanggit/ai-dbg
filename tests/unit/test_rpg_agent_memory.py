@@ -1,4 +1,4 @@
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
 )
 
@@ -18,7 +18,7 @@ from typing import Any, List
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
     add_ai_message,

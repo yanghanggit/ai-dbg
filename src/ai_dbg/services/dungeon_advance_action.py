@@ -9,18 +9,18 @@ from typing import Tuple
 from loguru import logger
 
 from ..entitas import Matcher
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     assert_no_residual_combat_state,
     set_character_hp,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.context import DBGGame
+from ..game.entities import (
     get_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_human_message,
 )
-from ..game.rpg_stage_transition import stage_transition
+from ..game.stage.transition import stage_transition
 from ..models import (
     Combat,
     CombatRoom,

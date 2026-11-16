@@ -5,16 +5,17 @@ from typing import Final, final, override
 from loguru import logger
 
 from ..entitas import Entity, ExecuteProcessor, Matcher
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     compute_character_stats,
     get_current_turn_actor,
     mark_dead,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_human_message,
 )
 from ..models import (
@@ -73,6 +74,8 @@ class DeathSystem(ExecuteProcessor):
         （反伤自杀 / 神器后仲裁等）会导致无人能推进。此处补一次重算，让 `get_current_turn_actor`
         的「跳过死人」逻辑生效。
         """
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             return
         latest_round = current_dungeon_combat_room(self._game).combat.latest_round

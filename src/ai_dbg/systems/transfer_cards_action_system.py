@@ -8,14 +8,15 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actor_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_human_message,
 )
 from ..models import (
@@ -125,6 +126,8 @@ class TransferCardsActionSystem(ReactiveProcessor):
         本系统负责「副本进入谁的手牌」这一数据流转，因此也负责把这笔流转告知双方：
         每个接收方一条「获得卡牌」，传递者一条「传递卡牌」结果。
         """
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("TransferCardsActionSystem: 战斗未进行中，跳过卡牌转移")
             return

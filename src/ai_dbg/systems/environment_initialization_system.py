@@ -7,17 +7,17 @@ from overrides import override
 
 from ..deepseek import batch_complete
 from ..entitas import Entity, ExecuteProcessor, Matcher
-from ..game.dbg_combat_processor import get_alive_actors_in_stage
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.combat import get_alive_actors_in_stage
+from ..game.context import DBGGame
+from ..game.entities import (
     get_entity_by_name,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_ai_message,
     add_human_message,
     get_agent_memory,
 )
-from ..game.rpg_actor_appearances import get_actor_appearances_in_stage
+from ..game.stage.appearance import get_actor_appearances_in_stage
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import (
     EnvironmentComponent,

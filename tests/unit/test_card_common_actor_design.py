@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     get_agent_memory,
 )
 from ai_dbg.models import AgentMemory, HumanMessage, SystemMessage

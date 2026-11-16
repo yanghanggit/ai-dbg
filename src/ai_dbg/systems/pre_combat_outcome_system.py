@@ -5,12 +5,13 @@ from typing import Final, final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor
-from ..game.dbg_combat_processor import mark_dead
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.combat import mark_dead
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actors_in_stage,
     get_player_entity,
 )
@@ -35,6 +36,8 @@ class PreCombatOutcomeSystem(ExecuteProcessor):
     ###############################################################################################################################################
     @override
     async def execute(self) -> None:
+        if not is_current_room_dungeon_combat(self._game):
+            return
         combat = current_dungeon_combat_room(self._game).combat
 
         # 状态守卫：仅在进行中的战斗里做超时处理

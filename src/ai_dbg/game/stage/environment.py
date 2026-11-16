@@ -7,8 +7,8 @@
 
 from typing import Final
 
-from ..entitas import Entity
-from ..models import EnvironmentComponent
+from ...entitas import Entity
+from ...models import EnvironmentComponent
 
 ###############################################################################################################################################
 # 场景尚未生成环境叙事时使用的占位文案

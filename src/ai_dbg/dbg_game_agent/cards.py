@@ -22,11 +22,11 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     get_actor_entity,
 )
 
-from ..game.dbg_game import DBGGame
+from ..game.context import DBGGame
 from ..models import (
     DESIGNABLE_AFFIX_FIELDS,
     Actor,

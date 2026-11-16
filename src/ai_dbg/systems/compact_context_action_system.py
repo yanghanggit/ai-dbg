@@ -11,11 +11,11 @@ from overrides import override
 
 from ..deepseek import batch_complete
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.context import DBGGame
+from ..game.entities import (
     get_entity_by_name,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     compact_agent_memory,
     get_agent_memory,
 )

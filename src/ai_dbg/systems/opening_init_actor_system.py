@@ -6,24 +6,24 @@ from typing import Final, List, Set, final, override
 from loguru import logger
 
 from ..entitas import Entity, ExecuteProcessor
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     compute_character_stats,
     get_alive_actors_in_stage,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     is_current_room_dungeon_opening,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_player_entity,
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_ai_message,
     add_human_message,
     filter_messages,
 )
-from ..game.rpg_stage_environment import get_stage_environment
+from ..game.stage.environment import get_stage_environment
 from ..models import (
     AIMessage,
     AppearanceComponent,

@@ -5,15 +5,14 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon,
     current_dungeon_combat_room,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
     is_player_in_lobby_stage,
 )
-from ..game.game_server import GameServer
 from ..models import (
     DungeonAdvanceStageRequest,
     DungeonAdvanceStageResponse,
@@ -22,6 +21,7 @@ from ..models import (
     DungeonStartRequest,
     DungeonStartResponse,
 )
+from ..session.server import GameServer
 from .dungeon_advance_action import (
     advance_dungeon,
 )

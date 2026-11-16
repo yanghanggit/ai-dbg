@@ -8,9 +8,9 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Final, Optional
 
+from ..game.context import DBGGame
+from ..game.lifecycle import exit_game
 from ..models import PlayerSession
-from .dbg_game import DBGGame
-from .game_lifecycle import exit_game
 
 
 ###############################################################################################################################################

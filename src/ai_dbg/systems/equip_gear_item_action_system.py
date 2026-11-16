@@ -7,17 +7,18 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_combat_processor import compute_character_stats
-from ..game.dbg_game import DBGGame
-from ..game.game_broadcast import (
-    broadcast_to_stage,
-)
-from ..game.game_dungeon import (
+from ..game.combat import compute_character_stats
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_player_entity,
     resolve_stage_entity,
+)
+from ..game.messaging import (
+    broadcast_to_stage,
 )
 from ..models import (
     Card,
@@ -70,6 +71,8 @@ class EquipGearItemActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("EquipGearItemActionSystem: 战斗未进行中，跳过")
             return

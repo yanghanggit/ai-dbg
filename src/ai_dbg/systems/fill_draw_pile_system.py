@@ -6,10 +6,11 @@ from typing import Dict, Final, List, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     compute_character_stats,
 )
-from ..game.dbg_game import DBGGame
+from ..game.context import DBGGame
+from ..game.dungeon import is_current_room_dungeon_combat
 from ..models import (
     ActorComponent,
     Card,
@@ -50,6 +51,9 @@ class FillDrawPileSystem(ReactiveProcessor):
     ####################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        if not is_current_room_dungeon_combat(self._game):
+            return
+
         for entity in entities:
             self._fill_draw_pile(entity)
 

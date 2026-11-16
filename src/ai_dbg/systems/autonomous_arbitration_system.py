@@ -8,18 +8,19 @@ from overrides import override
 
 from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     get_agent_memory,
 )
 from ..llm import ToolDefinition
@@ -231,6 +232,8 @@ class AutonomousArbitrationSystem(ReactiveProcessor):
     #######################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("AutonomousArbitrationSystem: 战斗未进行中，跳过自主运行仲裁")
             return

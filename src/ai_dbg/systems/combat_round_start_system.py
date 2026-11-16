@@ -7,16 +7,17 @@ from typing import Dict, Final, List, Set, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     compute_character_stats,
     get_alive_actors_in_stage,
     get_energy,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_player_entity,
     resolve_stage_entity,
 )
@@ -78,6 +79,8 @@ class CombatRoundStartSystem(ReactiveProcessor):
     ############################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        if not is_current_room_dungeon_combat(self._game):
+            return
         logger.debug(
             f"CombatRoundStartSystem: 收到 {len(entities)} 个 DrawCardsAction 实体"
         )

@@ -4,7 +4,7 @@ from typing import Final, FrozenSet, Mapping, Type, final, override
 
 from ..entitas import ExecuteProcessor, Matcher
 from ..entitas.components import Component
-from ..game.dbg_game import DBGGame
+from ..game.context import DBGGame
 from ..models import (
     ACTION_COMPONENT_TYPES,
 )

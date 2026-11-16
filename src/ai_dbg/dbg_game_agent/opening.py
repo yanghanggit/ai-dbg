@@ -4,11 +4,11 @@ from pathlib import Path
 
 from loguru import logger
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.dbg_store import store_game_async
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import (
     is_current_room_dungeon_opening,
 )
+from ai_dbg.game.persistence.store import store_game_async
 from ai_dbg.models import PlayerSession, WorldState
 
 from .core import restore_game
@@ -30,8 +30,8 @@ async def init_opening_game(
         logger.error("opening-init 只能在开场房间中使用")
         return terminal_game
 
-    # 推动开场管道（外观 + 环境叙事生成 + 注入给队员，无战斗；内部按消息标记幂等）
-    await terminal_game.opening_pipeline.process()
+    # 推动全局 pipeline（各 system 自守卫；开场初始化按消息标记幂等）
+    await terminal_game.pipeline.process()
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

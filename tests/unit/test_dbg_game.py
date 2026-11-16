@@ -3,17 +3,18 @@ from typing import Any, List, Optional
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_combat_processor import (
+from ai_dbg.game.assembly import create_dbg_game
+from ai_dbg.game.combat import (
     compute_character_stats,
     set_character_hp,
 )
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import (
     current_dungeon,
     is_player_in_dungeon_stage,
     is_player_in_lobby_stage,
 )
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
 )
 from ai_dbg.models import (
@@ -65,7 +66,7 @@ def _make_game(
         blueprint=blueprint,
     )
     session = PlayerSession(name=player_name, actor=actor_name, game="test")
-    return DBGGame(name="test", player_session=session, world=world)
+    return create_dbg_game(name="test", player_session=session, world=world)
 
 
 def _make_lobby_stage_entity(game: Any, name: str) -> Entity:
@@ -220,7 +221,7 @@ class TestBuildFromBlueprint:
             blueprint=bp,
         )
         session = PlayerSession(name="p1", actor="hero", game="full_test")
-        return DBGGame(name="full_test", player_session=session, world=world)
+        return create_dbg_game(name="full_test", player_session=session, world=world)
 
     # def test_actor_entity_created(self) -> None:
     #     game = self._make_game_for_build()

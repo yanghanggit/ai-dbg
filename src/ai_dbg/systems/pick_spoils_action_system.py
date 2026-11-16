@@ -5,8 +5,9 @@ from typing import Dict, Final, List, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
-from ..game.game_memory import (
+from ..game.context import DBGGame
+from ..game.dungeon import is_current_room_dungeon_combat
+from ..game.memory import (
     add_human_message,
 )
 from ..models import (
@@ -56,6 +57,9 @@ class PickSpoilsActionSystem(ReactiveProcessor):
     ####################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        if is_current_room_dungeon_combat(self._game):
+            return
+
         for entity in entities:
             action = entity.get(PickSpoilsAction)
             assert action is not None, f"{entity.name} 缺少 PickSpoilsAction"

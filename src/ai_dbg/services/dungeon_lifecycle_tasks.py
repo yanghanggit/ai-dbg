@@ -3,8 +3,8 @@
 from loguru import logger
 from procrastinate import JobContext
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
+from ..game.context import DBGGame
+from ..game.persistence.store import store_game_async
 from ..pgsql import procrastinate_app, save_task_error
 from .dungeon_exit_action import (
     exit_dungeon,

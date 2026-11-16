@@ -3,8 +3,8 @@
 from typing import cast
 
 from ..models import CombatRoom, Dungeon, OpeningRoom
-from .dbg_game import DBGGame
-from .game_entities import (
+from .context import DBGGame
+from .entities import (
     get_actor_entity,
     get_player_entity,
     get_stage_entity,

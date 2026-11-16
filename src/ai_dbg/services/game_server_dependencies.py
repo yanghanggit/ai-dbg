@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from ..game.game_server import GameServer
+from ..session.server import GameServer
 
 
 ###############################################################################################################################################

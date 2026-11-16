@@ -18,7 +18,7 @@ from ..models import (
 from ..models import (
     find_marked_span as find_marked_span_in_messages,
 )
-from .dbg_game import DBGGame
+from .context import DBGGame
 
 MessagePredicate = Callable[[ChatMessage, int, Sequence[ChatMessage]], bool]
 

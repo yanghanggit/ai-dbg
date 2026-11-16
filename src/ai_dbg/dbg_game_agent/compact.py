@@ -7,8 +7,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.dbg_store import store_game_async
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.persistence.store import store_game_async
 from ai_dbg.models import PlayerSession, WorldState
 from ai_dbg.services.compact_action import activate_compact_context
 
@@ -30,7 +30,7 @@ async def compact_context_game(
         logger.error(f"激活上下文压缩失败: {error_detail}")
         return terminal_game
 
-    await terminal_game.compact_pipeline.process()
+    await terminal_game.pipeline.process()
 
     await store_game_async(terminal_game, save_dir)
     logger.info(f"已完成上下文压缩: target={target_name}, 存档: {save_dir}")

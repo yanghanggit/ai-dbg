@@ -174,7 +174,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
     from unittest.mock import MagicMock
 
     from ai_dbg.entitas.context import Context
-    from ai_dbg.game.game_dungeon import current_dungeon_combat_room
+    from ai_dbg.game.dungeon import current_dungeon_combat_room
     from ai_dbg.models import (
         ActorComponent,
         CharacterStats,

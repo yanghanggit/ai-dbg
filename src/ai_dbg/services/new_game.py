@@ -3,17 +3,17 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
-from ..game.game_dungeon import (
+from ..game.assembly import create_dbg_game
+from ..game.dungeon import (
     current_dungeon,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     build_from_blueprint,
 )
-from ..game.game_lifecycle import (
+from ..game.lifecycle import (
     initialize_game,
 )
+from ..game.persistence.store import store_game_async
 from ..models import (
     Blueprint,
     BlueprintListResponse,
@@ -101,7 +101,7 @@ async def new_game(
         )
 
         # 依赖注入，创建新的游戏
-        game = DBGGame(
+        game = create_dbg_game(
             name=payload.game_name,
             player_session=player_session,
             world=world_data,

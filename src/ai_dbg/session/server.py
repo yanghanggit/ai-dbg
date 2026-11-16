@@ -21,7 +21,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, List, Optional
 
-from .player_room import PlayerRoom
+from .room import PlayerRoom
 
 
 ###############################################################################################################################################

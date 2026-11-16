@@ -34,8 +34,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..deepseek import agent_loop
 from ..entitas import Entity, Matcher
-from ..game.dbg_game import DBGGame
-from ..game.game_memory import (
+from ..game.context import DBGGame
+from ..game.memory import (
     get_agent_memory,
 )
 from ..llm import ToolDefinition, ToolFunction

@@ -7,7 +7,7 @@ HTTP 路径用 ``game_server_dependencies.CurrentGameServer``（Request 上下�
 
 from typing import Optional
 
-from ..game.game_server import GameServer
+from ..session.server import GameServer
 
 _runtime_game_server: Optional[GameServer] = None
 

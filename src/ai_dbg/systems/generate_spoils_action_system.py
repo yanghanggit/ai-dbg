@@ -15,7 +15,8 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_game import DBGGame
+from ..game.context import DBGGame
+from ..game.dungeon import is_current_room_dungeon_combat
 from ..models import (
     ActorComponent,
     DeathComponent,
@@ -64,6 +65,9 @@ class GenerateSpoilsActionSystem(ReactiveProcessor):
     ####################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        if is_current_room_dungeon_combat(self._game):
+            return
+
         # 拉取一次原型索引（系统侧随机，不用 LLM 浏览）
         try:
             index = list_card_prototype_index(card_type="手牌")

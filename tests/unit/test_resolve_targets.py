@@ -3,12 +3,13 @@
 from typing import Any, Dict, cast
 from unittest.mock import MagicMock
 
-import ai_dbg.game.dbg_combat_processor as combat_processor
+import ai_dbg.game.combat.targeting as combat_processor
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_combat_processor import resolve_targets
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.game_dungeon import current_dungeon_combat_room
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.assembly import create_dbg_game
+from ai_dbg.game.combat import resolve_targets
+from ai_dbg.game.context import DBGGame
+from ai_dbg.game.dungeon import current_dungeon_combat_room
+from ai_dbg.game.entities import (
     create_entity,
 )
 from ai_dbg.models import (
@@ -47,7 +48,7 @@ def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame
         blueprint=blueprint,
     )
     session = PlayerSession(name=player_name, actor=actor_name, game="test")
-    return DBGGame(name="test", player_session=session, world=world)
+    return create_dbg_game(name="test", player_session=session, world=world)
 
 
 def _make_stage(game: Any, name: str) -> Entity:

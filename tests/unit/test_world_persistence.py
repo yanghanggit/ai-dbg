@@ -1,4 +1,4 @@
-"""针对 world_persistence.py 的单元测试。
+"""针对 game/persistence 的单元测试。
 
 覆盖 save_world / restore_world 的往返一致性、存档目录结构、
 错误处理，以及临时目录 + 原子替换带来的失败安全性。
@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from ai_dbg.game import world_persistence
+from ai_dbg.game.persistence import restore_world
+from ai_dbg.game.persistence import save as persistence_save
 from ai_dbg.models import (
     AgentMemory,
     AIMessage,
@@ -63,11 +64,11 @@ class TestRoundTrip:
         world = _make_world(entity_counter=7)
         save_dir = tmp_path / "snap"
 
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
-        restored_world, restored_session = world_persistence.restore_world(save_dir)
+        restored_world, restored_session = restore_world(save_dir)
 
         assert restored_world.entity_counter == 7
         assert restored_world.blueprint.name == "demo"
@@ -79,9 +80,9 @@ class TestRoundTrip:
     def test_session_messages_round_trip(self, tmp_path: Path) -> None:
         save_dir = tmp_path / "snap"
         ps = _make_player_session()
-        assert world_persistence.save_world(_make_world(), ps, tmp_path, save_dir)
+        assert persistence_save.save_world(_make_world(), ps, tmp_path, save_dir)
 
-        _, restored_session = world_persistence.restore_world(save_dir)
+        _, restored_session = restore_world(save_dir)
 
         assert restored_session.event_sequence == 1
         assert len(restored_session.session_messages) == 1
@@ -98,7 +99,7 @@ class TestRoundTrip:
             context_usage_ratio=0.42,
         )
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
@@ -113,7 +114,7 @@ class TestRoundTrip:
         )
         assert "AI(alice)" in buffer
 
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         mem = restored_world.agent_memories["alice"]
         assert mem.context_usage_ratio == 0.42
         assert [m.content for m in mem.messages] == ["hi", "hello"]
@@ -125,11 +126,11 @@ class TestRoundTrip:
             "slime": {"stats": {"hp": 3}},
         }
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         assert list(restored_world.entities) == ["goblin", "slime"]
         assert restored_world.entities["goblin"] == {"stats": {"hp": 10}}
 
@@ -138,14 +139,14 @@ class TestRoundTrip:
         world = _make_world()
         world.dungeon = Dungeon(name="", rooms=[], profile="")
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
         dungeon_dir = save_dir / "dungeon"
         assert [p.name for p in dungeon_dir.glob("*.json")] == [".empty.json"]
 
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         assert restored_world.dungeon.name == ""
 
     def test_world_state_json_excludes_split_fields(self, tmp_path: Path) -> None:
@@ -153,7 +154,7 @@ class TestRoundTrip:
         world = _make_world()
         world.agent_memories["alice"] = AgentMemory(name="alice", messages=[])
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
@@ -170,7 +171,7 @@ class TestRoundTrip:
 class TestRestoreErrors:
     def test_missing_world_state_raises(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="world_state.json"):
-            world_persistence.restore_world(tmp_path)
+            restore_world(tmp_path)
 
     def test_missing_player_session_raises(self, tmp_path: Path) -> None:
         save_dir = tmp_path / "snap"
@@ -182,7 +183,7 @@ class TestRestoreErrors:
             encoding="utf-8",
         )
         with pytest.raises(FileNotFoundError, match="player_session.jsonl"):
-            world_persistence.restore_world(save_dir)
+            restore_world(save_dir)
 
     def test_empty_player_session_raises(self, tmp_path: Path) -> None:
         save_dir = tmp_path / "snap"
@@ -195,7 +196,7 @@ class TestRestoreErrors:
         )
         (save_dir / "player_session.jsonl").write_text("", encoding="utf-8")
         with pytest.raises(ValueError, match="为空"):
-            world_persistence.restore_world(save_dir)
+            restore_world(save_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -208,17 +209,17 @@ class TestAtomicSave:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         save_dir = tmp_path / "snap"
-        real_write = world_persistence._write_text
+        real_write = persistence_save._write_text
 
         def failing_write(path: Path, text: str) -> None:
             if path.name == "dungeon_a.json":
                 raise OSError("simulated write failure")
             real_write(path, text)
 
-        monkeypatch.setattr(world_persistence, "_write_text", failing_write)
+        monkeypatch.setattr(persistence_save, "_write_text", failing_write)
 
         assert (
-            world_persistence.save_world(
+            persistence_save.save_world(
                 _make_world(), _make_player_session(), tmp_path, save_dir
             )
             is False
@@ -230,21 +231,21 @@ class TestAtomicSave:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             _make_world(entity_counter=1), _make_player_session(), tmp_path, save_dir
         )
 
-        real_write = world_persistence._write_text
+        real_write = persistence_save._write_text
 
         def failing_write(path: Path, text: str) -> None:
             if path.name == "dungeon_a.json":
                 raise OSError("simulated write failure")
             real_write(path, text)
 
-        monkeypatch.setattr(world_persistence, "_write_text", failing_write)
+        monkeypatch.setattr(persistence_save, "_write_text", failing_write)
 
         assert (
-            world_persistence.save_world(
+            persistence_save.save_world(
                 _make_world(entity_counter=2),
                 _make_player_session(),
                 tmp_path,
@@ -254,7 +255,7 @@ class TestAtomicSave:
         )
 
         # 旧存档应保持不变
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         assert restored_world.entity_counter == 1
 
     def test_overwrite_replaces_cleanly(self, tmp_path: Path) -> None:
@@ -262,17 +263,17 @@ class TestAtomicSave:
 
         world1 = _make_world()
         world1.agent_memories["alice"] = AgentMemory(name="alice", messages=[])
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world1, _make_player_session(), tmp_path, save_dir
         )
 
         world2 = _make_world()
         world2.agent_memories["bob"] = AgentMemory(name="bob", messages=[])
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world2, _make_player_session(), tmp_path, save_dir
         )
 
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         assert set(restored_world.agent_memories.keys()) == {"bob"}
         assert not (save_dir / "memories" / "alice.jsonl").exists()
 
@@ -280,7 +281,7 @@ class TestAtomicSave:
         world = _make_world()  # blueprint.name == "demo"
         ps = _make_player_session()  # name == "user"
 
-        assert world_persistence.save_world(world, ps, worlds_dir=tmp_path)
+        assert persistence_save.save_world(world, ps, worlds_dir=tmp_path)
 
         game_dir = tmp_path / "user" / "demo"
         assert game_dir.exists()
@@ -288,7 +289,7 @@ class TestAtomicSave:
         assert len(snapshots) == 1
         assert (snapshots[0] / "world_state.json").exists()
 
-        restored_world, restored_session = world_persistence.restore_world(snapshots[0])
+        restored_world, restored_session = restore_world(snapshots[0])
         assert restored_world.entity_counter == 1
         assert restored_session.name == "user"
 
@@ -308,7 +309,7 @@ class TestMemoryTagGate:
         )
 
         with pytest.raises(AssertionError, match="未登记的记忆标记"):
-            world_persistence.save_world(
+            persistence_save.save_world(
                 world, _make_player_session(), tmp_path, tmp_path / "snap"
             )
 
@@ -323,11 +324,11 @@ class TestMemoryTagGate:
             ],
         )
         save_dir = tmp_path / "snap"
-        assert world_persistence.save_world(
+        assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
-        restored_world, _ = world_persistence.restore_world(save_dir)
+        restored_world, _ = restore_world(save_dir)
         messages = restored_world.agent_memories["alice"].messages
         assert isinstance(messages[0], HumanMessage)
         assert getattr(messages[0], "broadcast_stage") == "场景.酒馆"

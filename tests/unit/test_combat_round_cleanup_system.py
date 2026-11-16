@@ -5,7 +5,7 @@
 # import pytest
 
 # from ai_dbg.entitas.context import Context
-# from ai_dbg.game.dbg_game import DBGGame
+# from ai_dbg.game.context import DBGGame
 # from ai_dbg.systems.combat_round_cleanup_system import CombatRoundCleanupSystem
 
 

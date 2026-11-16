@@ -3,11 +3,11 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from ..game.game_server import (
+from ..session.room import RoomClosedError
+from ..session.server import (
     RoomAlreadyExistsError,
     RoomNotFoundError,
 )
-from ..game.player_room import RoomClosedError
 from .game_state_errors import GameStateError
 from .task_dispatch import RoomBusyError
 

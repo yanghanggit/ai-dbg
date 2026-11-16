@@ -20,8 +20,8 @@ import asyncio
 
 from loguru import logger
 
-from ..game.game_server import GameServer, RoomNotFoundError
-from ..game.player_room import PlayerRoom, RoomClosedError
+from ..session.room import PlayerRoom, RoomClosedError
+from ..session.server import GameServer, RoomNotFoundError
 
 
 ###############################################################################################################################################

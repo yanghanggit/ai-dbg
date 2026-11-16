@@ -5,7 +5,7 @@ from typing import Final, final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor
-from ..game.dbg_game import DBGGame
+from ..game.context import DBGGame
 
 
 @final

@@ -11,7 +11,7 @@ and src/ai_dbg/services/dungeon_exit_action.py
 from typing import Any, List
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
 )
 from ai_dbg.models import (

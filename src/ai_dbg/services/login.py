@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.game_lifecycle import (
+from ..game.lifecycle import (
     exit_game,
 )
 from ..models import (

@@ -51,7 +51,7 @@ async def compact_context(
             detail="没有游戏，请先登录",
         )
 
-    # 派发 compact pipeline 任务
+    # 派发上下文压缩任务
     job_id = await defer_room_task(
         execute_compact_context_task,
         user_name=payload.user_name,

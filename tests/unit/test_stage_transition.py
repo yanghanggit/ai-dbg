@@ -13,14 +13,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
     resolve_stage_entity,
 )
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     get_agent_memory,
 )
-from ai_dbg.game.rpg_stage_transition import (
+from ai_dbg.game.stage.transition import (
     _build_stage_arrival_message,
     _build_stage_departure_message,
     _build_stage_transition_message,
@@ -129,7 +129,7 @@ class TestValidateStageTransitionPrerequisites:
         game = self._mock_game({actor: dest})
 
         with patch(
-            "ai_dbg.game.rpg_stage_transition.resolve_stage_entity",
+            "ai_dbg.game.stage.transition.resolve_stage_entity",
             return_value=dest,
         ):
             result = _validate_stage_transition_prerequisites(game, {actor}, dest)
@@ -158,7 +158,7 @@ class TestValidateStageTransitionPrerequisites:
         game = self._mock_game({actor_at_dest: dest, actor_at_source: source})
 
         with patch(
-            "ai_dbg.game.rpg_stage_transition.resolve_stage_entity",
+            "ai_dbg.game.stage.transition.resolve_stage_entity",
             side_effect=lambda _game, actor: (
                 dest if actor is actor_at_dest else source
             ),

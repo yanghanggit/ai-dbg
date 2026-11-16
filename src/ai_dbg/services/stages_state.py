@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ..game.game_entities import (
+from ..game.entities import (
     get_actors_by_stage_as_names,
 )
 from ..models import (

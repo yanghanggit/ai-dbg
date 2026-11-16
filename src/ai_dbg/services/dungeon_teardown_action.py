@@ -5,8 +5,8 @@
 
 from loguru import logger
 
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.context import DBGGame
+from ..game.entities import (
     destroy_entity,
     get_actor_entity,
     get_stage_entity,

@@ -8,20 +8,20 @@ from typing import Set
 
 from loguru import logger
 
-from ..entitas import Entity
-from ..models import (
+from ...entitas import Entity
+from ...models import (
     ActorComponent,
     NoneEvent,
     TransStageEvent,
 )
-from ..utils import prompt_builder
-from .dbg_game import DBGGame
-from .game_broadcast import (
+from ...utils import prompt_builder
+from ..context import DBGGame
+from ..entities import (
+    resolve_stage_entity,
+)
+from ..messaging import (
     broadcast_to_stage,
     notify_entities,
-)
-from .game_entities import (
-    resolve_stage_entity,
 )
 
 

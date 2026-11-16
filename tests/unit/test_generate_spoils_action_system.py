@@ -54,6 +54,7 @@ def game(context: Context) -> Any:
     game.ecs = context
     game.entity_index = {}
     game.world.agent_memories = {}
+    game.world.dungeon.current_room = None
     game.player_session = MagicMock()
     game.get_group.side_effect = context.get_group
     return game

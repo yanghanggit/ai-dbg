@@ -7,7 +7,7 @@ import pytest
 
 from ai_dbg.entitas import Entity
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.game_dungeon import (
+from ai_dbg.game.dungeon import (
     current_dungeon_combat_room,
 )
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult

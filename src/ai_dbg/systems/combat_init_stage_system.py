@@ -5,23 +5,24 @@ from typing import Final, List, final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_player_entity,
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_ai_message,
     add_human_message,
 )
-from ..game.rpg_stage_environment import get_stage_environment
+from ..game.stage.environment import get_stage_environment
 from ..models import AIMessage, HumanMessage
 from ..utils import prompt_builder
 
@@ -62,6 +63,8 @@ class CombatInitStageSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_initializing:
             logger.debug("当前战斗状态非 initializing，跳过战斗初始化（场景侧）")
             return

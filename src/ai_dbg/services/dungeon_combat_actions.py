@@ -7,20 +7,20 @@ from typing import List, Optional, Tuple
 from loguru import logger
 
 from ..entitas import Entity, Matcher
-from ..game.dbg_combat_processor import (
+from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
     get_current_turn_actor,
     get_energy,
     resolve_targets,
 )
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actor_entity,
     get_entity_by_name,
     get_player_entity,

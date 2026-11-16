@@ -5,8 +5,8 @@ from typing import final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor, Matcher
-from ..game.dbg_game import DBGGame
-from ..game.game_entities import (
+from ..game.context import DBGGame
+from ..game.entities import (
     destroy_entity,
 )
 from ..models import DestroyComponent

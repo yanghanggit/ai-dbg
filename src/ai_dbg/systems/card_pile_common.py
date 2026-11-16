@@ -12,8 +12,8 @@ from enum import StrEnum
 from typing import Dict, Final, List, Mapping, Sequence, Tuple
 
 from ..entitas import Entity
-from ..game.dbg_game import DBGGame
-from ..game.game_memory import (
+from ..game.context import DBGGame
+from ..game.memory import (
     add_human_message,
 )
 from ..llm import ToolDefinition, ToolFunction

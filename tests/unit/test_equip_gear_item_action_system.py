@@ -7,7 +7,7 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_dungeon import current_dungeon_combat_room
+from ai_dbg.game.dungeon import current_dungeon_combat_room
 from ai_dbg.models import (
     ActorComponent,
     Card,

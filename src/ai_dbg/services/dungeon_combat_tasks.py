@@ -7,15 +7,15 @@ from typing import List
 from loguru import logger
 from procrastinate import JobContext
 
-from ..game.dbg_game import DBGGame
-from ..game.dbg_store import store_game_async
-from ..game.game_dungeon import (
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
     is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actor_entity,
 )
+from ..game.persistence.store import store_game_async
 from ..models import MonsterComponent
 from ..pgsql import procrastinate_app, save_task_error
 from .dungeon_combat_actions import (
@@ -65,7 +65,7 @@ async def execute_init_combat_task(
                 raise ValueError("战斗未处于开始阶段")
 
             # 推进战斗流程处理战斗初始化
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储战斗初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -116,12 +116,12 @@ async def execute_retreat_task(
                 raise ValueError(message)
 
             # 执行战斗流程让 CombatOutcomeSystem 检测到角色死亡并判定失败
-            await rpg_game.combat_pipeline.execute()
+            await rpg_game.pipeline.execute()
 
             # 确认已进入 post_combat 状态
             if not current_dungeon_combat_room(rpg_game).combat.is_post_combat:
                 raise RuntimeError(
-                    "战斗管线执行后未进入 post_combat 状态，撤退流程异常"
+                    "全局 pipeline 执行后未进入 post_combat 状态，撤退流程异常"
                 )
 
             # 存储撤退后进入 post_combat 状态的世界状态，便于调试和回放
@@ -177,7 +177,7 @@ async def execute_draw_cards_task(
                 raise ValueError(message)
 
             # 推进战斗流程处理抽牌
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储抽牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -238,7 +238,7 @@ async def execute_play_cards_task(
                 raise ValueError(message)
 
             # 推进战斗流程处理出牌
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储出牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -291,7 +291,7 @@ async def execute_pass_turn_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储过牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -345,7 +345,7 @@ async def execute_use_consumable_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储使用消耗品后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -400,7 +400,7 @@ async def execute_equip_gear_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.combat_pipeline.process()
+            await rpg_game.pipeline.process()
 
             # 存储使用装备后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

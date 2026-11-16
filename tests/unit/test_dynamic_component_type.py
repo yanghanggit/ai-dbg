@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from ai_dbg.entitas import Context, Entity
 from ai_dbg.entitas.components import Component
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
     create_stage_entities,
     restore_context,

@@ -5,16 +5,17 @@ from typing import Dict, List, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.dbg_combat_processor import mark_dead
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.combat import mark_dead
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon,
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_human_message,
 )
 from ..models import HumanMessage, PartyMemberComponent, RetreatAction
@@ -57,6 +58,8 @@ class RetreatActionSystem(ReactiveProcessor):
         """处理撤退动作"""
 
         # 状态守卫：仅在战斗进行中执行撤退处理
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("RetreatActionSystem: 战斗未进行中，跳过撤退处理")
             return

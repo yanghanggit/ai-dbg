@@ -12,10 +12,10 @@ from typing import Any, Callable, Dict, List, Optional
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.game_entities import (
+from ai_dbg.game.entities import (
     create_entity,
 )
-from ai_dbg.game.game_memory import (
+from ai_dbg.game.memory import (
     get_agent_memory,
 )
 from ai_dbg.models import (

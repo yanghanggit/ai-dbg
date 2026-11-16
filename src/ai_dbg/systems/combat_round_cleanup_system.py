@@ -5,10 +5,11 @@ from typing import Final, final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor
-from ..game.dbg_combat_processor import clear_round_state
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.combat import clear_round_state
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
 from .card_pile_common import record_round_end_discard
 
@@ -28,6 +29,8 @@ class CombatRoundCleanupSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，跳过旧回合手牌状态清除")
             return

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from loguru import logger
 
 from ..entitas import Component, Entity, Matcher
-from ..game.game_entities import (
+from ..game.entities import (
     get_entity_by_name,
     serialize_entities,
 )

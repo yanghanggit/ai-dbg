@@ -5,17 +5,18 @@ from typing import Final, Set, Type, final, override
 from loguru import logger
 
 from ..entitas import Component, Entity, ExecuteProcessor
-from ..game.dbg_combat_processor import clear_round_state
-from ..game.dbg_game import DBGGame
-from ..game.game_dungeon import (
+from ..game.combat import clear_round_state
+from ..game.context import DBGGame
+from ..game.dungeon import (
     current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
 )
-from ..game.game_entities import (
+from ..game.entities import (
     get_actors_in_stage,
     get_player_entity,
     resolve_stage_entity,
 )
-from ..game.game_memory import (
+from ..game.memory import (
     add_human_message,
 )
 from ..models import (
@@ -57,6 +58,8 @@ class CombatOutcomeSystem(ExecuteProcessor):
     async def execute(self) -> None:
         """检测阵营全灭条件，调用 complete_combat() 结束战斗并广播结果；战斗未 ONGOING 时静默跳过。"""
 
+        if not is_current_room_dungeon_combat(self._game):
+            return
         if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前不在战斗阶段，无需判定战斗胜负")
             return  # 不是本阶段就直接返回
