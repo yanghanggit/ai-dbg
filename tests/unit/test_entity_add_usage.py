@@ -3,7 +3,7 @@
 entitas 是底层库，本身不感知上层游戏；「``add`` 只在实体创建阶段使用」是**上层
 项目**的约定，因此约束放在 ``tests/`` 而不是 entitas 内部：
 
-- 仅 ``src/ai_dbg/game/dbg_game.py`` 中以 ``create`` / ``_create`` 开头的函数；
+- 仅 ``src/ai_dbg/game/game_entities.py`` 中以 ``create`` / ``_create`` 开头的函数；
 - ``tests/`` 下全部代码。
 
 运行期（systems / services / pipelines）必须使用 ``Entity.replace``：它同时承担
@@ -27,7 +27,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 SCAN_DIRS: Final = ("src", "demo")
 
 #: 允许调用 add 的唯一模块。
-DBG_GAME_PATH: Final = ROOT / "src" / "ai_dbg" / "game" / "dbg_game.py"
+DBG_GAME_PATH: Final = ROOT / "src" / "ai_dbg" / "game" / "game_entities.py"
 
 #: 模块内允许调用 add 的函数名前缀。
 CREATE_FUNC_PATTERN: Final = re.compile(r"^_?create")
@@ -178,7 +178,7 @@ def react(self, entity):
 
 
 def test_checker_allows_add_in_dbg_game_create_function() -> None:
-    """自检：dbg_game.py 的 create_* / _create_* 函数允许 add。"""
+    """自检：game_entities.py 的 create_* / _create_* 函数允许 add。"""
     source = """
 def create_actor_entities(self, actor_models):
     entity.add(ActorComponent, "name", "")

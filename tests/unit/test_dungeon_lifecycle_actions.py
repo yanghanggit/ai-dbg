@@ -11,6 +11,9 @@ and src/ai_dbg/services/dungeon_exit_action.py
 from typing import Any, List
 
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.game_entities import (
+    create_entity,
+)
 from ai_dbg.models import (
     ActorComponent,
     AnyDungeonRoom,
@@ -54,7 +57,7 @@ def _make_dungeon(rooms: List[AnyDungeonRoom], index: int) -> Dungeon:
 
 def _make_stage_entity(game: Any, name: str) -> Entity:
     """创建带 StageComponent + DungeonComponent 的场景实体。"""
-    entity: Entity = game._create_entity(name)
+    entity: Entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(DungeonComponent, name)
     return entity
@@ -62,7 +65,7 @@ def _make_stage_entity(game: Any, name: str) -> Entity:
 
 def _make_lobby_entity(game: Any, name: str) -> Entity:
     """创建带 StageComponent + LobbyComponent 的大厅场景实体。"""
-    entity: Entity = game._create_entity(name)
+    entity: Entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(LobbyComponent, name)
     return entity
@@ -70,7 +73,7 @@ def _make_lobby_entity(game: Any, name: str) -> Entity:
 
 def _make_party_member(game: Any, name: str, stage_name: str) -> Entity:
     """创建带 ActorComponent + CharacterStatsComponent + PartyMemberComponent 的队伍成员。"""
-    entity: Entity = game._create_entity(name)
+    entity: Entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
     entity.add(
         CharacterStatsComponent,
@@ -92,7 +95,7 @@ class TestAdvanceDungeonGuards:
     ) -> None:
         """current_room_index == -1（尚未进入）时拒绝推进，不回绕到 rooms[-1]。"""
         dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], -1)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         ok, msg = await advance_dungeon(sample_game, dungeon)
 
@@ -106,7 +109,7 @@ class TestAdvanceDungeonGuards:
     ) -> None:
         """current_room_index 越界（脏存档）时拒绝推进，而不是 IndexError。"""
         dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], 5)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         ok, msg = await advance_dungeon(sample_game, dungeon)
 
@@ -120,7 +123,7 @@ class TestAdvanceDungeonGuards:
         room0 = OpeningRoom(stage=_make_stage_model("room0"))
         room1 = OpeningRoom(stage=_make_stage_model("room1"))
         dungeon = _make_dungeon([room0, room1], 0)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         _make_stage_entity(
             sample_game, "room0"
@@ -144,7 +147,7 @@ class TestAdvanceDungeonGuards:
         room0 = OpeningRoom(stage=_make_stage_model("room0"))
         room1 = OpeningRoom(stage=_make_stage_model("room1"))
         dungeon = _make_dungeon([room0, room1], 0)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         _make_stage_entity(sample_game, "room0")
         _make_stage_entity(sample_game, "room1")
@@ -168,7 +171,7 @@ class TestExitDungeonGuards:
     ) -> None:
         """current_room_index == -1（尚未进入）时拒绝退出，不回绕到 rooms[-1]。"""
         dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], -1)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         ok, msg = exit_dungeon(sample_game, dungeon)
 
@@ -180,7 +183,7 @@ class TestExitDungeonGuards:
     ) -> None:
         """current_room_index 越界（脏存档）时拒绝退出，而不是 IndexError。"""
         dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], 5)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         ok, msg = exit_dungeon(sample_game, dungeon)
 
@@ -193,7 +196,7 @@ class TestExitDungeonGuards:
         """非战斗房间无需初始化状态位即可退出并恢复队伍成员到大厅。"""
         room0 = OpeningRoom(stage=_make_stage_model("room0"))
         dungeon = _make_dungeon([room0], 0)
-        sample_game._world.dungeon = dungeon
+        sample_game.world.dungeon = dungeon
 
         _make_stage_entity(
             sample_game, "room0"

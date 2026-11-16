@@ -8,6 +8,9 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
+from ..game.game_dungeon import (
+    is_current_room_dungeon_opening,
+)
 from ..models import (
     DungeonOpeningInitRequest,
     DungeonOpeningInitResponse,
@@ -51,7 +54,7 @@ async def dungeon_opening_init(
     )
 
     # 验证当前副本房间是否为开场房间
-    if not rpg_game.is_current_room_dungeon_opening:
+    if not is_current_room_dungeon_opening(rpg_game):
         logger.error(
             f"玩家 {payload.user_name} 开场房间初始化失败: 当前副本房间不是开场房间"
         )

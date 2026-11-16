@@ -9,6 +9,19 @@ from pydantic import BaseModel
 from ..deepseek import batch_complete
 from ..entitas import Entity, ExecuteProcessor, Matcher
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actors_in_stage,
+    get_player_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_ai_message,
+    add_human_message,
+    get_agent_memory,
+)
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import (
     AnyItem,
@@ -134,13 +147,13 @@ class CombatLootSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
         """每帧检查战斗是否胜利结束；未胜利则直接返回，胜利则推理掉落并写入 LootComponent。"""
-        if not self._game.current_dungeon_combat_room.combat.is_combat_completed:
+        if not current_dungeon_combat_room(self._game).combat.is_combat_completed:
             return
 
-        if not self._game.current_dungeon_combat_room.combat.is_won:
+        if not current_dungeon_combat_room(self._game).combat.is_won:
             return
 
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "无法获取玩家实体，掉落流程异常！"
         assert player_entity.has(
             PartyMemberComponent
@@ -148,8 +161,8 @@ class CombatLootSystem(ExecuteProcessor):
 
         # 获取当前战斗场景中的所有怪物实体
         monsters = list(
-            self._game.get_actors_in_stage(
-                player_entity, Matcher(all_of=[MonsterComponent])
+            get_actors_in_stage(
+                self._game, player_entity, Matcher(all_of=[MonsterComponent])
             )
         )
 
@@ -175,11 +188,12 @@ class CombatLootSystem(ExecuteProcessor):
 
         # 让玩家知道自己拿到什么：只写给本人（战利品尚未领取，不对外广播）
         if loot_items:
-            stage_entity = self._game.resolve_stage_entity(player_entity)
+            stage_entity = resolve_stage_entity(self._game, player_entity)
             assert (
                 stage_entity is not None
             ), "CombatLootSystem: 无法找到玩家所在场景实体"
-            self._game.add_human_message(
+            add_human_message(
+                self._game,
                 entity=player_entity,
                 human_message=HumanMessage(
                     content=_build_loot_message(loot_items),
@@ -196,7 +210,8 @@ class CombatLootSystem(ExecuteProcessor):
         怪物在战斗中所有以自己为主体的 LLM 推理（出牌决策 / 掉落）均留痕，
         记忆管理策略因此统一；失败（无回包）时只留请求侧，不伪造 AI 回复。
         """
-        self._game.add_human_message(
+        add_human_message(
+            self._game,
             entity=monster,
             human_message=HumanMessage(
                 content=result.request.input_message,
@@ -206,17 +221,17 @@ class CombatLootSystem(ExecuteProcessor):
         if result.ai_message is None:
             logger.warning(f"[CombatLootSystem] {monster.name} 无 AI 回包，仅记录请求")
             return
-        self._game.add_ai_message(monster, result.ai_message)
+        add_ai_message(self._game, monster, result.ai_message)
 
     #######################################################################################################################################
     def _create_loot_request(self, monster: Entity) -> ChatCompletionRequest:
         """为单头怪物创建掉落推理请求，传入其消息历史。"""
-        total_rounds = len(self._game.current_dungeon_combat_room.combat.rounds or [])
+        total_rounds = len(current_dungeon_combat_room(self._game).combat.rounds or [])
 
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None
 
-        stage_entity = self._game.resolve_stage_entity(player_entity)
+        stage_entity = resolve_stage_entity(self._game, player_entity)
         assert stage_entity is not None, "CombatLootSystem: 无法找到玩家所在场景实体"
         stage_name = stage_entity.name
 
@@ -229,7 +244,7 @@ class CombatLootSystem(ExecuteProcessor):
             input_message=_build_loot_prompt(
                 monster.name, appearance_comp.appearance, stage_name, total_rounds
             ),
-            messages=self._game.get_agent_memory(monster).messages,
+            messages=get_agent_memory(self._game, monster).messages,
         )
 
     #######################################################################################################################################

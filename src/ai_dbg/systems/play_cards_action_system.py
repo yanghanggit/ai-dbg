@@ -11,6 +11,18 @@ from ..game.dbg_combat_processor import (
     get_current_turn_actor,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_broadcast import (
+    broadcast_to_stage,
+)
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import (
     ActorComponent,
     HandComponent,
@@ -44,7 +56,7 @@ class PlayCardsActionSystem(ReactiveProcessor):
     """出牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -65,7 +77,7 @@ class PlayCardsActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
         """处理出牌动作。"""
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             # 必须是 进行中的阶段！
             logger.debug("PlayCardsActionSystem: 战斗未进行中，跳过出牌处理")
             return
@@ -76,12 +88,12 @@ class PlayCardsActionSystem(ReactiveProcessor):
         )
 
         # 获取当前回合数
-        current_rounds = self._game.current_dungeon_combat_room.combat.rounds
+        current_rounds = current_dungeon_combat_room(self._game).combat.rounds
         assert (
             current_rounds is not None
         ), "PlayCardsActionSystem: current_rounds is None"
 
-        last_round = self._game.current_dungeon_combat_room.combat.latest_round
+        last_round = current_dungeon_combat_room(self._game).combat.latest_round
         assert last_round is not None, "PlayCardsActionSystem: latest_round is None"
 
         logger.debug(
@@ -101,7 +113,8 @@ class PlayCardsActionSystem(ReactiveProcessor):
                     f"PlayCardsActionSystem: 卡牌 '{play_cards_action.card.name}' 被拦下：{blocked_cause}（playable=False），拦截出牌"
                 )
                 # 将拦截原因写入出牌者上下文，让 LLM 下次决策时理解
-                self._game.add_human_message(
+                add_human_message(
+                    self._game,
                     entity=entity,
                     human_message=HumanMessage(
                         content=_build_unplayable_card_error_message(
@@ -134,11 +147,12 @@ class PlayCardsActionSystem(ReactiveProcessor):
 
             # 行动类广播：出牌者已有决策记录（`combat_decision`）作为更精确的自我记录，故排除自己；
             # 其余人（含场景外？不，仅本场景）在仲裁结算前先感知到出牌事件
-            stage_entity = self._game.resolve_stage_entity(entity)
+            stage_entity = resolve_stage_entity(self._game, entity)
             assert (
                 stage_entity is not None
             ), f"PlayCardsActionSystem: 无法找到 {entity.name} 所在的场景实体"
-            self._game.broadcast_to_stage(
+            broadcast_to_stage(
+                self._game,
                 entity=entity,
                 agent_event=NoneEvent(
                     message=_build_action_notice_for_others(

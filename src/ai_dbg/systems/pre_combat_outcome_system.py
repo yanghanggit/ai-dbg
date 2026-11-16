@@ -7,6 +7,13 @@ from loguru import logger
 from ..entitas import ExecuteProcessor
 from ..game.dbg_combat_processor import mark_dead
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actors_in_stage,
+    get_player_entity,
+)
 from ..models import (
     DeathComponent,
     PartyMemberComponent,
@@ -28,7 +35,7 @@ class PreCombatOutcomeSystem(ExecuteProcessor):
     ###############################################################################################################################################
     @override
     async def execute(self) -> None:
-        combat = self._game.current_dungeon_combat_room.combat
+        combat = current_dungeon_combat_room(self._game).combat
 
         # 状态守卫：仅在进行中的战斗里做超时处理
         if not combat.is_ongoing:
@@ -37,10 +44,10 @@ class PreCombatOutcomeSystem(ExecuteProcessor):
         if len(combat.rounds) <= _MAX_COMBAT_ROUNDS:
             return
 
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "Player entity should not be None."
 
-        actors_in_stage = self._game.get_actors_in_stage(player_entity)
+        actors_in_stage = get_actors_in_stage(self._game, player_entity)
 
         for entity in actors_in_stage:
             if entity.has(PartyMemberComponent) and not entity.has(DeathComponent):

@@ -5,6 +5,15 @@ from loguru import logger
 
 from ..game.dbg_game import DBGGame
 from ..game.dbg_store import store_game_async
+from ..game.game_dungeon import (
+    current_dungeon,
+)
+from ..game.game_entities import (
+    build_from_blueprint,
+)
+from ..game.game_lifecycle import (
+    initialize_game,
+)
 from ..models import (
     Blueprint,
     BlueprintListResponse,
@@ -102,11 +111,11 @@ async def new_game(
         room.bind(game=game, player_session=player_session)
 
         # 根据蓝图构建游戏实例，并刷新实体数据到world中
-        assert len(game._world.entities) == 0, "测试阶段，游戏中不应该有实体数据！"
-        game.build_from_blueprint()
+        assert len(game.world.entities) == 0, "测试阶段，游戏中不应该有实体数据！"
+        build_from_blueprint(game)
 
         # 执行游戏初始化逻辑，确保游戏状态正确设置，准备好接受玩家的操作
-        await game.initialize()
+        await initialize_game(game)
 
         # 加载预置副本并直接进入首间：新局不再经过大厅中转
         success, error_detail = setup_dungeon(game, payload.dungeon_name)
@@ -115,7 +124,7 @@ async def new_game(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"副本实体创建失败: {error_detail}",
             )
-        success, error_detail = enter_dungeon(game, game.current_dungeon)
+        success, error_detail = enter_dungeon(game, current_dungeon(game))
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -129,5 +138,5 @@ async def new_game(
     return NewGameResponse(
         blueprint=blueprint_data,
         player_session=player_session,
-        dungeon=game.current_dungeon,
+        dungeon=current_dungeon(game),
     )

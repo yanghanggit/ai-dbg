@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -50,14 +49,18 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def game(context: Context) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
+def game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
     game.get_group.side_effect = context.get_group
     return game
 
 
 async def test_spoils_fill_notifies_owner(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """候选卡进待领取队列后，主人收到一条「待领取」记忆（不广播）。"""
     entity = context.create_entity()
@@ -104,7 +107,7 @@ async def test_spoils_fill_notifies_owner(
     spoils = entity.get(SpoilsComponent)
     assert [c.name for c in spoils.candidate_cards] == ["锋锐", "坚守"]
 
-    message = game.add_human_message.call_args.kwargs["human_message"]
+    message = game.world.agent_memories[entity.name].messages[-1]
     assert "# 待领取的奖励" in message.content
     assert "「锋锐」「坚守」" in message.content
     assert json.loads(message.card_pile_change) == {
@@ -114,7 +117,7 @@ async def test_spoils_fill_notifies_owner(
 
 
 async def test_spoils_injects_actor_motif(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """角色挂载 MotifComponent 时，其 motif 作为艺术锚点传给设计会话。"""
     entity = context.create_entity()
@@ -159,7 +162,7 @@ async def test_spoils_injects_actor_motif(
 
 
 async def test_spoils_without_motif_passes_empty_string(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """未挂 MotifComponent 的角色传空串，口径与旧版本一致。"""
     entity = context.create_entity()
@@ -202,7 +205,7 @@ async def test_spoils_without_motif_passes_empty_string(
 
 
 async def test_spoils_design_failure_writes_nothing(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """LLM 设计未完成（ok=False 或未全部落地）时，不写 SpoilsComponent、不发记忆。"""
     entity = context.create_entity()
@@ -244,7 +247,7 @@ async def test_spoils_design_failure_writes_nothing(
 
 
 async def test_spoils_agent_loop_exception_writes_nothing(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """agent_loop 失败（ok=False）同样不写 SpoilsComponent。"""
     entity = context.create_entity()
@@ -285,7 +288,7 @@ async def test_spoils_agent_loop_exception_writes_nothing(
 
 
 async def test_spoils_explicit_prototype_ids_bypass_random(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Action 带显式候选规格时，按规格物化（顺序、重复照给），不随机抽取。"""
     entity = context.create_entity()
@@ -347,7 +350,7 @@ async def test_spoils_explicit_prototype_ids_bypass_random(
 
 
 async def test_spoils_explicit_prototype_failure_writes_nothing(
-    context: Context, game: MagicMock, monkeypatch: pytest.MonkeyPatch
+    context: Context, game: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """显式规格里任一原型物化失败 → 整批中止，不写 SpoilsComponent（不静默少发）。"""
     entity = context.create_entity()

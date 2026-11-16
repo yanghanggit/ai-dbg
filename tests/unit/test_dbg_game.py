@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional
 
 import pytest
 
@@ -8,6 +8,14 @@ from ai_dbg.game.dbg_combat_processor import (
     set_character_hp,
 )
 from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon,
+    is_player_in_dungeon_stage,
+    is_player_in_lobby_stage,
+)
+from ai_dbg.game.game_entities import (
+    create_entity,
+)
 from ai_dbg.models import (
     Actor,
     ActorComponent,
@@ -61,14 +69,14 @@ def _make_game(
 
 
 def _make_lobby_stage_entity(game: Any, name: str) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(name))
+    entity: Entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(LobbyComponent, name)
     return entity
 
 
 def _make_dungeon_stage_entity(game: Any, name: str) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(name))
+    entity: Entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(DungeonComponent, name)
     return entity
@@ -77,14 +85,14 @@ def _make_dungeon_stage_entity(game: Any, name: str) -> Entity:
 def _make_player_actor_entity(
     game: Any, actor_name: str, player_name: str, stage_name: str
 ) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(actor_name))
+    entity: Entity = create_entity(game, actor_name)
     entity.add(ActorComponent, actor_name, stage_name)
     entity.add(PlayerComponent, player_name)
     return entity
 
 
 def _make_actor_entity(game: Any, actor_name: str, stage_name: str = "") -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(actor_name))
+    entity: Entity = create_entity(game, actor_name)
     entity.add(ActorComponent, actor_name, stage_name)
     entity.add(CharacterStatsComponent, actor_name, CharacterStats(hp=20, max_hp=20))
     entity.add(NPCComponent, actor_name)
@@ -140,12 +148,12 @@ def _make_dungeon_with_enemy(enemy_name: str, stage_name: str) -> Dungeon:
 
 class TestCurrentDungeon:
     def test_returns_world_dungeon(self, sample_game: Any) -> None:
-        dungeon = sample_game.current_dungeon
-        assert dungeon is sample_game._world.dungeon
+        dungeon = current_dungeon(sample_game)
+        assert dungeon is sample_game.world.dungeon
 
     def test_dungeon_name_matches(self) -> None:
         game = _make_game()
-        assert game.current_dungeon.name == "dungeon_alpha"
+        assert current_dungeon(game).name == "dungeon_alpha"
 
 
 # ---------------------------------------------------------------------------
@@ -158,30 +166,30 @@ class TestIsPlayerInStage:
         game = _make_game()
         lobby = _make_lobby_stage_entity(game, "lobby_stage")
         _make_player_actor_entity(game, "hero", "p1", lobby.name)
-        assert game.is_player_in_lobby_stage is True
+        assert is_player_in_lobby_stage(game) is True
 
     def test_player_in_dungeon_stage_returns_false_for_lobby(self) -> None:
         game = _make_game()
         lobby = _make_lobby_stage_entity(game, "lobby_stage")
         _make_player_actor_entity(game, "hero", "p1", lobby.name)
-        assert game.is_player_in_dungeon_stage is False
+        assert is_player_in_dungeon_stage(game) is False
 
     def test_player_in_dungeon_stage_returns_true(self) -> None:
         game = _make_game()
         dungeon = _make_dungeon_stage_entity(game, "cave")
         _make_player_actor_entity(game, "hero", "p1", dungeon.name)
-        assert game.is_player_in_dungeon_stage is True
+        assert is_player_in_dungeon_stage(game) is True
 
     def test_player_in_lobby_stage_returns_false_for_dungeon(self) -> None:
         game = _make_game()
         dungeon = _make_dungeon_stage_entity(game, "cave")
         _make_player_actor_entity(game, "hero", "p1", dungeon.name)
-        assert game.is_player_in_lobby_stage is False
+        assert is_player_in_lobby_stage(game) is False
 
     def test_no_player_entity_raises(self) -> None:
         game = _make_game()
         with pytest.raises(AssertionError):
-            _ = game.is_player_in_lobby_stage
+            _ = is_player_in_lobby_stage(game)
 
 
 # ---------------------------------------------------------------------------
@@ -216,27 +224,27 @@ class TestBuildFromBlueprint:
 
     # def test_actor_entity_created(self) -> None:
     #     game = self._make_game_for_build()
-    #     game.build_from_blueprint()
-    #     assert game.get_actor_entity("hero") is not None
+    #     build_from_blueprint(game)
+    #     assert get_actor_entity(game, "hero") is not None
 
     # def test_stage_entity_created(self) -> None:
     #     game = self._make_game_for_build()
-    #     game.build_from_blueprint()
-    #     assert game.get_stage_entity("lobby_stage") is not None
+    #     build_from_blueprint(game)
+    #     assert get_stage_entity(game, "lobby_stage") is not None
 
     # def test_player_component_assigned(self) -> None:
     #     game = self._make_game_for_build()
-    #     game.build_from_blueprint()
-    #     hero = game.get_actor_entity("hero")
+    #     build_from_blueprint(game)
+    #     hero = get_actor_entity(game, "hero")
     #     assert hero is not None
     #     assert hero.has(PlayerComponent)
 
     # def test_build_with_existing_entities_raises(self) -> None:
     #     game = self._make_game_for_build()
-    #     game.build_from_blueprint()
+    #     build_from_blueprint(game)
     #     # entities_serialization is now populated; second call must assert-fail
     #     with pytest.raises(AssertionError):
-    #         game.build_from_blueprint()
+    #         build_from_blueprint(game)
 
 
 # ---------------------------------------------------------------------------
@@ -255,14 +263,14 @@ class TestComputeCharacterStats:
 
     def test_missing_actor_component_raises(self) -> None:
         game = _make_game()
-        entity = game._create_entity("ghost")
+        entity = create_entity(game, "ghost")
         entity.add(CharacterStatsComponent, "ghost", CharacterStats())
         with pytest.raises(AssertionError):
             compute_character_stats(entity)
 
     def test_missing_stats_component_raises(self) -> None:
         game = _make_game()
-        entity = game._create_entity("ghost")
+        entity = create_entity(game, "ghost")
         entity.add(ActorComponent, "ghost", "")
         with pytest.raises(AssertionError):
             compute_character_stats(entity)

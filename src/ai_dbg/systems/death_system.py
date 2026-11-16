@@ -11,6 +11,12 @@ from ..game.dbg_combat_processor import (
     mark_dead,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import (
     CharacterStatsComponent,
     DeathComponent,
@@ -40,7 +46,7 @@ class DeathSystem(ExecuteProcessor):
     ############################################################################################################
     @override
     async def execute(self) -> None:
-        defeated_entities = self._game.get_group(
+        defeated_entities = self._game.ecs.get_group(
             Matcher(all_of=[CharacterStatsComponent], none_of=[DeathComponent])
         ).entities.copy()
 
@@ -48,7 +54,8 @@ class DeathSystem(ExecuteProcessor):
             entity_hp = compute_character_stats(entity).hp
             if entity_hp <= 0:
                 logger.info(f"{entity.name} 已被击败，HP={entity_hp}")
-                self._game.add_human_message(
+                add_human_message(
+                    self._game,
                     entity,
                     HumanMessage(
                         content=_build_death_notification(),
@@ -66,9 +73,9 @@ class DeathSystem(ExecuteProcessor):
         （反伤自杀 / 神器后仲裁等）会导致无人能推进。此处补一次重算，让 `get_current_turn_actor`
         的「跳过死人」逻辑生效。
         """
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             return
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         if latest_round is None or latest_round.current_actor != entity.name:
             return
         latest_round.current_actor = get_current_turn_actor(self._game, latest_round)

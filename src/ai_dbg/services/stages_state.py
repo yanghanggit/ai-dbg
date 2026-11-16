@@ -3,6 +3,9 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
+from ..game.game_entities import (
+    get_actors_by_stage_as_names,
+)
 from ..models import (
     StagesStateResponse,
 )
@@ -58,7 +61,7 @@ async def get_stages_state(
         )
 
     # 获取场景与角色的分布映射
-    actors_by_stage_as_names = rpg_game.get_actors_by_stage_as_names()
+    actors_by_stage_as_names = get_actors_by_stage_as_names(rpg_game)
     logger.info(
         f"stages_state: {user_name} actors_by_stage: {actors_by_stage_as_names}"
     )

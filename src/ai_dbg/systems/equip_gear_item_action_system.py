@@ -9,6 +9,16 @@ from overrides import override
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_combat_processor import compute_character_stats
 from ..game.dbg_game import DBGGame
+from ..game.game_broadcast import (
+    broadcast_to_stage,
+)
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
 from ..models import (
     Card,
     EquipGearItemAction,
@@ -43,7 +53,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
     """装备转化系统：把团队背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -60,7 +70,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("EquipGearItemActionSystem: 战斗未进行中，跳过")
             return
 
@@ -87,7 +97,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
         card_names = [card.name for card in cards]
 
         # 团队背包：装备统一由 player 持有，从 player 背包移除（移动语义）
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "玩家实体不存在！"
         assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
         inventory = player_entity.get(InventoryComponent)
@@ -120,7 +130,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
         )
 
         # 记录本回合装备使用结果
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         if latest_round is not None:
             latest_round.record(
                 RoundEntryKind.GEAR,
@@ -129,12 +139,13 @@ class EquipGearItemActionSystem(ReactiveProcessor):
             )
 
         # 向场景内其他角色广播装备转化通知
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds)
-        stage_entity = self._game.resolve_stage_entity(entity)
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds)
+        stage_entity = resolve_stage_entity(self._game, entity)
         assert (
             stage_entity is not None
         ), f"EquipGearItemActionSystem: 无法找到 {entity.name} 所在的场景实体"
-        self._game.broadcast_to_stage(
+        broadcast_to_stage(
+            self._game,
             entity=entity,
             agent_event=NoneEvent(
                 message=_build_gear_notice(

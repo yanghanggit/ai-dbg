@@ -5,7 +5,10 @@ from typing import final, override
 from loguru import logger
 
 from ..entitas import ExecuteProcessor, Matcher
-from ..game.rpg_game import RPGGame
+from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    destroy_entity,
+)
 from ..models import DestroyComponent
 
 
@@ -16,8 +19,8 @@ class DestroyEntitySystem(ExecuteProcessor):
     用法：注册为 ExecuteProcessor，向实体添加 DestroyComponent 即可标记其待销毁。
     """
 
-    def __init__(self, game: RPGGame) -> None:
-        self._game: RPGGame = game
+    def __init__(self, game: DBGGame) -> None:
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -25,14 +28,14 @@ class DestroyEntitySystem(ExecuteProcessor):
         """销毁所有持有 DestroyComponent 的实体。"""
 
         # 查找所有待销毁实体！
-        destroyable_entities = self._game.get_group(
+        destroyable_entities = self._game.ecs.get_group(
             Matcher(DestroyComponent)
         ).entities.copy()
 
         # 销毁所有待销毁实体！
         while len(destroyable_entities) > 0:
             destory_entity = destroyable_entities.pop()
-            self._game.destroy_entity(destory_entity)
+            destroy_entity(self._game, destory_entity)
             logger.debug(f"Destroy entity: {destory_entity.name}")
 
     ####################################################################################################################################

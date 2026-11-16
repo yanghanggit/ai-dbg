@@ -30,7 +30,7 @@ async def compact_context_game(
         logger.error(f"激活上下文压缩失败: {error_detail}")
         return terminal_game
 
-    await terminal_game._compact_pipeline.process()
+    await terminal_game.compact_pipeline.process()
 
     await store_game_async(terminal_game, save_dir)
     logger.info(f"已完成上下文压缩: target={target_name}, 存档: {save_dir}")

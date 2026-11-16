@@ -7,6 +7,9 @@ from loguru import logger
 from ..entitas import ExecuteProcessor
 from ..game.dbg_combat_processor import clear_round_state
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from .card_pile_common import record_round_end_discard
 
 
@@ -25,15 +28,15 @@ class CombatRoundCleanupSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，跳过旧回合手牌状态清除")
             return
 
-        current_rounds = self._game.current_dungeon_combat_room.combat.rounds or []
+        current_rounds = current_dungeon_combat_room(self._game).combat.rounds or []
         if len(current_rounds) == 0:
             return
 
-        last_round = self._game.current_dungeon_combat_room.combat.latest_round
+        last_round = current_dungeon_combat_room(self._game).combat.latest_round
         assert last_round is not None, "latest_round is None"
         if not last_round.is_completed:
             return

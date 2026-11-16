@@ -15,6 +15,16 @@ from ..game.dbg_combat_processor import (
     resolve_targets,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+    is_current_room_dungeon_combat,
+    is_player_in_dungeon_stage,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+    get_entity_by_name,
+    get_player_entity,
+)
 from ..models import (
     ConsumableItem,
     DeathComponent,
@@ -43,11 +53,11 @@ def _validate_play_turn(
     """校验当前是否轮到指定角色出牌，并返回其实体。"""
 
     # 前置守卫：此函数仅应在战斗房间内调用
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         return None, "当前副本房间不是战斗房间"
 
     # 获取当前回合信息，检查是否存在进行中的回合，以及当前角色是否在行动快照中。
-    latest_round = dbg_game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
     if latest_round is None:
         return None, "当前没有进行中的回合"
 
@@ -71,7 +81,7 @@ def _validate_play_turn(
         return None, f"现在不是 {actor_name} 的回合，当前应由 {next_actor} 出牌"
 
     # 获取该角色的实体，确保其存在，并且是战斗角色（PartyMember 或 Monster），且未死亡且拥有手牌组件。
-    entity = dbg_game.get_actor_entity(actor_name)
+    entity = get_actor_entity(dbg_game, actor_name)
     assert entity is not None, f"找不到角色 {actor_name}"
     assert entity.has(PartyMemberComponent) or entity.has(
         MonsterComponent
@@ -97,25 +107,25 @@ def activate_all_card_draws(
     """
 
     # 检查当前是否在玩家所在的副本场景中
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "只能在玩家所在的副本场景中使用该操作"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         error_msg = "当前副本房间不是战斗房间，无法抽牌"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本是否处于进行中的战斗状态
-    if not dbg_game.current_dungeon_combat_room.combat.is_ongoing:
+    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
         error_msg = "只能在战斗中使用is_ongoing"
         logger.error(error_msg)
         return False, error_msg
 
     # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
-    latest_round = dbg_game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
     if (
         latest_round is not None
         and not latest_round.is_completed
@@ -126,7 +136,7 @@ def activate_all_card_draws(
         return False, error_msg
 
     # 获取玩家实体，作为锚点来定位当前场景中的所有存活战斗角色
-    player_entity = dbg_game.get_player_entity()
+    player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "activate_all_card_draws: player_entity is None"
 
     # 获取当前场景中所有存活的战斗角色，包括队伍成员和怪物
@@ -164,13 +174,13 @@ async def activate_play_cards_specified(
     """
 
     # 检查当前是否在副本阶段，如果不在则无法出牌。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         msg = "当前不在副本阶段，无法出牌"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         msg = "当前副本房间不是战斗房间，无法出牌"
         logger.error(msg)
         return False, msg
@@ -241,13 +251,13 @@ def activate_monster_play_trigger(
     """
 
     # 检查当前是否处于玩家的副本阶段，如果不是则无法触发怪物的出牌决策。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "激活怪物出牌触发失败: 当前不在玩家的副本阶段"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         error_msg = "当前副本房间不是战斗房间，无法触发怪物出牌"
         logger.error(error_msg)
         return False, error_msg
@@ -277,25 +287,25 @@ def activate_retreat(
     """
 
     # 检查当前是否处于玩家的副本阶段，如果不是则无法激活撤退动作。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "激活撤退动作失败: 当前不在玩家的副本阶段"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         error_msg = "当前副本房间不是战斗房间，无法撤退"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法激活撤退动作。
-    if not dbg_game.current_dungeon_combat_room.combat.is_ongoing:
+    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
         error_msg = "激活撤退动作失败: 只能在战斗进行中使用"
         logger.error(error_msg)
         return False, error_msg
 
     # 获取当前副本中所有队伍成员实体，用于为他们添加撤退动作组件。
-    party_member_entities = dbg_game.get_group(
+    party_member_entities = dbg_game.ecs.get_group(
         Matcher(all_of=[PartyMemberComponent])
     ).entities
     assert (
@@ -329,25 +339,25 @@ def activate_use_consumable(
     """使用队伍背包内的指定消耗品：扣减库存并把其内置卡牌物化进当前行动者手牌。"""
 
     # 检查玩家是否在副本阶段，如果不是则无法使用消耗品。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         msg = "使用消耗品失败：玩家不在副本场景中"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         msg = "当前副本房间不是战斗房间，无法使用消耗品"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法使用消耗品。
-    if not dbg_game.current_dungeon_combat_room.combat.is_ongoing:
+    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
         msg = "使用消耗品失败：战斗未在进行中"
         logger.error(msg)
         return False, msg
 
     # 获取当前副本的最新回合，如果没有进行中的回合，则无法使用消耗品。
-    latest_round = dbg_game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
     if latest_round is None:
         msg = "使用消耗品失败：当前没有进行中的回合"
         logger.error(msg)
@@ -366,7 +376,7 @@ def activate_use_consumable(
         logger.error(msg)
         return False, msg
 
-    current_actor_entity = dbg_game.get_actor_entity(current_actor_name)
+    current_actor_entity = get_actor_entity(dbg_game, current_actor_name)
     if current_actor_entity is None:
         msg = f"使用消耗品失败：找不到当前行动角色 {current_actor_name}"
         logger.error(msg)
@@ -383,7 +393,7 @@ def activate_use_consumable(
         return False, msg
 
     # 队伍背包：消耗品统一由 player 持有。
-    player_entity = dbg_game.get_player_entity()
+    player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "activate_use_consumable: player_entity is None"
     assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
 
@@ -425,25 +435,25 @@ def activate_equip_gear(
     """将团队背包内的指定装备转化为当前行动者（我方）的手牌。装备是队伍级行为。"""
 
     # 检查玩家是否在副本场景中，如果不在则无法使用装备。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         msg = "使用装备失败：玩家不在副本场景中"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         msg = "当前副本房间不是战斗房间，无法使用装备"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法使用装备。
-    if not dbg_game.current_dungeon_combat_room.combat.is_ongoing:
+    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
         msg = "使用装备失败：战斗未在进行中"
         logger.error(msg)
         return False, msg
 
     # 获取当前副本的最新回合，如果没有进行中的回合，则无法使用装备。
-    latest_round = dbg_game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
     if latest_round is None:
         msg = "使用装备失败：当前没有进行中的回合"
         logger.error(msg)
@@ -462,7 +472,7 @@ def activate_equip_gear(
         logger.error(msg)
         return False, msg
 
-    actor_entity = dbg_game.get_entity_by_name(current_turn_actor_name)
+    actor_entity = get_entity_by_name(dbg_game, current_turn_actor_name)
     assert (
         actor_entity is not None
     ), f"activate_equip_gear: 无法找到当前行动者 {current_turn_actor_name}"
@@ -478,7 +488,7 @@ def activate_equip_gear(
         return False, msg
 
     # 团队背包：装备统一由 player 持有
-    player_entity = dbg_game.get_player_entity()
+    player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "activate_equip_gear: player_entity is None"
     assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
 
@@ -518,13 +528,13 @@ def activate_pass_turn(
     """让指定战斗角色跳过本次出牌机会（过牌），消耗 1 点 energy。"""
 
     # 检查玩家是否在副本场景中，如果不在则无法执行过牌动作。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         msg = "过牌失败：玩家不在副本场景中"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         msg = "当前副本房间不是战斗房间，无法过牌"
         logger.error(msg)
         return False, msg
@@ -548,19 +558,19 @@ def collect_loot(
     """将战斗战利品背包（LootComponent）中的道具全部转入玩家随身背包（InventoryComponent）。"""
 
     # 检查玩家是否在副本场景中，如果不在则无法收取战利品。
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         msg = "收取战利品失败：玩家不在副本场景中"
         logger.error(msg)
         return False, msg
 
     # 检查当前副本房间是否为战斗房间
-    if not dbg_game.is_current_room_dungeon_combat:
+    if not is_current_room_dungeon_combat(dbg_game):
         msg = "当前副本房间不是战斗房间，无法收取战利品"
         logger.error(msg)
         return False, msg
 
     # 获取玩家实体，并确保其存在。
-    player_entity = dbg_game.get_player_entity()
+    player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "无法获取玩家实体"
 
     # 检查玩家实体是否拥有战斗战利品组件，如果没有则无法收取战利品。

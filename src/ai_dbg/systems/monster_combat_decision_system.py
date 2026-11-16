@@ -20,7 +20,15 @@ from ..game.dbg_combat_processor import (
     resolve_targets,
 )
 from ..game.dbg_game import DBGGame
-from ..game.rpg_agent_memory import REPLACED_MESSAGES_ATTR
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_memory import (
+    REPLACED_MESSAGES_ATTR,
+    get_agent_memory,
+    replace_span,
+    sync_latest_context_usage_ratio,
+)
 from ..llm import ToolDefinition, ToolFunction
 from ..models import (
     Card,
@@ -434,7 +442,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
     """怪物出牌决策系统：工具化决策，落库后整段过程压缩成一条决策记录。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -459,7 +467,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("MonsterCombatDecisionSystem: 战斗未进行中，跳过决策")
             return
 
@@ -467,12 +475,12 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             f"MonsterCombatDecisionSystem: 为 {len(entities)} 个怪物进行出牌决策推理"
         )
 
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds or [])
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
 
         # 行动权由 `Round.current_actor` 唯一决定，决策天然串行：一个怪物一段 loop + 一次落库。
         # 不并发（并发会让同一回合的多个决策互相看不见对方的结算结果），也不做批量提交。
         for entity in entities:
-            ctx = _DecisionContext(len(self._game.get_agent_memory(entity).messages))
+            ctx = _DecisionContext(len(get_agent_memory(self._game, entity).messages))
             await self._run_decision(entity, ctx, round_number)
             self._apply_decision(entity, ctx, round_number)
 
@@ -481,7 +489,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
         self, entity: Entity, ctx: _DecisionContext, round_number: int
     ) -> None:
         """驱动单个怪物的工具化出牌决策（原地写记忆，事后整段压缩成一条记录）。"""
-        memory = self._game.get_agent_memory(entity)
+        memory = get_agent_memory(self._game, entity)
         loop_id = make_loop_id(memory.messages, LOOP_KIND, round_number, entity.name)
 
         try:
@@ -515,7 +523,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             ctx.loop_ok = False
 
         # agent_loop 直接原地追加 AI 消息（绕过 add_ai_message），需手动同步最新上下文占比
-        self._game.sync_latest_context_usage_ratio(entity)
+        sync_latest_context_usage_ratio(self._game, entity)
 
     ####################################################################################################################################
     def _build_decision_prompt(self, entity: Entity, round_number: int) -> str:
@@ -534,7 +542,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             for actor in get_alive_party_members_in_stage(entity, self._game)
         ]
 
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         action_order: List[str] = latest_round.action_order if latest_round else []
         completed_actors: List[str] = (
             latest_round.completed_actors if latest_round else []
@@ -597,7 +605,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
         outcome: _DecisionOutcome,
     ) -> None:
         """把「原始决策过程」整段替换为一条决策记录（做了什么 + 原因）。"""
-        messages = self._game.get_agent_memory(entity).messages
+        messages = get_agent_memory(self._game, entity).messages
         if outcome.card is None:
             action = ACTION_PASS
             card_name = outcome.card_name
@@ -605,7 +613,8 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             action = ACTION_PLAY
             card_name = outcome.card.name
 
-        self._game.replace_span(
+        replace_span(
+            self._game,
             entity,
             start_index,
             len(messages),

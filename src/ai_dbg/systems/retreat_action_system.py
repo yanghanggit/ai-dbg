@@ -7,6 +7,16 @@ from loguru import logger
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_combat_processor import mark_dead
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon,
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import HumanMessage, PartyMemberComponent, RetreatAction
 from ..utils import prompt_builder
 
@@ -27,7 +37,7 @@ class RetreatActionSystem(ReactiveProcessor):
     """撤退动作系统"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: DBGGame = game
 
     ####################################################################################################################################
@@ -47,22 +57,22 @@ class RetreatActionSystem(ReactiveProcessor):
         """处理撤退动作"""
 
         # 状态守卫：仅在战斗进行中执行撤退处理
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("RetreatActionSystem: 战斗未进行中，跳过撤退处理")
             return
 
         # 获取当前副本信息，生成撤退消息需要使用副本和关卡名称
         assert (
-            self._game.current_dungeon is not None
+            current_dungeon(self._game) is not None
         ), "RetreatActionSystem: current_dungeon is None"
-        dungeon = self._game.current_dungeon
+        dungeon = current_dungeon(self._game)
 
         # 处理每个撤退实体，执行撤退逻辑
         for entity in entities:
             self._process_retreat_action(entity, dungeon.name)
 
         # 标记当前战斗为撤退状态
-        self._game.current_dungeon_combat_room.combat.retreated = True
+        current_dungeon_combat_room(self._game).combat.retreated = True
 
     ####################################################################################################################################
     def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:
@@ -76,12 +86,13 @@ class RetreatActionSystem(ReactiveProcessor):
         logger.info(f"撤退: 角色 {entity.name} 标记为死亡")
 
         # 解析所在场景，生成撤退叙事消息并写入对话历史
-        stage_entity = self._game.resolve_stage_entity(entity)
+        stage_entity = resolve_stage_entity(self._game, entity)
         assert stage_entity is not None, f"Entity {entity.name} must be in a stage"
 
         # 生成撤退消息并写入对话历史
         retreat_message = _build_retreat_message(dungeon_name, stage_entity.name)
-        self._game.add_human_message(
+        add_human_message(
+            self._game,
             entity,
             HumanMessage(
                 content=retreat_message,

@@ -8,14 +8,20 @@
 """
 
 import uuid
-from typing import Any, Iterator
+from types import SimpleNamespace
+from typing import Any, Iterator, cast
 
 import pytest
 from pydantic import ValidationError
 
-from ai_dbg.entitas import Context
+from ai_dbg.entitas import Context, Entity
 from ai_dbg.entitas.components import Component
-from ai_dbg.game.rpg_entity_manager import RPGEntityManager
+from ai_dbg.game.game_entities import (
+    create_entity,
+    create_stage_entities,
+    restore_context,
+    serialize_context,
+)
 from ai_dbg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
@@ -55,6 +61,19 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
 ############################################################################################################
 # create_component_type
 ############################################################################################################
+class _GameImpl:
+    """最小 DBGGame 替身：只提供函数所需的 ecs 与 entity_index。"""
+
+    def __init__(self) -> None:
+        self.ecs = Context()
+        self.entity_index: dict[str, Entity] = {}
+        self.world = SimpleNamespace(agent_memories={})
+
+
+def _new_game() -> Any:
+    return _GameImpl()
+
+
 class TestCreateComponentType:
     def test_creates_registered_component_subclass(self) -> None:
         cls = create_component_type("TestDynamicComponent")
@@ -82,7 +101,7 @@ class TestCreateComponentType:
         with pytest.raises(AssertionError):
             create_component_type("   ")
         with pytest.raises(AssertionError):
-            create_component_type(123)  # type: ignore[arg-type]
+            create_component_type(cast(Any, 123))
 
     def test_usable_as_marker_on_entity(self) -> None:
         cls = create_component_type("TestDynamicOnEntity")
@@ -127,7 +146,7 @@ class TestCreateStageEntitiesDynamicComponent:
         tag_cls = create_component_type(tag_name, name=(str, ...))
         stage_model = _make_stage_model("场景.测试房", "integration_001")
 
-        stage_entities = sample_game.create_stage_entities([stage_model])
+        stage_entities = create_stage_entities(sample_game, [stage_model])
 
         assert len(stage_entities) == 1
         stage_entity = stage_entities[0]
@@ -140,11 +159,12 @@ class TestCreateStageEntitiesDynamicComponent:
         cls_a = create_component_type("integration_a", name=(str, ...))
         cls_b = create_component_type("integration_b", name=(str, ...))
 
-        entities = sample_game.create_stage_entities(
+        entities = create_stage_entities(
+            sample_game,
             [
                 _make_stage_model("场景.A", "integration_a"),
                 _make_stage_model("场景.B", "integration_b"),
-            ]
+            ],
         )
         by_name = {e.name: e for e in entities}
 
@@ -164,19 +184,19 @@ class TestRestoreContextDynamicComponent:
         tag_name = "deser_001"
         tag_cls = create_component_type(tag_name, name=(str, ...))
 
-        source = RPGEntityManager()
-        entity = source._create_entity("场景.序列化测试")
+        source = _new_game()
+        entity = create_entity(source, "场景.序列化测试")
         entity.add(IdentityComponent, "场景.序列化测试", 1, str(uuid.uuid4()))
         entity.set(tag_cls, tag_cls.model_validate({"name": "场景.序列化测试"}))
 
-        serialized = source.serialize_context()
+        serialized = serialize_context(source)
 
         # 模拟全新进程：动态类不在注册表中
         del COMPONENT_TYPES[tag_name]
         assert tag_name not in COMPONENT_TYPES
 
-        target = RPGEntityManager()
-        restored = target.restore_context(serialized)
+        target = _new_game()
+        restored = restore_context(target, serialized)
 
         restored_entity = next(iter(restored.values()))
         assert tag_name in COMPONENT_TYPES  # 反序列化时已惰性重建

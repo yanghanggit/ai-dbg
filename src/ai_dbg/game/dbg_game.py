@@ -1,75 +1,33 @@
 """
-DBG 游戏核心实现
+DBG 游戏业务上下文。
+
+`DBGGame` 只保存一次游戏运行所需的数据：世界状态、ECS context、玩家会话、
+实体名称索引与 pipeline 列表。所有游戏领域操作都以模块函数的形式接收
+`DBGGame`，不再把行为挂在这个对象上。
 """
 
-import copy
-import uuid
-from typing import Final, List, Optional
+from typing import Dict, List
 
-from loguru import logger
-
-from ..entitas import Entity
-from ..models import (
-    COMPONENT_TYPES,
-    Actor,
-    ActorComponent,
-    ActorType,
-    AppearanceComponent,
-    CharacterStatsComponent,
-    CombatRoom,
-    DeckComponent,
-    Dungeon,
-    DungeonComponent,
-    IdentityComponent,
-    InventoryComponent,
-    LobbyComponent,
-    MonsterComponent,
-    NPCComponent,
-    OpeningRoom,
-    PlayerComponent,
-    PlayerSession,
-    Stage,
-    StageComponent,
-    StageType,
-    SystemMessage,
-    World,
-    WorldComponent,
-    WorldState,
-    resolve_component_type,
-)
-from .dbg_compact_pipeline import create_compact_pipeline
-from .dbg_dungeon_combat_room_pipeline import create_dungeon_combat_room_pipeline
-from .dbg_dungeon_opening_room_pipeline import create_dungeon_opening_room_pipeline
-from .rpg_game import RPGGame
-from .rpg_game_pipeline_manager import RPGGameProcessPipeline
+from ..entitas import Context, Entity
+from ..models import PlayerSession, WorldState
+from .game_process_pipeline import RPGGameProcessPipeline
 
 
 #################################################################################################################################################
-def _assert_deck_sources(actor_name: str, deck_comp: Optional[DeckComponent]) -> None:
-    """入口不变量：牌库中每张卡必须显式带 source，且 source 必须等于持有者。
+class DBGGame:
+    """DBG，Deck Building Game 的业务上下文（纯数据对象）。"""
 
-    不再有「空 source = 未初始化」的哨兵语义；source 决定词缀「非 source 者」语义与
-    怪物亮牌判定。持久牌库（DeckComponent）中的牌恒属于持有者，故在实体创建/加载时
-    强制 source == actor_name，开发期预制数据漏写或写错名字一律在此 fail-fast。
-
-    注：战斗中被注入到对手手牌的 transferable 副本（source 保留注入者）只存在于临时
-    手牌/牌堆，不会进入 DeckComponent，因此不受本断言约束。
-    """
-    assert deck_comp is not None, f"{actor_name} 缺少 DeckComponent"
-    for card in deck_comp.cards:
-        assert (
-            card.source.strip()
-        ), f"{actor_name} 的卡「{card.name}」缺少 source：牌库中每张卡都必须显式设置 source（见 demo/world.py）"
-        assert (
-            card.source == actor_name
-        ), f"{actor_name} 的卡「{card.name}」source={card.source!r} 与持有者不符：持久牌库中的卡 source 必须等于持有者名"
-
-
-#################################################################################################################################################
-class DBGGame(RPGGame):
-    """
-    DBG，Deck Building Game
-    """
+    # 类级注解让类型检查与测试替身（MagicMock(spec=DBGGame)）都能看到这些字段。
+    name: str
+    player_session: PlayerSession
+    world: WorldState
+    ecs: Context
+    entity_index: Dict[str, Entity]
+    pipelines: List[RPGGameProcessPipeline]
+    opening_pipeline: RPGGameProcessPipeline
+    combat_pipeline: RPGGameProcessPipeline
+    compact_pipeline: RPGGameProcessPipeline
+    should_terminate: bool
 
     def __init__(
         self,
@@ -77,324 +35,41 @@ class DBGGame(RPGGame):
         player_session: PlayerSession,
         world: WorldState,
     ) -> None:
+        self.name: str = name
+        self.player_session: PlayerSession = player_session
+        self.world: WorldState = world
 
-        # 必须按着此顺序实现父类
-        RPGGame.__init__(self, name, player_session, world)
+        # ECS 运行时状态与业务数据分离：Entity 的 _context 指向这里。
+        self.ecs: Context = Context()
 
-        # 副本开场流程（叙事 + 牌库初始化，无战斗；奖励生成由外部显式触发）
-        self._dungeon_opening_room_pipeline: Final[RPGGameProcessPipeline] = (
-            create_dungeon_opening_room_pipeline(self)
+        # 名称索引，避免每次查询都遍历 ECS。
+        self.entity_index: Dict[str, Entity] = {}
+
+        # Pipeline 是本轮游戏运行的编排设施，不属于 ECS。
+        self.pipelines: List[RPGGameProcessPipeline] = []
+        self.opening_pipeline: RPGGameProcessPipeline
+        self.combat_pipeline: RPGGameProcessPipeline
+        self.compact_pipeline: RPGGameProcessPipeline
+
+        self.should_terminate: bool = False
+
+        # 延迟导入 pipeline 工厂，避免 systems -> game -> systems 的循环导入。
+        from .dbg_compact_pipeline import create_compact_pipeline
+        from .dbg_dungeon_combat_room_pipeline import (
+            create_dungeon_combat_room_pipeline,
+        )
+        from .dbg_dungeon_opening_room_pipeline import (
+            create_dungeon_opening_room_pipeline,
         )
 
-        # 副本战斗流程
-        self._dungeon_combat_room_pipeline: Final[RPGGameProcessPipeline] = (
-            create_dungeon_combat_room_pipeline(self)
-        )
+        self.opening_pipeline = create_dungeon_opening_room_pipeline(self)
+        self.combat_pipeline = create_dungeon_combat_room_pipeline(self)
+        self.compact_pipeline = create_compact_pipeline(self)
+        self.pipelines = [
+            self.opening_pipeline,
+            self.combat_pipeline,
+            self.compact_pipeline,
+        ]
 
-        # 上下文压缩流程（仅处理手动触发的 CompactContextAction，与场景状态无关）
-        self._compact_pipeline: Final[RPGGameProcessPipeline] = create_compact_pipeline(
-            self
-        )
-
-        # 注册所有管道到管道管理器
-        self.register_pipeline(self._dungeon_opening_room_pipeline)
-        self.register_pipeline(self._dungeon_combat_room_pipeline)
-        self.register_pipeline(self._compact_pipeline)
-
-    ###############################################################################################################################################
-    @property
-    def current_dungeon(self) -> Dungeon:
-        return self._world.dungeon
-
-    ###############################################################################################################################################
-    @property
-    def is_dungeon_setup_entities(self) -> bool:
-        """检查当前副本的实体是否已全部创建。
-
-        遍历副本全部房间的 stage/actor 模型，按名字去取 entity：全都能取到即视为已 setup。
-        """
-        dungeon = self._world.dungeon
-        if not dungeon.rooms:
-            return False
-        for room in dungeon.rooms:
-            if self.get_stage_entity(room.stage.name) is None:
-                return False
-            for actor in room.stage.actors:
-                if self.get_actor_entity(actor.name) is None:
-                    return False
-        return True
-
-    ###############################################################################################################################################
-    @property
-    def is_player_in_lobby_stage(self) -> bool:
-        """检查玩家是否在大厅/营地场景中。"""
-        player_entity = self.get_player_entity()
-        assert player_entity is not None, "player_entity is None"
-        return self.is_actor_in_lobby_stage(player_entity)
-
-    ###############################################################################################################################################
-    @property
-    def is_player_in_dungeon_stage(self) -> bool:
-        """检查玩家是否在副本场景中"""
-        player_entity = self.get_player_entity()
-        assert player_entity is not None, "player_entity is None"
-        return self.is_actor_in_dungeon_stage(player_entity)
-
-    ###############################################################################################################################################
-    @property
-    def current_dungeon_combat_room(self) -> CombatRoom:
-        """断言当前处于战斗房间中，返回战斗房间"""
-        assert self._world.dungeon is not None, "当前副本不存在"
-        assert self._world.dungeon.current_room is not None, "当前副本房间不存在"
-        assert isinstance(
-            self._world.dungeon.current_room, CombatRoom
-        ), "当前副本房间不是战斗房间"
-        return self._world.dungeon.current_room
-
-    ###############################################################################################################################################
-    @property
-    def is_current_room_dungeon_combat(self) -> bool:
-        """检查当前副本房间是否为战斗房间"""
-        if self._world.dungeon is None:
-            return False
-        if self._world.dungeon.current_room is None:
-            return False
-        return isinstance(self._world.dungeon.current_room, CombatRoom)
-
-    ###############################################################################################################################################
-    @property
-    def is_current_room_dungeon_opening(self) -> bool:
-        """检查当前副本房间是否为开场房间"""
-        if self._world.dungeon is None:
-            return False
-        if self._world.dungeon.current_room is None:
-            return False
-        return isinstance(self._world.dungeon.current_room, OpeningRoom)
-
-    ###############################################################################################################################################
-    def build_from_blueprint(self) -> "DBGGame":
-        """创建并初始化新游戏世界，包括世界、角色和场景"""
-        assert len(self._world.entities) == 0, "游戏中有实体，不能创建新的游戏"
-        if len(self._world.entities) > 0:
-            logger.warning(
-                f"游戏中有实体，不能创建新的游戏，entities = {self._world.entities}"
-            )
-            return self
-
-        ## 第1步，创建world实体
-        self._create_world_entities(self._world.blueprint.world_entities)
-
-        ## 第2步，创建actor（含牌组与关键词组件挂载）
-        self.create_actor_entities(
-            [actor for stage in self._world.blueprint.stages for actor in stage.actors]
-        )
-
-        ## 第3步，创建stage
-        self.create_stage_entities(self._world.blueprint.stages)
-
-        ## 第4步，分配玩家控制的actor
-        assert self._player_session.name.strip() != "", "玩家名字不能为空"
-        assert self._player_session.actor.strip() != "", "玩家角色不能为空"
-        player_actor_entity = self.get_actor_entity(self._player_session.actor)
-        assert (
-            player_actor_entity is not None
-        ), f"找不到玩家角色实体: {self._player_session.actor}"
-
-        # 玩家角色实体必须没有 PlayerComponent，确保之前没有被分配过玩家控制
-        assert not player_actor_entity.has(PlayerComponent)
-        player_actor_entity.replace(PlayerComponent, self._player_session.name)
-        logger.info(
-            f"玩家: {self._player_session.name} 选择控制: {self._player_session.actor}"
-        )
-        assert player_actor_entity.has(
-            InventoryComponent
-        ), "玩家角色实体必须有 InventoryComponent"
-
-        return self
-
-    ###############################################################################################################################################
-    def _create_world_entities(
-        self,
-        world_models: List[World],
-    ) -> List[Entity]:
-        """创建世界实体（全局规则管理器、叙事者）"""
-        world_entities: List[Entity] = []
-
-        for world_model in world_models:
-
-            # 创建实体
-            world_entity = self._create_entity(world_model.name)
-            assert world_entity is not None, f"创建world_entity失败: {world_model.name}"
-
-            # 必要组件：identifier
-            self._world.entity_counter += 1
-            world_entity.add(
-                IdentityComponent,
-                world_model.name,
-                self._world.entity_counter,
-                str(uuid.uuid4()),
-            )
-
-            # 必要组件：身份类型标记-世界
-            world_entity.add(WorldComponent, world_model.name)
-
-            # 添加系统消息
-            assert (
-                world_model.name in world_model.system_message
-            ), f"world_model.system_message 缺少 {world_model.name} 的系统消息"
-            self.add_system_message(
-                world_entity,
-                SystemMessage(content=world_model.system_message),
-            )
-
-            # 特殊组件，根据 world_model.components 数据驱动动态添加
-            for comp_name, comp_data in world_model.components.items():
-                comp_class = COMPONENT_TYPES.get(comp_name)
-                assert comp_class is not None, f"未知组件类型: {comp_name}"
-                restore_comp = comp_class(**comp_data)
-                logger.debug(f"为 World 实体 {world_entity.name} 添加 {comp_name}")
-                world_entity.set(comp_class, restore_comp)
-
-            # 添加到返回值
-            world_entities.append(world_entity)
-
-        return world_entities
-
-    ###############################################################################################################################################
-    def create_actor_entities(self, actor_models: List[Actor]) -> List[Entity]:
-        """创建角色实体（玩家、NPC、敌人），初始化所有组件，并挂载 DBG 所需的牌组与关键词组件"""
-        actor_entities: List[Entity] = []
-
-        for actor_model in actor_models:
-
-            # 创建实体
-            actor_entity = self._create_entity(actor_model.name)
-            assert actor_entity is not None, f"创建actor_entity失败: {actor_model.name}"
-
-            # 必要组件：identifier
-            self._world.entity_counter += 1
-            actor_entity.add(
-                IdentityComponent,
-                actor_model.name,
-                self._world.entity_counter,
-                str(uuid.uuid4()),
-            )
-
-            # 必要组件：身份类型标记-角色Actor
-            actor_entity.add(ActorComponent, actor_model.name, "")
-
-            # 必要组件：系统消息
-            assert (
-                actor_model.name in actor_model.system_message
-            ), f"actor_model.system_message 缺少 {actor_model.name} 的系统消息"
-            self.add_system_message(
-                actor_entity, SystemMessage(content=actor_model.system_message)
-            )
-
-            # 必要组件：外观
-            assert (
-                actor_model.base_body != ""
-            ), f"actor_model.base_body 不能为空: {actor_model.name}"
-            actor_entity.add(
-                AppearanceComponent,
-                actor_model.name,
-                actor_model.base_body,
-                actor_model.base_body,  # 初始外观与基础身体相同，当前无时装系统，外观与基础身体一致
-            )
-
-            # 必要组件：基础属性，这里用浅拷贝，不能动原有的。
-            actor_entity.add(
-                CharacterStatsComponent,
-                actor_model.name,
-                copy.copy(actor_model.character_stats),
-            )
-
-            # 必要组件：类型标记
-            match actor_model.type:
-                case ActorType.NPC:
-                    actor_entity.add(NPCComponent, actor_model.name)
-                case ActorType.MONSTER:
-                    actor_entity.add(MonsterComponent, actor_model.name)
-                case _:
-                    assert False, f"未知的 ActorType: {actor_model.type}"
-
-            # 特殊组件，根据 actor_model.components 数据驱动动态添加
-            for comp_name, comp_data in actor_model.components.items():
-                comp_class = COMPONENT_TYPES.get(comp_name)
-                assert comp_class is not None, f"未知组件类型: {comp_name}"
-                restore_comp = comp_class(**comp_data)
-                logger.debug(f"为 Actor 实体 {actor_entity.name} 添加 {comp_name}")
-                actor_entity.set(comp_class, restore_comp)
-
-            # 做一些判断
-            assert actor_entity.has(DeckComponent), "玩家角色实体必须有 DeckComponent"
-
-            # 入口不变量：预制/加载牌库的每张牌都必须显式带 source（空 source 视为数据错误）
-            _assert_deck_sources(actor_entity.name, actor_entity.get(DeckComponent))
-
-            # 添加到返回值
-            actor_entities.append(actor_entity)
-
-        return actor_entities
-
-    ###############################################################################################################################################
-    def create_stage_entities(self, stage_models: List[Stage]) -> List[Entity]:
-        """创建场景实体，并建立角色与场景的关联关系"""
-        stage_entities: List[Entity] = []
-
-        for stage_model in stage_models:
-
-            # 创建实体
-            stage_entity = self._create_entity(stage_model.name)
-            assert stage_entity is not None, f"创建stage_entity失败: {stage_model.name}"
-
-            # 必要组件: identifier
-            self._world.entity_counter += 1
-            stage_entity.add(
-                IdentityComponent,
-                stage_model.name,
-                self._world.entity_counter,
-                str(uuid.uuid4()),
-            )
-
-            # 必要组件: StageComponent，包含场景名称，方便后续访问和识别
-            stage_entity.add(StageComponent, stage_model.name)
-
-            # 必要组件：系统消息
-            assert stage_model.name in stage_model.system_message
-            self.add_system_message(
-                stage_entity, SystemMessage(content=stage_model.system_message)
-            )
-
-            # 必要组件：类型
-            match stage_model.type:
-                case StageType.DUNGEON:
-                    stage_entity.add(DungeonComponent, stage_model.name)
-                case StageType.LOBBY:
-                    stage_entity.add(LobbyComponent, stage_model.name)
-                case _:
-                    assert False, f"未知的 StageType: {stage_model.type}"
-
-            # 特殊组件，根据 stage_model.components 数据驱动动态添加
-            # （含每个 Stage 的唯一标记组件，跨进程反序列化时惰性重建）
-            for comp_name, comp_data in stage_model.components.items():
-                comp_class = resolve_component_type(comp_name, comp_data)
-                restore_comp = comp_class(**comp_data)
-                logger.debug(f"为 Stage 实体 {stage_entity.name} 添加 {comp_name}")
-                stage_entity.set(comp_class, restore_comp)
-
-            ## 重新设置Actor和stage的关系
-            for actor_model in stage_model.actors:
-                actor_entity = self.get_actor_entity(actor_model.name)
-                assert (
-                    actor_entity is not None
-                ), f"找不到actor_entity: {actor_model.name}"
-                actor_entity.replace(
-                    ActorComponent,
-                    actor_model.name,
-                    stage_model.name,
-                )
-
-            stage_entities.append(stage_entity)
-
-        return stage_entities
+    def __repr__(self) -> str:
+        return f"<DBGGame name={self.name!r} entities={self.ecs.entity_count}>"

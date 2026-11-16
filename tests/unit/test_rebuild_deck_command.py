@@ -12,7 +12,6 @@ import pytest
 
 from ai_dbg.dbg_game_agent import cards as cards_module
 from ai_dbg.dbg_game_agent.cards import find_dungeon_actor, rebuild_deck_in_dungeon
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     Actor,
     ActorType,
@@ -104,7 +103,7 @@ async def test_rebuild_deck_rewrites_file_and_keeps_motif(
     spec = ["proto.a", "proto.b", "proto.c", "proto.d", "proto.e"]
 
     cards = await rebuild_deck_in_dungeon(
-        MagicMock(spec=DBGGame),
+        MagicMock(),
         dungeon_name="副本.试作",
         actor_name="怪物.泥行者",
         prototype_ids=spec,
@@ -133,7 +132,7 @@ async def test_rebuild_deck_failure_leaves_file_untouched(
 
     with pytest.raises(ValueError, match="设计未完成"):
         await rebuild_deck_in_dungeon(
-            MagicMock(spec=DBGGame),
+            MagicMock(),
             dungeon_name="副本.试作",
             actor_name="怪物.泥行者",
             prototype_ids=["proto.a"] * 5,
@@ -150,7 +149,7 @@ async def test_rebuild_deck_unknown_actor_fails_before_design(
 
     with pytest.raises(ValueError, match="没有角色"):
         await rebuild_deck_in_dungeon(
-            MagicMock(spec=DBGGame),
+            MagicMock(),
             dungeon_name="副本.试作",
             actor_name="怪物.不存在",
             prototype_ids=list(["proto.a"] * 5),
@@ -164,7 +163,7 @@ async def test_rebuild_deck_requires_prototypes(
 ) -> None:
     with pytest.raises(ValueError, match="至少需要一个原型"):
         await rebuild_deck_in_dungeon(
-            MagicMock(spec=DBGGame),
+            MagicMock(),
             dungeon_name="副本.试作",
             actor_name="怪物.泥行者",
             prototype_ids=[],
@@ -220,7 +219,7 @@ async def test_rebuild_deck_replaces_single_card_and_keeps_rest(
     _patch_design(monkeypatch)
 
     cards = await rebuild_deck_in_dungeon(
-        MagicMock(spec=DBGGame),
+        MagicMock(),
         dungeon_name="副本.试作",
         actor_name="怪物.泥行者",
         prototype_ids=["proto.summon"],
@@ -247,7 +246,7 @@ async def test_rebuild_deck_replaces_by_position(
     _patch_design(monkeypatch)
 
     cards = await rebuild_deck_in_dungeon(
-        MagicMock(spec=DBGGame),
+        MagicMock(),
         dungeon_name="副本.试作",
         actor_name="怪物.泥行者",
         prototype_ids=["proto.summon", "proto.burst"],
@@ -276,7 +275,7 @@ async def test_rebuild_deck_rejects_unpaired_replacement(
 
     with pytest.raises(ValueError, match="一一配对"):
         await rebuild_deck_in_dungeon(
-            MagicMock(spec=DBGGame),
+            MagicMock(),
             dungeon_name="副本.试作",
             actor_name="怪物.泥行者",
             prototype_ids=["proto.summon"],
@@ -298,7 +297,7 @@ async def test_full_rebuild_accepts_arbitrary_deck_size(
     _patch_design(monkeypatch)
 
     cards = await rebuild_deck_in_dungeon(
-        MagicMock(spec=DBGGame),
+        MagicMock(),
         dungeon_name="副本.试作",
         actor_name="怪物.泥行者",
         prototype_ids=["proto.a", "proto.b", "proto.c"],

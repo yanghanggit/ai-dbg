@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 """ExhaustCardsActionSystem 单元测试。"""
 
 import json
@@ -7,7 +9,9 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -57,14 +61,18 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_ongoing = True
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
     return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> ExhaustCardsActionSystem:
+def system(mock_game: Any) -> ExhaustCardsActionSystem:
     return ExhaustCardsActionSystem(mock_game)
 
 
@@ -80,10 +88,10 @@ class TestExhaustCardsActionSystemSkip:
     async def test_skips_when_not_ongoing(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         entity = _make_entity(context, "英雄")
         card = _make_card("闪击", source="英雄", exhaust=True)
         entity.get(DiscardPileComponent).cards.append(card)
@@ -104,7 +112,7 @@ class TestExhaustCardsActionSystemExhaustTrue:
     async def test_exhaust_card_moves_to_exhaust_pile(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -118,7 +126,7 @@ class TestExhaustCardsActionSystemExhaustTrue:
         assert card in entity.get(ExhaustPileComponent).cards
 
         # 容器变了就给主人留一条说明（只写给本人）
-        message = mock_game.add_human_message.call_args.kwargs["human_message"]
+        message = mock_game.world.agent_memories["英雄"].messages[-1]
         assert "# 卡牌被消耗" in message.content
         assert "本场战斗不会再回到牌库" in message.content
         assert json.loads(message.card_pile_change) == {
@@ -130,7 +138,7 @@ class TestExhaustCardsActionSystemExhaustTrue:
     async def test_exhaust_pile_accumulates(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
         """多次调用后 ExhaustPile 应累积。"""
@@ -159,7 +167,7 @@ class TestExhaustCardsActionSystemExhaustFalse:
     async def test_normal_card_not_moved(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -182,7 +190,7 @@ class TestExhaustCardsActionSystemForeignCard:
     async def test_foreign_exhaust_card_moves_to_exhaust_pile(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")

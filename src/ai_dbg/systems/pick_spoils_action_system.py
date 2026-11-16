@@ -6,6 +6,9 @@ from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import (
     ActorComponent,
     Card,
@@ -32,7 +35,7 @@ class PickSpoilsActionSystem(ReactiveProcessor):
     """响应 PickSpoilsAction，按 reward_kind 路由领取结果；当前仅支持卡牌（从 Spoils.candidate_cards 出队追加进 DeckComponent，并记入 Spoils.claimed_cards）。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -90,7 +93,8 @@ class PickSpoilsActionSystem(ReactiveProcessor):
             entity.replace(SpoilsComponent, entity.name, remaining_cards, claimed_cards)
 
             # 让本人知道牌库变了：只写给自己（领取是私人动作，不对外广播）
-            self._game.add_human_message(
+            add_human_message(
+                self._game,
                 entity=entity,
                 human_message=HumanMessage(
                     content=_build_pick_spoils_message(

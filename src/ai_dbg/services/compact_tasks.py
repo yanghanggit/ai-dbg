@@ -42,7 +42,7 @@ async def execute_compact_context_task(
                 raise ValueError(message)
 
             # 执行 compact pipeline，仅处理手动触发的 CompactContextAction
-            await rpg_game._compact_pipeline.process()
+            await rpg_game.compact_pipeline.process()
 
             # 存档压缩后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

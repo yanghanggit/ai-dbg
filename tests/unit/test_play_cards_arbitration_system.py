@@ -13,8 +13,10 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.rpg_agent_memory import (
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ai_dbg.game.game_memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
 )
@@ -22,13 +24,17 @@ from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
+    CharacterStats,
+    CharacterStatsComponent,
     HumanMessage,
     PlayCardsAction,
     RoundEntryKind,
     RoundStatsComponent,
+    StageComponent,
     SystemMessage,
     TargetType,
 )
+from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
 
 
@@ -45,9 +51,14 @@ def _make_card() -> Card:
 def _make_actor(context: Context, name: str, card: Card, targets: List[str]) -> Entity:
     entity = context.create_entity()
     entity._name = name
-    entity.add(ActorComponent, name, "dungeon")
+    entity.add(ActorComponent, name, "场景.测试密室")
     entity.add(PlayCardsAction, name, card, targets)
     entity.add(RoundStatsComponent, name, 2)
+    entity.add(
+        CharacterStatsComponent,
+        name,
+        CharacterStats(hp=10, max_hp=10),
+    )
     return entity
 
 
@@ -63,18 +74,50 @@ def stage_memory() -> SimpleNamespace:
 
 
 @pytest.fixture()
-def mock_game(stage_memory: SimpleNamespace) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    combat = game.current_dungeon_combat_room.combat
+def mock_game(
+    context: Context,
+    stage_memory: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {"场景.测试密室": stage_memory}
+    game.player_session = MagicMock()
+    combat: Any = current_dungeon_combat_room(game).combat
     combat.is_ongoing = True
-    combat.rounds = [object()]
+    combat.rounds = [MagicMock()]
     combat.latest_round.action_order = []
     combat.latest_round.completed_actors = []
     combat.latest_round.current_actor = None
-    stage = MagicMock()
-    stage.name = "场景.测试密室"
-    game.resolve_stage_entity.return_value = stage
-    game.get_agent_memory.return_value = stage_memory
+    stage = context.create_entity()
+    stage._name = "场景.测试密室"
+    stage.add(StageComponent, stage.name)
+
+    real_add: Any = getattr(arbitration_common, "add_human_message")
+    game.add_human_message = MagicMock(
+        side_effect=lambda entity, message: real_add(game, entity, message)
+    )
+    monkeypatch.setattr(
+        arbitration_common,
+        "add_human_message",
+        lambda _game, entity, message: game.add_human_message(entity, message),
+    )
+
+    real_replace: Any = getattr(arbitration_common, "replace_span")
+    game.replace_span = MagicMock(
+        side_effect=lambda entity, start, end, messages, **kwargs: real_replace(
+            game, entity, start, end, messages, **kwargs
+        )
+    )
+    monkeypatch.setattr(
+        arbitration_common,
+        "replace_span",
+        lambda _game, entity, start, end, messages, **kwargs: game.replace_span(
+            entity, start, end, messages, **kwargs
+        ),
+    )
+
     # 通知 / 落库阶段：角色可解析、组件齐全（HP 细节由 compute/set 的 patch 接管）
     game.get_actor_entity.return_value = MagicMock()
     game.get_entity_by_name.return_value = MagicMock()
@@ -135,7 +178,7 @@ class TestLoopMemoryCompression:
     async def test_success_compresses_loop_span_into_summary(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         system = PlayCardsArbitrationSystem(mock_game)
@@ -174,14 +217,14 @@ class TestLoopMemoryCompression:
         assert getattr(summary, LOOP_END_ATTR) == loop_id
 
         # 落库先于压缩：HP 落库与回合记录均已发生
-        latest_round = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
         assert latest_round.record.call_count == 1
 
     @pytest.mark.asyncio
     async def test_failure_keeps_trace_and_appends_notice(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         """失败不回滚：过程留在记忆里，只补一条系统说明。"""
@@ -196,7 +239,7 @@ class TestLoopMemoryCompression:
 
         # 不压缩、不删除：记忆里仍是 system + 本次 loop 的两条轨迹
         mock_game.replace_span.assert_not_called()
-        assert len(stage_memory.messages) == 3
+        assert len(stage_memory.messages) == 4
 
         # 补一条声明「未落库」的系统说明
         mock_game.add_human_message.assert_called_once()
@@ -211,7 +254,7 @@ class TestLoopMemoryCompression:
         assert getattr(notice, LOOP_ID_ATTR) == getattr(notice, LOOP_END_ATTR)
 
         # 回合日志留下失败痕迹（kind=failed，中性可展示文案）
-        latest_round = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
         assert latest_round.record.call_count == 1
         kind, log, _narrative = latest_round.record.call_args.args
         assert kind == RoundEntryKind.FAILED
@@ -223,7 +266,7 @@ class TestLoopMemoryCompression:
     async def test_exception_keeps_trace_and_appends_notice(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         """agent_loop 抛异常同样不回滚，只把原因记进记忆。"""
@@ -244,13 +287,13 @@ class TestLoopMemoryCompression:
     async def test_persistence_happens_before_compression(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         """落库（写 HP / 回合记录）必须发生在压缩记忆之前，避免「已完成」假象。"""
         system = PlayCardsArbitrationSystem(mock_game)
         actor = _make_actor(context, "角色.无名", _make_card(), [])
-        latest_round = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
 
         order: List[str] = []
         latest_round.record.side_effect = lambda *a, **kw: order.append("record")
@@ -275,7 +318,7 @@ class TestLoopIdUniqueness:
     async def test_same_actor_same_card_gets_distinct_loop_ids(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         """同回合同角色打出同一张牌两次：loop_id 不能重号（否则反查边界会撞）。"""
@@ -306,7 +349,7 @@ class TestLoopIdUniqueness:
     async def test_repeated_failures_get_distinct_loop_ids(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
         """LLM 首轮就失败时不产生轨迹；此时仍须靠失败说明占住序号，两次失败不能重号。"""

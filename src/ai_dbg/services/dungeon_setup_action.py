@@ -9,6 +9,16 @@ from typing import Tuple
 from loguru import logger
 
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    is_dungeon_setup_entities,
+    is_player_in_dungeon_stage,
+)
+from ..game.game_entities import (
+    create_actor_entities,
+    create_stage_entities,
+    get_actor_entity,
+    get_stage_entity,
+)
 from ..models import (
     ActorType,
     Dungeon,
@@ -40,43 +50,43 @@ def setup_dungeon(dbg_game: DBGGame, dungeon_name: str) -> Tuple[bool, str]:
         return False, error_msg
 
     # 守护：当前游戏世界中已有副本正在进行，不允许重新 setup
-    if dbg_game._world.dungeon.current_room_index >= 0:
-        error_msg = f"setup_dungeon 失败: 当前副本 {dbg_game._world.dungeon.name!r} 正在进行中 (current_room_index={dbg_game._world.dungeon.current_room_index})，请先退出"
+    if dbg_game.world.dungeon.current_room_index >= 0:
+        error_msg = f"setup_dungeon 失败: 当前副本 {dbg_game.world.dungeon.name!r} 正在进行中 (current_room_index={dbg_game.world.dungeon.current_room_index})，请先退出"
         logger.error(error_msg)
         return False, error_msg
 
-    assert (
-        not dbg_game.is_player_in_dungeon_stage
+    assert not is_player_in_dungeon_stage(
+        dbg_game
     ), "setup_dungeon 失败: 玩家已在副本场景中！"
 
-    # 2. 赋值到游戏世界（此后 dbg_game.current_dungeon 指向新加载的实例）
-    dbg_game._world.dungeon = dungeon
+    # 2. 赋值到游戏世界（此后 current_dungeon(dbg_game) 指向新加载的实例）
+    dbg_game.world.dungeon = dungeon
     logger.debug(f"setup_dungeon: 已将 {dungeon.name} 赋值到 world.dungeon")
 
     # 3. 幂等：实体已创建则跳过
-    if dbg_game.is_dungeon_setup_entities:
+    if is_dungeon_setup_entities(dbg_game):
         logger.debug(f"setup_dungeon: {dungeon.name} 实体已创建，跳过")
         return True, f"副本实体已存在，跳过创建: {dungeon.name}"
 
     # 4. 验证：所有 actor 必须是 MONSTER 类型
     for room in dungeon.rooms:
         for actor in room.stage.actors:
-            actor_entity = dbg_game.get_actor_entity(actor.name)
+            actor_entity = get_actor_entity(dbg_game, actor.name)
             assert actor_entity is None, "actor_entity is not None"
             assert actor.type == ActorType.MONSTER, "actor_entity is not enemy type"
 
     # 5. 验证：所有关卡场景必须是 DUNGEON 类型
     for room in dungeon.rooms:
-        stage_entity = dbg_game.get_stage_entity(room.stage.name)
+        stage_entity = get_stage_entity(dbg_game, room.stage.name)
         assert stage_entity is None, "stage_entity is not None"
         assert room.stage.type == StageType.DUNGEON, "stage_entity is not dungeon type"
 
     # 6. 创建副本实体（敌人和关卡场景）
     logger.debug(f"正在根据副本模型创建实体: {dungeon.name}")
-    dbg_game.create_actor_entities(
-        [actor for room in dungeon.rooms for actor in room.stage.actors]
+    create_actor_entities(
+        dbg_game, [actor for room in dungeon.rooms for actor in room.stage.actors]
     )
-    dbg_game.create_stage_entities([room.stage for room in dungeon.rooms])
+    create_stage_entities(dbg_game, [room.stage for room in dungeon.rooms])
 
     logger.info(f"setup_dungeon 完成: {dungeon.name}")
     return True, f"副本实体创建完成: {dungeon.name}"

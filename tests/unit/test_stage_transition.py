@@ -8,11 +8,18 @@ Unit tests for src/ai_dbg/game/stage_transition.py
 """
 
 from typing import Any, Dict
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.game_entities import (
+    create_entity,
+    resolve_stage_entity,
+)
+from ai_dbg.game.game_memory import (
+    get_agent_memory,
+)
 from ai_dbg.game.rpg_stage_transition import (
     _build_stage_arrival_message,
     _build_stage_departure_message,
@@ -33,14 +40,14 @@ from ai_dbg.models import (
 
 def _make_stage(game: Any, stage_name: str) -> Entity:
     """在 game 中创建一个带 StageComponent 的场景实体。"""
-    entity: Entity = game._create_entity(stage_name)
+    entity: Entity = create_entity(game, stage_name)
     entity.add(StageComponent, stage_name)
     return entity
 
 
 def _make_actor(game: Any, actor_name: str, current_stage_name: str) -> Entity:
     """在 game 中创建一个带 ActorComponent 的角色实体。"""
-    entity: Entity = game._create_entity(actor_name)
+    entity: Entity = create_entity(game, actor_name)
     entity.add(ActorComponent, actor_name, current_stage_name)
     return entity
 
@@ -121,7 +128,11 @@ class TestValidateStageTransitionPrerequisites:
         actor = self._mock_actor()
         game = self._mock_game({actor: dest})
 
-        result = _validate_stage_transition_prerequisites(game, {actor}, dest)
+        with patch(
+            "ai_dbg.game.rpg_stage_transition.resolve_stage_entity",
+            return_value=dest,
+        ):
+            result = _validate_stage_transition_prerequisites(game, {actor}, dest)
 
         assert result == set()
 
@@ -146,9 +157,15 @@ class TestValidateStageTransitionPrerequisites:
 
         game = self._mock_game({actor_at_dest: dest, actor_at_source: source})
 
-        result = _validate_stage_transition_prerequisites(
-            game, {actor_at_dest, actor_at_source}, dest
-        )
+        with patch(
+            "ai_dbg.game.rpg_stage_transition.resolve_stage_entity",
+            side_effect=lambda _game, actor: (
+                dest if actor is actor_at_dest else source
+            ),
+        ):
+            result = _validate_stage_transition_prerequisites(
+                game, {actor_at_dest, actor_at_source}, dest
+            )
 
         assert result == {actor_at_source}
 
@@ -191,7 +208,7 @@ class TestStageTransition:
 
         stage_transition(game, {actor}, dest)
 
-        assert game.resolve_stage_entity(actor) is dest
+        assert resolve_stage_entity(game, actor) is dest
 
     def test_empty_actors_set_does_nothing(self, game: Any) -> None:
         """空角色集合不应改变任何状态。"""
@@ -236,7 +253,7 @@ class TestStageTransition:
 
         stage_transition(game, {actor}, dest)
 
-        messages = game.get_agent_memory(actor).messages
+        messages = get_agent_memory(game, actor).messages
         contents = [m.content for m in messages]
         assert any(
             "起点" in c and "终点" in c for c in contents
@@ -250,7 +267,7 @@ class TestStageTransition:
 
         stage_transition(game, {actor}, dest)
 
-        messages = game.get_agent_memory(source).messages
+        messages = get_agent_memory(game, source).messages
         contents = [m.content for m in messages]
         assert any(
             "离开" in c for c in contents
@@ -264,7 +281,7 @@ class TestStageTransition:
 
         stage_transition(game, {actor}, dest)
 
-        messages = game.get_agent_memory(dest).messages
+        messages = get_agent_memory(game, dest).messages
         contents = [m.content for m in messages]
         assert any(
             "进入" in c for c in contents

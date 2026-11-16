@@ -16,6 +16,12 @@ from overrides import override
 from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_memory import (
+    get_agent_memory,
+)
 from ..llm import ToolDefinition, ToolFunction
 from ..models import (
     ActorComponent,
@@ -507,7 +513,7 @@ class CardOperationSystem(ReactiveProcessor):
     """响应出牌：结算该牌的运转词缀，由持有者自己操作自己的牌堆。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -529,7 +535,7 @@ class CardOperationSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("CardOperationSystem: 战斗未进行中，跳过运转结算")
             return
 
@@ -546,10 +552,10 @@ class CardOperationSystem(ReactiveProcessor):
         for pile in PILES:
             _pile_cards(entity, pile)  # 缺组件在这里断言，不做降级
 
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds or [])
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
         before = {pile: len(_pile_cards(entity, pile)) for pile in PILES}
 
-        memory = self._game.get_agent_memory(entity)
+        memory = get_agent_memory(self._game, entity)
         loop_id = make_loop_id(
             memory.messages, "card_operation", round_number, entity.name, card.name
         )

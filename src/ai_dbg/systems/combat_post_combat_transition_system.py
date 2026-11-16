@@ -7,6 +7,9 @@ from overrides import override
 
 from ..entitas import ExecuteProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 
 
 #######################################################################################################################################
@@ -22,7 +25,7 @@ class CombatPostCombatTransitionSystem(ExecuteProcessor):
     async def execute(self) -> None:
         """每帧检查战斗是否结束；结束则将战斗状态转换为战后阶段。"""
 
-        combat = self._game.current_dungeon_combat_room.combat
+        combat = current_dungeon_combat_room(self._game).combat
         if not combat.is_combat_completed:
             # 战斗未结束（或已处于战后阶段），无需转换。
             return

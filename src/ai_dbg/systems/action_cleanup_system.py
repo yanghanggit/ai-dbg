@@ -4,7 +4,7 @@ from typing import Final, FrozenSet, Mapping, Type, final, override
 
 from ..entitas import ExecuteProcessor, Matcher
 from ..entitas.components import Component
-from ..game.rpg_game import RPGGame
+from ..game.dbg_game import DBGGame
 from ..models import (
     ACTION_COMPONENT_TYPES,
 )
@@ -17,10 +17,10 @@ class ActionCleanupSystem(ExecuteProcessor):
     ############################################################################################################
     def __init__(
         self,
-        game: RPGGame,
+        game: DBGGame,
         action_component_types: Mapping[str, Type[Component]] = ACTION_COMPONENT_TYPES,
     ) -> None:
-        self._game: Final[RPGGame] = game
+        self._game: Final[DBGGame] = game
         self._registered_actions: Final[FrozenSet[Type[Component]]] = frozenset(
             action_component_types.values()
         )
@@ -30,7 +30,7 @@ class ActionCleanupSystem(ExecuteProcessor):
     async def execute(self) -> None:
 
         # 清除行动！
-        action_entities = self._game.get_group(
+        action_entities = self._game.ecs.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities.copy()
 
@@ -40,7 +40,7 @@ class ActionCleanupSystem(ExecuteProcessor):
                     entity.remove(action_class)
 
         # 确认一下！
-        cleared_entities = self._game.get_group(
+        cleared_entities = self._game.ecs.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities
         assert len(cleared_entities) == 0, f"entities with actions: {cleared_entities}"

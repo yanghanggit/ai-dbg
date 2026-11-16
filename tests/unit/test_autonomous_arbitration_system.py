@@ -7,7 +7,7 @@
 """
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,8 +15,10 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.game.rpg_agent_memory import REPLACED_MESSAGES_ATTR
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ai_dbg.game.game_memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,
@@ -28,6 +30,7 @@ from ai_dbg.models import (
     SystemMessage,
     TargetType,
 )
+from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.autonomous_arbitration_system import (
     AutonomousArbitrationSystem,
 )
@@ -51,7 +54,7 @@ def _make_card(name: str, *, autonomous: bool = False) -> Card:
 def _make_actor(context: Context, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
-    entity.add(ActorComponent, name, "dungeon")
+    entity.add(ActorComponent, name, "场景.测试密室")
     entity.add(HandComponent, name, [])
     return entity
 
@@ -62,24 +65,53 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_ongoing = True
-    game.current_dungeon_combat_room.combat.rounds = [object()]
-    game.get_actors_in_stage.return_value = []
-    stage = MagicMock()
-    stage.name = "场景.测试密室"
-    game.resolve_stage_entity.return_value = stage
-    # 生产环境下 stage 记忆首条是 SystemMessage，loop 从索引 1 开始。
-    game.get_agent_memory.return_value = SimpleNamespace(
-        messages=[SystemMessage(content="你是本场景的仲裁者")]
+def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {
+        "场景.测试密室": SimpleNamespace(
+            messages=[SystemMessage(content="你是本场景的仲裁者")]
+        )
+    }
+    game.player_session = MagicMock()
+    combat: Any = current_dungeon_combat_room(game).combat
+    combat.is_ongoing = True
+    combat.rounds = [MagicMock()]
+    stage = context.create_entity()
+    stage._name = "场景.测试密室"
+    from ai_dbg.models import StageComponent
+
+    stage.add(StageComponent, stage.name)
+
+    real_add: Any = getattr(arbitration_common, "add_human_message")
+    game.add_human_message = MagicMock(
+        side_effect=lambda entity, message: real_add(game, entity, message)
+    )
+    monkeypatch.setattr(
+        arbitration_common,
+        "add_human_message",
+        lambda _game, entity, message: game.add_human_message(entity, message),
+    )
+    real_replace: Any = getattr(arbitration_common, "replace_span")
+    game.replace_span = MagicMock(
+        side_effect=lambda entity, start, end, messages, **kwargs: real_replace(
+            game, entity, start, end, messages, **kwargs
+        )
+    )
+    monkeypatch.setattr(
+        arbitration_common,
+        "replace_span",
+        lambda _game, entity, start, end, messages, **kwargs: game.replace_span(
+            entity, start, end, messages, **kwargs
+        ),
     )
     return game
 
 
 class TestCollectHandAutonomousCards:
     def test_returns_only_autonomous_cards(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         actor = _make_actor(context, "英雄")
@@ -98,7 +130,7 @@ class TestCollectHandAutonomousCards:
 
 class TestAutonomousArbitrationSystem:
     def test_filter_requires_pass_turn_and_autonomous_card(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         entity = context.create_entity()
@@ -111,7 +143,7 @@ class TestAutonomousArbitrationSystem:
         assert system.filter(entity) is True
 
     def test_filter_false_when_no_autonomous_card(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "英雄")
@@ -122,9 +154,9 @@ class TestAutonomousArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_react_skips_when_not_ongoing(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "英雄")
         holder.add(PassTurnAction, "英雄")
@@ -139,7 +171,7 @@ class TestAutonomousArbitrationSystem:
 
     @pytest.mark.asyncio
     async def test_stage_arbitrates_autonomous_without_locking_target(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")
@@ -168,9 +200,6 @@ class TestAutonomousArbitrationSystem:
         prompt = mock_agent_loop.await_args.kwargs["input_message"]
         assert "场上任意存活角色" in prompt
         assert "不锁定持有者" in prompt
-        mock_game.get_agent_memory.assert_called_with(
-            mock_game.resolve_stage_entity.return_value
-        )
         # 未提交结果（mock 未驱动 handler）：不回滚，只补一条「未完成」系统说明
         mock_game.replace_span.assert_not_called()
         mock_game.add_human_message.assert_called_once()
@@ -178,7 +207,7 @@ class TestAutonomousArbitrationSystem:
         assert "本次结算未完成" in notice.content
         assert "未落库" in notice.content
 
-        latest_round = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
         assert latest_round.record.call_args.args[0] == RoundEntryKind.FAILED
 
 
@@ -203,7 +232,7 @@ class TestAutonomousLoopMemoryCompression:
 
     @pytest.mark.asyncio
     async def test_success_compresses_span_and_records_autonomous(
-        self, context: Context, mock_game: MagicMock
+        self, context: Context, mock_game: Any
     ) -> None:
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "怪物.纸人")
@@ -232,6 +261,6 @@ class TestAutonomousLoopMemoryCompression:
         assert getattr(summary, LOOP_END_ATTR) == getattr(summary, LOOP_ID_ATTR)
 
         # 落库写入独立的 AUTONOMOUS 回合记录
-        latest_round = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
         assert latest_round.record.call_count == 1
         assert latest_round.record.call_args.args[0] == RoundEntryKind.AUTONOMOUS

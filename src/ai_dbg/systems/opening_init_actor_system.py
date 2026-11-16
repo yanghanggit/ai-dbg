@@ -11,6 +11,18 @@ from ..game.dbg_combat_processor import (
     get_alive_actors_in_stage,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    is_current_room_dungeon_opening,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_ai_message,
+    add_human_message,
+    filter_messages,
+)
 from ..game.rpg_stage_environment import get_stage_environment
 from ..models import (
     AIMessage,
@@ -87,18 +99,18 @@ class OpeningInitActorSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
-        if not self._game.is_current_room_dungeon_opening:
+        if not is_current_room_dungeon_opening(self._game):
             logger.debug("当前副本房间非开场房间，跳过开场初始化（角色侧）")
             return
 
         logger.info("开场初始化（角色侧）开始：注入开场场景环境信息...")
 
         # 获取玩家实体，player 所在场景即开场场景
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "无法找到玩家实体！"
 
         # 获取当前场景实体
-        current_stage_entity = self._game.resolve_stage_entity(player_entity)
+        current_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert current_stage_entity is not None, "无法找到当前场景实体！"
 
         # 读取场景环境叙事（缺失时降级为占位文案，不阻断开场初始化）
@@ -127,7 +139,8 @@ class OpeningInitActorSystem(ExecuteProcessor):
         for actor_entity in actor_entities:
 
             # 幂等保护：同一场景内只注入一次，避免开场初始化任务被重复触发时重复写入场景环境信息
-            existing_messages = self._game.filter_messages(
+            existing_messages = filter_messages(
+                self._game,
                 entity=actor_entity,
                 predicate=lambda msg, index, messages: (
                     getattr(msg, "opening_initialization", None) == stage_name
@@ -183,7 +196,8 @@ class OpeningInitActorSystem(ExecuteProcessor):
             )
 
             # 注入开场场景环境信息
-            self._game.add_human_message(
+            add_human_message(
+                self._game,
                 entity=actor_entity,
                 human_message=HumanMessage(
                     content=opening_init_prompt,
@@ -192,7 +206,8 @@ class OpeningInitActorSystem(ExecuteProcessor):
             )
 
             # 注入模拟 AI 回应，维护 Human↔AI 交替结构
-            self._game.add_ai_message(
+            add_ai_message(
+                self._game,
                 entity=actor_entity,
                 ai_message=AIMessage(content="已感知当前场景环境。"),
             )

@@ -20,7 +20,23 @@ from ..game.dbg_combat_processor import (
     set_character_hp,
 )
 from ..game.dbg_game import DBGGame
-from ..game.rpg_agent_memory import KEEP_ON_COMPACT_ATTR, REPLACED_MESSAGES_ATTR
+from ..game.game_broadcast import (
+    broadcast_to_stage,
+)
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+    get_entity_by_name,
+)
+from ..game.game_memory import (
+    KEEP_ON_COMPACT_ATTR,
+    REPLACED_MESSAGES_ATTR,
+    add_human_message,
+    get_agent_memory,
+    replace_span,
+)
 from ..llm import LOOP_END_ATTR, LOOP_ID_ATTR, ToolDefinition, ToolFunction
 from ..models import (
     Card,
@@ -212,7 +228,7 @@ def get_entity_stats(
     game: DBGGame, entity_name: str, *, on_hit_cards: bool = False
 ) -> str:
     """「获取状态工具」核心：返回 HP / 总格挡；``on_hit_cards=True`` 时附上受击卡牌。"""
-    entity = game.get_actor_entity(entity_name)
+    entity = get_actor_entity(game, entity_name)
     if entity is None:
         return f"错误：找不到战斗角色 {entity_name}"
 
@@ -262,7 +278,7 @@ def resolve_damage(
     """
     if require_entity is not None and entity_name != require_entity:
         return _target_guard_error(entity_name, require_entity)
-    entity = game.get_actor_entity(entity_name)
+    entity = get_actor_entity(game, entity_name)
     if entity is None:
         return f"错误：找不到战斗角色 {entity_name}"
     stats = compute_character_stats(entity)
@@ -297,7 +313,7 @@ def resolve_effect(
     """「受效结算」核心：反伤 / 吸血 / 治疗按 base×系数、每击，由纯计算模块算净扣减。"""
     if require_entity is not None and entity_name != require_entity:
         return _target_guard_error(entity_name, require_entity)
-    entity = game.get_actor_entity(entity_name)
+    entity = get_actor_entity(game, entity_name)
     if entity is None:
         return f"错误：找不到战斗角色 {entity_name}"
     stats = compute_character_stats(entity)
@@ -391,8 +407,9 @@ def compress_loop_to_summary(
     """把一次 agent_loop 新增的整段记忆压缩为一条「总结 + 数据日志」，并标记 loop 起止
     （供存档记忆里按 ``loop_id`` 反查）。须在结果落库之后调用。
     """
-    messages = game.get_agent_memory(entity).messages
-    game.replace_span(
+    messages = get_agent_memory(game, entity).messages
+    replace_span(
+        game,
         entity,
         start_index,
         len(messages),
@@ -485,8 +502,9 @@ def apply_arbitration_result(
     assert ctx.narrative is not None, "narrative 不应为 None"
     narrative = ctx.narrative
 
-    current_round_number = len(game.current_dungeon_combat_room.combat.rounds or [])
-    game.broadcast_to_stage(
+    current_round_number = len(current_dungeon_combat_room(game).combat.rounds or [])
+    broadcast_to_stage(
+        game,
         entity=stage_entity,
         agent_event=CombatArbitrationEvent(
             message=build_arbitration_broadcast(
@@ -503,14 +521,15 @@ def apply_arbitration_result(
         logger.warning(f"[arbitration:{kind}] 无法按计算规则结算（telemetry）: {affix}")
 
     for entity_name, hp in ctx.hp_changes.items():
-        entity = game.get_entity_by_name(entity_name)
+        entity = get_entity_by_name(game, entity_name)
         assert entity is not None, f"无法找到 hp_changes 中的实体: {entity_name}"
         old_hp = compute_character_stats(entity).hp
         after_stats = set_character_hp(entity, int(hp))
         logger.info(
             f"更新 {entity_name} HP: {old_hp} → {after_stats.hp}/{after_stats.max_hp}"
         )
-        game.add_human_message(
+        add_human_message(
+            game,
             entity,
             HumanMessage(
                 content=build_stats_update_notification(
@@ -520,7 +539,7 @@ def apply_arbitration_result(
             ),
         )
 
-    latest_round = game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(game).combat.latest_round
     assert latest_round is not None, "latest_round 不应为 None"
     latest_round.record(_ROUND_ENTRY_KIND[kind], combat_log, narrative)
 
@@ -538,7 +557,8 @@ def record_aborted_loop(
     不回滚也不删除——失败也是上下文的一部分，且工具调用已经发生过；
     说明里声明「未落库」，使后续阅读者不把过程当既成事实。
     """
-    game.add_human_message(
+    add_human_message(
+        game,
         entity,
         HumanMessage(
             content=build_aborted_loop_notice(loop_id, reason),
@@ -550,7 +570,7 @@ def record_aborted_loop(
         ),
     )
 
-    latest_round = game.current_dungeon_combat_room.combat.latest_round
+    latest_round = current_dungeon_combat_room(game).combat.latest_round
     assert latest_round is not None, "latest_round 不应为 None"
     latest_round.record(
         RoundEntryKind.FAILED,

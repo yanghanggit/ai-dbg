@@ -7,6 +7,10 @@ import ai_dbg.game.dbg_combat_processor as combat_processor
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dbg_combat_processor import resolve_targets
 from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import current_dungeon_combat_room
+from ai_dbg.game.game_entities import (
+    create_entity,
+)
 from ai_dbg.models import (
     ActorComponent,
     Blueprint,
@@ -47,14 +51,14 @@ def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame
 
 
 def _make_stage(game: Any, name: str) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(name))
+    entity: Entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(DungeonComponent, name)
     return entity
 
 
 def _make_ally(game: Any, name: str, stage_name: str, dead: bool = False) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(name))
+    entity: Entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
     entity.add(PartyMemberComponent, name)
     if dead:
@@ -63,7 +67,7 @@ def _make_ally(game: Any, name: str, stage_name: str, dead: bool = False) -> Ent
 
 
 def _make_monster(game: Any, name: str, stage_name: str, dead: bool = False) -> Entity:
-    entity: Entity = cast(Entity, game._create_entity(name))
+    entity: Entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
     entity.add(MonsterComponent, name)
     if dead:
@@ -159,7 +163,7 @@ class TestResolveTargetsAll:
         game = _make_game()
         _make_stage(game, "stage1")
         hero = _make_ally(game, "hero", "stage1")
-        neutral = game._create_entity("中立者")
+        neutral = create_entity(game, "中立者")
         neutral.add(ActorComponent, "中立者", "stage1")
 
         targets, err = resolve_targets(TargetType.ALL, 1, hero, ["中立者"], game)
@@ -282,11 +286,11 @@ class TestSpreadHitListFeedsTransfer:
         assert len(monster.get(HandComponent).cards) == 5
 
 
-def _make_transfer_game(actors: Dict[str, Entity]) -> MagicMock:
+def _make_transfer_game(actors: Dict[str, Entity]) -> Any:
     """只提供转移系统所需接口的 game stub。"""
-    mock_game = MagicMock(spec=DBGGame)
-    mock_game.current_dungeon_combat_room.combat.is_ongoing = True
-    mock_game.get_actor_entity.side_effect = lambda name: actors.get(name)
+    mock_game = MagicMock()
+    cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+    mock_game.entity_index = actors
     for entity in actors.values():
         if not entity.has(HandComponent):
             entity.add(HandComponent, entity.name, [])

@@ -7,6 +7,17 @@ from loguru import logger
 from ..entitas import Component, Entity, ExecuteProcessor
 from ..game.dbg_combat_processor import clear_round_state
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actors_in_stage,
+    get_player_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import (
     CombatResult,
     DeathComponent,
@@ -46,7 +57,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
     async def execute(self) -> None:
         """检测阵营全灭条件，调用 complete_combat() 结束战斗并广播结果；战斗未 ONGOING 时静默跳过。"""
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前不在战斗阶段，无需判定战斗胜负")
             return  # 不是本阶段就直接返回
 
@@ -60,7 +71,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
         logger.info(f"战斗结束，结果: {combat_result}")
 
         # 推进战斗状态机（ONGOING -> COMPLETE），后续 pipeline 系统据此判断是否进入战后阶段
-        self._game.current_dungeon_combat_room.combat.complete_combat(combat_result)
+        current_dungeon_combat_room(self._game).combat.complete_combat(combat_result)
 
         # 根据判定结果清理回合状态并广播战斗结果
         record_round_end_discard(self._game, clear_round_state(self._game))
@@ -84,10 +95,10 @@ class CombatOutcomeSystem(ExecuteProcessor):
     ########################################################################################################################################################################
     def _get_actors_in_stage(self) -> Set[Entity]:
         """返回当前场景内所有参战角色实体（含已死亡角色）。"""
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "Player entity should not be None."
 
-        actors_in_stage = self._game.get_actors_in_stage(player_entity)
+        actors_in_stage = get_actors_in_stage(self._game, player_entity)
         assert len(actors_in_stage) > 0, f"entities with actions: {actors_in_stage}"
         return actors_in_stage
 
@@ -158,15 +169,15 @@ class CombatOutcomeSystem(ExecuteProcessor):
         文本按各自阵营视角生成：队伍看 `CombatResult`，怪物看其反面。
         """
 
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "Player entity should not be None."
 
-        combat_stage_entity = self._game.resolve_stage_entity(player_entity)
+        combat_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert (
             combat_stage_entity is not None
         ), "Player's stage entity should not be None."
 
-        actors_in_stage = self._game.get_actors_in_stage(player_entity)
+        actors_in_stage = get_actors_in_stage(self._game, player_entity)
         assert len(actors_in_stage) > 0, f"entities with actions: {actors_in_stage}"
 
         for entity in actors_in_stage:
@@ -175,7 +186,8 @@ class CombatOutcomeSystem(ExecuteProcessor):
                 if entity.has(PartyMemberComponent)
                 else result == CombatResult.LOSE
             )
-            self._game.add_human_message(
+            add_human_message(
+                self._game,
                 entity,
                 HumanMessage(
                     content=_build_combat_result_notification(

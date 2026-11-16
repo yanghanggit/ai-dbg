@@ -43,7 +43,7 @@ class GenerateSpoilsActionSystem(ReactiveProcessor):
     """响应奖励生成动作，为触发角色从原型库抽取候选卡、交由 agent 设计后装入 SpoilsComponent。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################

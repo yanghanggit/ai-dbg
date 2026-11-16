@@ -1,18 +1,25 @@
+from typing import Any
+
 """dungeon_spoils_actions 单元测试：奖励与非战斗房间语义。"""
 
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     DeckComponent,
+    DungeonComponent,
     GenerateSpoilsAction,
+    LobbyComponent,
     PartyMemberComponent,
+    PlayerComponent,
     SpoilsComponent,
+    StageComponent,
 )
 from ai_dbg.services.dungeon_spoils_actions import (
     activate_generate_spoils,
@@ -33,13 +40,30 @@ def _make_party_member(context: Context, name: str) -> Entity:
     return entity
 
 
-def _mock_game(party: set[Entity]) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.is_player_in_dungeon_stage = True
-    game.is_current_room_dungeon_combat = False
-    group = MagicMock()
-    group.entities = party
-    game.get_group.return_value = group
+def _mock_game(
+    party: set[Entity], *, in_dungeon: bool = True, in_combat: bool = False
+) -> Any:
+    member = next(iter(party))
+    context = cast(Context, member._context)
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    stage = context.create_entity()
+    stage._name = "场景.测试"
+    stage.add(StageComponent, stage.name)
+    if in_dungeon:
+        stage.add(DungeonComponent, stage.name)
+    else:
+        stage.add(LobbyComponent, stage.name)
+    for entity in party:
+        entity.replace(ActorComponent, entity.name, stage.name)
+    member.add(PlayerComponent, member.name)
+    game.world.dungeon = SimpleNamespace(
+        current_room_index=0,
+        current_room=MagicMock(combat=MagicMock()) if in_combat else SimpleNamespace(),
+    )
     return game
 
 
@@ -81,8 +105,7 @@ def test_remove_spoils_rejects_when_nothing_to_clear(context: Context) -> None:
 def test_remove_spoils_rejects_outside_dungeon(context: Context) -> None:
     member = _make_party_member(context, "英雄")
     member.add(SpoilsComponent, "英雄", [], [])
-    game = _mock_game({member})
-    game.is_player_in_dungeon_stage = False
+    game = _mock_game({member}, in_dungeon=False)
 
     ok, _ = remove_spoils(game)
 
@@ -97,8 +120,7 @@ def test_remove_spoils_rejects_outside_dungeon(context: Context) -> None:
 
 def test_generate_spoils_rejected_in_combat_room(context: Context) -> None:
     member = _make_party_member(context, "英雄")
-    game = _mock_game({member})
-    game.is_current_room_dungeon_combat = True
+    game = _mock_game({member}, in_combat=True)
 
     ok, msg = activate_generate_spoils(game)
 
@@ -139,8 +161,9 @@ def test_party_has_any_spoils_requires_component() -> None:
     from ai_dbg.services.dungeon_spoils_actions import party_has_any_spoils
 
     context = Context()
-    game = MagicMock(spec=DBGGame)
-    game.get_group.side_effect = context.get_group
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
 
     entity = context.create_entity()
     entity._name = "角色.无名"

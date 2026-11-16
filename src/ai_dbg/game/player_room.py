@@ -10,6 +10,7 @@ from typing import AsyncGenerator, Final, Optional
 
 from ..models import PlayerSession
 from .dbg_game import DBGGame
+from .game_lifecycle import exit_game
 
 
 ###############################################################################################################################################
@@ -99,7 +100,7 @@ class PlayerRoom:
 
             # 退出游戏并关闭房间
             if self._dbg_game is not None:
-                self._dbg_game.exit()
+                exit_game(self._dbg_game)
 
             # 标记房间为已关闭并清理游戏与会话实例
             self._closed = True

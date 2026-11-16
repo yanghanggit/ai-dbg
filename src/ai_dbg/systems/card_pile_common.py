@@ -13,6 +13,9 @@ from typing import Dict, Final, List, Mapping, Sequence, Tuple
 
 from ..entitas import Entity
 from ..game.dbg_game import DBGGame
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..llm import ToolDefinition, ToolFunction
 from ..models import (
     Card,
@@ -89,7 +92,8 @@ def record_pile_change(
         deltas.values()
     ), f"{owner.name} 的牌堆变更没有净增减，不该写记忆（change={change}）"
     content = "\n".join([f"# {title}", *lines])
-    game.add_human_message(
+    add_human_message(
+        game,
         entity=owner,
         human_message=HumanMessage(
             content=content,

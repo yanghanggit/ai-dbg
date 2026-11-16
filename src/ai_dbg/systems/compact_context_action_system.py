@@ -12,6 +12,13 @@ from overrides import override
 from ..deepseek import batch_complete
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_entity_by_name,
+)
+from ..game.game_memory import (
+    compact_agent_memory,
+    get_agent_memory,
+)
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import CompactContextAction, HumanMessage, get_buffer_string
 from .context_compaction_prompt_builders import build_compaction_prompt
@@ -23,7 +30,7 @@ class CompactContextActionSystem(ReactiveProcessor):
     """响应 CompactContextAction，压缩指定实体的记忆。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     #######################################################################################################################################
@@ -42,7 +49,7 @@ class CompactContextActionSystem(ReactiveProcessor):
         # 仅保留存在可压缩内容（除首条 system 外还有消息）的实体
         requests: List[ChatCompletionRequest] = []
         for entity in entities:
-            memory = self._game.get_agent_memory(entity)
+            memory = get_agent_memory(self._game, entity)
             if len(memory.messages) <= 1:
                 logger.debug(
                     f"CompactContextActionSystem: {entity.name} 无可压缩内容，跳过"
@@ -72,14 +79,15 @@ class CompactContextActionSystem(ReactiveProcessor):
                 )
                 continue
 
-            target_entity = self._game.get_entity_by_name(result.label)
+            target_entity = get_entity_by_name(self._game, result.label)
             assert target_entity is not None, f"无法找到实体：{result.label}"
 
             # 提取被压缩的原始历史为整字符串，附在摘要消息上留痕
-            agent_memory = self._game.get_agent_memory(target_entity)
+            agent_memory = get_agent_memory(self._game, target_entity)
             removed_buffer = get_buffer_string(agent_memory.messages[1:])
 
-            self._game.compact_agent_memory(
+            compact_agent_memory(
+                self._game,
                 target_entity,
                 HumanMessage(
                     content=summary,

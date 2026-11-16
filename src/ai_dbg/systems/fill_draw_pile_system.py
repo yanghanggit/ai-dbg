@@ -28,7 +28,7 @@ class FillDrawPileSystem(ReactiveProcessor):
     """响应 FillDrawPileAction，从 DeckComponent 填充 DrawPileComponent。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################

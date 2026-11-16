@@ -7,6 +7,9 @@ from procrastinate import JobContext
 
 from ..game.dbg_game import DBGGame
 from ..game.dbg_store import store_game_async
+from ..game.game_dungeon import (
+    is_current_room_dungeon_combat,
+)
 from ..pgsql import procrastinate_app, save_task_error
 from .dungeon_spoils_actions import (
     activate_generate_spoils,
@@ -41,7 +44,7 @@ async def execute_generate_spoils_task(
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
             # 验证当前副本房间为非战斗房间
-            if rpg_game.is_current_room_dungeon_combat:
+            if is_current_room_dungeon_combat(rpg_game):
                 raise ValueError("当前副本房间是战斗房间")
 
             # 外部显式激活奖励生成动作（内部含幂等守卫）
@@ -50,7 +53,7 @@ async def execute_generate_spoils_task(
                 raise ValueError(f"奖励生成失败: {message}")
 
             # 推进开场房间流程，让 GenerateSpoilsActionSystem 响应并生成奖励
-            await rpg_game._dungeon_opening_room_pipeline.process()
+            await rpg_game.opening_pipeline.process()
 
             # 零产出即失败：设计会话出错时不会写入 SpoilsComponent（出错就没有结果）。
             # 这里显式报错，外部才能区分「发奖成功」与「什么都没发」，而不是静默返回。
@@ -99,7 +102,7 @@ async def execute_pick_spoils_card_task(
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
             # 验证当前副本房间为非战斗房间
-            if rpg_game.is_current_room_dungeon_combat:
+            if is_current_room_dungeon_combat(rpg_game):
                 raise ValueError("当前副本房间是战斗房间")
 
             # 外部显式激活领卡动作（内部含 Spoils 存在 + 卡牌检索守卫）
@@ -110,7 +113,7 @@ async def execute_pick_spoils_card_task(
                 raise ValueError(f"从 Spoils 领卡失败: {message}")
 
             # 推进开场房间流程，让 PickSpoilsActionSystem 响应并把选中卡加入牌库
-            await rpg_game._dungeon_opening_room_pipeline.process()
+            await rpg_game.opening_pipeline.process()
 
             # 存储领卡后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

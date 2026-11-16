@@ -8,6 +8,14 @@ from overrides import override
 from ..deepseek import batch_complete
 from ..entitas import ExecuteProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_entity_by_name,
+)
+from ..game.game_memory import (
+    compact_agent_memory,
+    get_agent_memory,
+    get_all_agent_memories,
+)
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import HumanMessage, get_buffer_string
 from .context_compaction_prompt_builders import build_compaction_prompt
@@ -31,7 +39,7 @@ class ContextCompactionSystem(ExecuteProcessor):
         # 收集所有上下文占比超过阈值的 agent（须至少有一条非 system 消息可压缩）
         over_threshold = [
             memory
-            for memory in self._game.get_all_agent_memories().values()
+            for memory in get_all_agent_memories(self._game).values()
             if memory.context_usage_ratio > self._threshold and len(memory.messages) > 1
         ]
 
@@ -60,14 +68,15 @@ class ContextCompactionSystem(ExecuteProcessor):
                 )
                 continue
 
-            entity = self._game.get_entity_by_name(result.label)
+            entity = get_entity_by_name(self._game, result.label)
             assert entity is not None, f"无法找到实体：{result.label}"
 
             # 提取被压缩的原始历史为整字符串，附在摘要消息上留痕
-            agent_memory = self._game.get_agent_memory(entity)
+            agent_memory = get_agent_memory(self._game, entity)
             removed_buffer = get_buffer_string(agent_memory.messages[1:])
 
-            self._game.compact_agent_memory(
+            compact_agent_memory(
+                self._game,
                 entity,
                 HumanMessage(
                     content=summary,

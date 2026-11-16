@@ -8,12 +8,18 @@
 
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game import world_persistence
+from ai_dbg.game.game_entities import (
+    create_entity,
+)
+from ai_dbg.game.game_memory import (
+    get_agent_memory,
+)
 from ai_dbg.models import (
     ActorComponent,
     AgentMemory,
@@ -52,7 +58,7 @@ def _make_card(name: str = "递过去的肩", count: int = 2) -> Card:
 
 
 def _make_actor(game: Any, name: str, *, monster: bool = False) -> Entity:
-    entity = cast(Entity, game._create_entity(name))
+    entity = create_entity(game, name)
     entity.add(ActorComponent, name, "场景.河湾芦苇丛")
     entity.add(AppearanceComponent, name, "基础体型", "外观描述")
     entity.add(HandComponent, name, [])
@@ -84,7 +90,7 @@ def _arm_combat(game: Any) -> None:
     combat = Combat(name=stage_model.name)
     combat.state = CombatState.ONGOING
     combat.rounds = [Round(action_order=[], completed_actors=[])]
-    game._world.dungeon = Dungeon(
+    game.world.dungeon = Dungeon(
         name="副本.断桥渡口",
         rooms=[CombatRoom(stage=stage_model, combat=combat)],
         profile="",
@@ -116,9 +122,9 @@ class TestTransferWritesRealMemory:
         assert all(c.name == card.name and not c.transferable for c in copies)
 
         # 记忆：接收方一条（带 received_card 标记），给出方一条（带 received_card 汇总）
-        receiver_msgs = [
+        receiver_msgs: list[Any] = [
             m
-            for m in game.get_agent_memory(receiver).messages
+            for m in get_agent_memory(game, receiver).messages
             if getattr(m, "received_card", None) is not None
         ]
         assert len(receiver_msgs) == 1
@@ -127,7 +133,7 @@ class TestTransferWritesRealMemory:
         # 标记能过存档闸门（真实校验路径）
         save_dir = tmp_path / "snap"
         assert world_persistence.save_world(
-            game._world, game._player_session, tmp_path, save_dir
+            game.world, game.player_session, tmp_path, save_dir
         )
         restored, _ = world_persistence.restore_world(save_dir)
         assert any(
@@ -146,13 +152,13 @@ class TestSaveGateCatchesDirectWrites:
         game = sample_game
         entity = _make_actor(game, "角色.无名")
         # 模拟直写：绕过 add_human_message，塞一个未登记标记
-        game.get_agent_memory(entity).messages.append(
+        get_agent_memory(game, entity).messages.append(
             HumanMessage(content="直写消息", loop_meta="v1")
         )
 
         with pytest.raises(AssertionError, match="未登记的记忆标记"):
             world_persistence.save_world(
-                game._world, game._player_session, tmp_path, tmp_path / "snap"
+                game.world, game.player_session, tmp_path, tmp_path / "snap"
             )
 
     def test_direct_append_with_loop_tags_saves(
@@ -161,13 +167,13 @@ class TestSaveGateCatchesDirectWrites:
         """agent_loop 真实用到的 loop_id / loop_id_end 等标记可以落盘。"""
         game = sample_game
         entity = _make_actor(game, "角色.无名")
-        game.get_agent_memory(entity).messages.append(
+        get_agent_memory(game, entity).messages.append(
             HumanMessage(content="loop 起点", loop_id="play_cards:1:x#1")
         )
 
         save_dir = tmp_path / "snap"
         assert world_persistence.save_world(
-            game._world, game._player_session, tmp_path, save_dir
+            game.world, game.player_session, tmp_path, save_dir
         )
 
 
@@ -177,14 +183,14 @@ class TestSaveGateCatchesDirectWrites:
 def test_agent_memory_direct_write_is_checked_at_save(
     sample_game: Any, tmp_path: Path
 ) -> None:
-    world = sample_game._world
+    world = sample_game.world
     world.agent_memories["世界.导演"] = AgentMemory(
         name="世界.导演", messages=[HumanMessage(content="x", bad="1")]
     )
 
     with pytest.raises(AssertionError, match="未登记的记忆标记"):
         world_persistence.save_world(
-            world, sample_game._player_session, tmp_path, tmp_path / "snap"
+            world, sample_game.player_session, tmp_path, tmp_path / "snap"
         )
 
 
@@ -217,9 +223,9 @@ class TestPileChangeWritesRealMemory:
         assert len(actor.get(HandComponent).cards) == 3
         assert len(actor.get(DrawPileComponent).cards) == 2
 
-        messages = [
+        messages: list[Any] = [
             m
-            for m in game.get_agent_memory(actor).messages
+            for m in get_agent_memory(game, actor).messages
             if getattr(m, "card_pile_change", None) is not None
         ]
         assert len(messages) == 1
@@ -235,5 +241,5 @@ class TestPileChangeWritesRealMemory:
         # 标记能过存档闸门
         save_dir = tmp_path / "snap"
         assert world_persistence.save_world(
-            game._world, game._player_session, tmp_path, save_dir
+            game.world, game.player_session, tmp_path, save_dir
         )

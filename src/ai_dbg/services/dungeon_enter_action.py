@@ -11,6 +11,16 @@ from loguru import logger
 from ..entitas import Entity, Matcher
 from ..game.dbg_combat_processor import assert_no_residual_combat_state
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    is_dungeon_setup_entities,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    get_stage_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..game.rpg_stage_transition import stage_transition
 from ..models import (
     Combat,
@@ -47,10 +57,10 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # =========================================================================
 
     # 副本尚未通过 setup_dungeon 创建实体
-    assert (
-        dbg_game.is_dungeon_setup_entities
+    assert is_dungeon_setup_entities(
+        dbg_game
     ), f"{dungeon.name} 副本尚未 setup_entities，请先调用 setup_dungeon"
-    if not dbg_game.is_dungeon_setup_entities:
+    if not is_dungeon_setup_entities(dbg_game):
         error_msg = (
             f"enter_dungeon 失败: {dungeon.name} 实体尚未创建，请先调用 setup_dungeon"
         )
@@ -75,14 +85,16 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     enter_room = dungeon.rooms[0]
 
     # 关卡实体必须存在
-    stage_entity = dbg_game.get_stage_entity(enter_room.stage.name)
+    stage_entity = get_stage_entity(dbg_game, enter_room.stage.name)
     assert stage_entity is not None, f"{enter_room.stage.name} 没有对应的 stage 实体！"
     assert stage_entity.has(
         DungeonComponent
     ), f"{enter_room.stage.name} 没有 DungeonComponent 组件！"
 
     # 确保此时不存在任何队伍标记（PartyMemberComponent）
-    party_members = dbg_game.get_group(Matcher(all_of=[PartyMemberComponent])).entities
+    party_members = dbg_game.ecs.get_group(
+        Matcher(all_of=[PartyMemberComponent])
+    ).entities
     assert (
         len(party_members) == 0
     ), f"enter_dungeon 失败: 进入前已存在 {len(party_members)} 个队伍成员，请先退出当前副本"
@@ -92,7 +104,7 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # =========================================================================
 
     # 选择队伍成员并挂载 PartyMemberComponent
-    player_entity = dbg_game.get_player_entity()
+    player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "玩家实体不存在！"
     party_member_entities: Set[Entity] = {player_entity}
     logger.info(f"玩家 {player_entity.name} 将参与本次副本")
@@ -120,7 +132,8 @@ def enter_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # 生成并发送传送提示消息
     trans_message = _build_dungeon_enter_message(dungeon.name, stage_entity.name)
     for party_member in party_member_entities:
-        dbg_game.add_human_message(
+        add_human_message(
+            dbg_game,
             party_member,
             HumanMessage(content=trans_message, dungeon_lifecycle_entry=dungeon.name),
         )

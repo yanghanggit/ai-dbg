@@ -14,7 +14,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_memory import (
+    get_agent_memory,
+)
 from ai_dbg.models import AgentMemory, HumanMessage, SystemMessage
 from ai_dbg.systems import card_common
 from ai_dbg.systems.card_common import (
@@ -33,7 +35,7 @@ _ACTOR_PROMPT = (
 )
 
 
-def _entity(name: str) -> MagicMock:
+def _entity(name: str) -> Any:
     """构造带 `.name` 的实体替身（`MagicMock(name=...)` 只改 repr，不改属性）。"""
     entity = MagicMock()
     entity.name = name
@@ -58,9 +60,9 @@ def _make_game() -> Tuple[MagicMock, MagicMock, MagicMock]:
         ),
     }
 
-    game = MagicMock(spec=DBGGame)
-    game.get_group.return_value.entities = {world_entity}
-    game.get_agent_memory.side_effect = lambda entity: memories[entity.name]
+    game = MagicMock()
+    game.ecs.get_group.return_value.entities = {world_entity}
+    game.world.agent_memories = memories
     return game, world_entity, actor_entity
 
 
@@ -79,8 +81,8 @@ def _make_candidate(name: str) -> Candidate:
 #######################################################################################################################################
 def test_resolve_card_design_entity_requires_single_host() -> None:
     """蓝图缺少卡牌设计实体时直接失败（指向刷新命令）。"""
-    game = MagicMock(spec=DBGGame)
-    game.get_group.return_value.entities = set()
+    game = MagicMock()
+    game.ecs.get_group.return_value.entities = set()
 
     with pytest.raises(AssertionError, match="setup_demo"):
         resolve_card_design_entity(game)
@@ -100,7 +102,7 @@ async def test_selection_uses_world_system_and_actor_block(
 ) -> None:
     """选型：system = 世界契约，actor 设定进任务提示词，会话不落 actor 记忆。"""
     game, _, actor_entity = _make_game()
-    memory_before = len(game.get_agent_memory(actor_entity).messages)
+    memory_before = len(get_agent_memory(game, actor_entity).messages)
     captured: Dict[str, Any] = {}
 
     async def _fake_selection(
@@ -126,7 +128,7 @@ async def test_selection_uses_world_system_and_actor_block(
     assert captured["prompt"].startswith("## 你要为之设计的角色")
     assert _ACTOR_PROMPT.strip() in captured["prompt"]
     assert captured["mutate_messages"] is False
-    assert len(game.get_agent_memory(actor_entity).messages) == memory_before
+    assert len(get_agent_memory(game, actor_entity).messages) == memory_before
 
 
 #######################################################################################################################################
@@ -147,7 +149,7 @@ async def test_design_uses_world_system_and_leaves_no_trace(
 
     monkeypatch.setattr(card_common, "run_card_design_session", _fake_design)
 
-    actor_memory_before = len(game.get_agent_memory(actor_entity).messages)
+    actor_memory_before = len(get_agent_memory(game, actor_entity).messages)
     candidates = [_make_candidate("余刃")]
 
     outcome = await design_cards_for_actor(
@@ -167,7 +169,7 @@ async def test_design_uses_world_system_and_leaves_no_trace(
     # 未传 actor_motif：不注入艺术锚点块，口径与旧版本一致
     assert "## 艺术锚点" not in captured["context"]
     assert captured["mutate_messages"] is False
-    assert len(game.get_agent_memory(actor_entity).messages) == actor_memory_before
+    assert len(get_agent_memory(game, actor_entity).messages) == actor_memory_before
 
 
 #######################################################################################################################################

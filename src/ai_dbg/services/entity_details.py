@@ -6,6 +6,10 @@ from fastapi import APIRouter, HTTPException, Query, status
 from loguru import logger
 
 from ..entitas import Component, Entity, Matcher
+from ..game.game_entities import (
+    get_entity_by_name,
+    serialize_entities,
+)
 from ..models import (
     COMPONENT_TYPES,
     EntitiesDetailsResponse,
@@ -79,7 +83,7 @@ async def get_entities_details(
 
     for entity_name in entity_names:
         # 获取实体（可以是任何类型：World、Stage、Actor 等）
-        entity = rpg_game.get_entity_by_name(entity_name)
+        entity = get_entity_by_name(rpg_game, entity_name)
         if entity is None:
             logger.error(
                 f"get_entities_details: {user_name} entity {entity_name} not found."
@@ -90,11 +94,11 @@ async def get_entities_details(
         entities.add(entity)
 
     # 序列化实体
-    serialize_entities = rpg_game.serialize_entities(entities)
+    serialized_entities = serialize_entities(rpg_game, entities)
 
     # 返回实体详情
     return EntitiesDetailsResponse(
-        entities=serialize_entities,
+        entities=serialized_entities,
     )
 
 
@@ -203,12 +207,12 @@ async def get_entities_group(
         any_of=any_of_types or None,
         none_of=none_of_types or None,
     )
-    group = rpg_game.get_group(matcher)
+    group = rpg_game.ecs.get_group(matcher)
 
     # 序列化匹配到的实体
-    serialize_entities = rpg_game.serialize_entities(group.entities)
+    serialized_entities = serialize_entities(rpg_game, group.entities)
 
     # 返回分组查询结果
     return EntitiesDetailsResponse(
-        entities=serialize_entities,
+        entities=serialized_entities,
     )

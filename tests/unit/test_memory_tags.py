@@ -7,7 +7,7 @@
 
 import re
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set, cast
 
 from ai_dbg.models.memory_tags import MEMORY_TAGS
 
@@ -174,12 +174,13 @@ def test_stats_update_tag_records_hp_transition() -> None:
     from unittest.mock import MagicMock
 
     from ai_dbg.entitas.context import Context
-    from ai_dbg.game.dbg_game import DBGGame
+    from ai_dbg.game.game_dungeon import current_dungeon_combat_room
     from ai_dbg.models import (
         ActorComponent,
         CharacterStats,
         CharacterStatsComponent,
         CombatArbitrationEvent,
+        StageComponent,
     )
     from ai_dbg.systems.arbitration_common import (
         ArbitrationContext,
@@ -197,17 +198,22 @@ def test_stats_update_tag_records_hp_transition() -> None:
         CharacterStats(hp=10, max_hp=10),
     )
 
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
-    game.current_dungeon_combat_room.combat.latest_round = MagicMock()
-    game.get_entity_by_name.side_effect = lambda name: entity
-    game.broadcast_to_stage.side_effect = lambda **kw: None
+    stage = context.create_entity()
+    stage._name = "场景.河湾芦苇丛"
+    stage.add(StageComponent, stage.name)
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {entity.name: entity}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    cast(Any, current_dungeon_combat_room(game)).combat.rounds = [MagicMock()]
+    cast(Any, current_dungeon_combat_room(game)).combat.latest_round = MagicMock()
     assert issubclass(CombatArbitrationEvent, object)
 
     ctx = ArbitrationContext(hp_changes={"角色.无名": 7}, narrative="被撞了一下")
     apply_arbitration_result(
         game,
-        stage_entity=entity,
+        stage_entity=stage,
         ctx=ctx,
         kind=RoundKind.PLAY_CARDS,
         title_label="测试仲裁",
@@ -215,9 +221,10 @@ def test_stats_update_tag_records_hp_transition() -> None:
     )
 
     stats_messages = [
-        call.args[1]
-        for call in game.add_human_message.call_args_list
-        if getattr(call.args[1], "stats_update", None) is not None
+        message
+        for memory in game.world.agent_memories.values()
+        for message in memory.messages
+        if getattr(message, "stats_update", None) is not None
     ]
     assert len(stats_messages) == 1
     assert stats_messages[0].stats_update == "10->7"

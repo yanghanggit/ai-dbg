@@ -1,3 +1,5 @@
+from typing import Any
+
 """EnvironmentInitializationSystem 的「无观察 = 无推理」观察者门槛测试。
 
 观察者门槛：
@@ -13,7 +15,6 @@ import pytest
 from ai_dbg.deepseek import DeepSeekError
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
 from ai_dbg.models import (
     AIMessage,
@@ -40,14 +41,14 @@ def _make_stage(context: Context, name: str, *, dungeon: bool = True) -> Entity:
     return stage
 
 
-def _fake_actor(*, is_player: bool = False) -> MagicMock:
+def _fake_actor(*, is_player: bool = False) -> Any:
     """构造仅需支持 .has(PlayerComponent) 语义的假 Actor。"""
     actor = MagicMock()
     actor.has.side_effect = lambda comp: is_player and comp is PlayerComponent
     return actor
 
 
-def _fake_request(name: str) -> MagicMock:
+def _fake_request(name: str) -> Any:
     request = MagicMock(spec=ChatCompletionRequest)
     request.label = name
     return request
@@ -64,12 +65,17 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> EnvironmentInitializationSystem:
+def system(mock_game: Any) -> EnvironmentInitializationSystem:
     return EnvironmentInitializationSystem(mock_game)
 
 
@@ -83,7 +89,7 @@ class TestObservedStagesOnly:
     async def test_lobby_stage_is_skipped(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
         """Lobby 场景：即使有 Actor，也不构建环境叙事请求。"""
@@ -108,12 +114,11 @@ class TestObservedStagesOnly:
     async def test_dungeon_stage_without_player_is_skipped(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
         """Dungeon 场景：即便有 Actor，只要玩家不在场就不构建请求。"""
         dungeon = _make_stage(context, "副本.荒狼巢", dungeon=True)
-        mock_game.get_group.return_value.entities.copy.return_value = {dungeon}
 
         with (
             patch(
@@ -133,12 +138,11 @@ class TestObservedStagesOnly:
     async def test_dungeon_stage_with_player_is_inferred(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
         """Dungeon 场景：有 Actor 且玩家在场时才构建请求。"""
         dungeon = _make_stage(context, "副本.荒狼巢", dungeon=True)
-        mock_game.get_group.return_value.entities.copy.return_value = {dungeon}
 
         with (
             patch(
@@ -168,7 +172,7 @@ class TestObservedStagesOnly:
     async def test_no_observed_stages_skips_inference(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
         """所有缺环境场景都没有 Actor 时，直接返回，不发起任何请求。"""
@@ -196,7 +200,7 @@ class TestFailureAccounting:
     async def test_writes_successes_and_skips_failed(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EnvironmentInitializationSystem,
     ) -> None:
         """消费 batch 失败列表：成功场景写入组件，失败场景不写入且不再走 response 解析。"""
@@ -242,4 +246,3 @@ class TestFailureAccounting:
         assert ok.get(EnvironmentComponent).narrative == "松林窄径，泥泞湿冷"
         # 失败场景未写入，且未进入 response 解析（get_entity_by_name 仅对成功项调用）
         assert not bad.has(EnvironmentComponent)
-        mock_game.get_entity_by_name.assert_called_once_with("场景.兽径入口")

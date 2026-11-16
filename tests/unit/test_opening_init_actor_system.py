@@ -1,3 +1,5 @@
+from typing import Any
+
 """OpeningInitActorSystem 单元测试。"""
 
 from unittest.mock import MagicMock
@@ -6,7 +8,6 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     AppearanceComponent,
@@ -59,12 +60,17 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> OpeningInitActorSystem:
+def system(mock_game: Any) -> OpeningInitActorSystem:
     return OpeningInitActorSystem(mock_game)
 
 
@@ -111,12 +117,10 @@ def test_format_other_actors_info_contains_name_camp_appearance() -> None:
 
 
 def test_inject_opening_scene_environment_injects_human_and_ai_messages(
-    context: Context, mock_game: MagicMock, system: OpeningInitActorSystem
+    context: Context, mock_game: Any, system: OpeningInitActorSystem
 ) -> None:
     actor_a = _make_actor(context, "勇者", is_ally=True)
     actor_b = _make_actor(context, "游侠", is_ally=True)
-
-    mock_game.filter_messages.return_value = []
 
     system._inject_opening_scene_environment(
         actor_entities={actor_a, actor_b},
@@ -124,18 +128,24 @@ def test_inject_opening_scene_environment_injects_human_and_ai_messages(
         environment="潮湿阴冷的洞口",
     )
 
-    assert mock_game.add_human_message.call_count == 2
-    assert mock_game.add_ai_message.call_count == 2
+    for actor in (actor_a, actor_b):
+        messages = mock_game.world.agent_memories[actor.name].messages
+        assert sum(1 for m in messages if m.type == "human") == 1
+        assert sum(1 for m in messages if m.type == "ai") == 1
 
     # 每条 human 消息都携带开场场景标记
-    for call in mock_game.add_human_message.call_args_list:
-        human_message = call.kwargs["human_message"]
+    for actor in (actor_a, actor_b):
+        human_message = next(
+            m
+            for m in mock_game.world.agent_memories[actor.name].messages
+            if m.type == "human"
+        )
         assert human_message.content != ""
         assert getattr(human_message, "opening_initialization", None) == "入口石室"
 
 
 def test_inject_opening_scene_environment_skips_already_injected_actor(
-    context: Context, mock_game: MagicMock, system: OpeningInitActorSystem
+    context: Context, mock_game: Any, system: OpeningInitActorSystem
 ) -> None:
     actor = _make_actor(context, "勇者", is_ally=True)
 
@@ -158,7 +168,7 @@ def test_inject_opening_scene_environment_skips_already_injected_actor(
 
 
 # def test_add_generate_deck_actions_adds_action_to_party_only(
-#     context: Context, mock_game: MagicMock, system: OpeningInitActorSystem
+#     context: Context, mock_game: Any, system: OpeningInitActorSystem
 # ) -> None:
 #     ally = _make_actor(context, "勇者", is_ally=True)
 #     monster = _make_actor(context, "哥布林", is_monster=True)

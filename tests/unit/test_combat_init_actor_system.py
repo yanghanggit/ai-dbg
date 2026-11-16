@@ -1,3 +1,5 @@
+from typing import Any
+
 """CombatInitActorSystem 单元测试。"""
 
 from unittest.mock import MagicMock
@@ -6,7 +8,6 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     AppearanceComponent,
@@ -60,12 +61,12 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def mock_game(context: Context) -> Any:
+    return MagicMock()
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> CombatInitActorSystem:
+def system(mock_game: Any) -> CombatInitActorSystem:
     return CombatInitActorSystem(mock_game)
 
 

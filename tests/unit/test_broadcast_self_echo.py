@@ -1,6 +1,8 @@
+from typing import Any
+
 """广播「自我回显」规则的单测。
 
-规则（写在 `RPGGame.broadcast_to_stage` 的 docstring 里）：
+规则（写在 `DBGGame.broadcast_to_stage` 的 docstring 里）：
 - 行动类广播：发起者另有更精确的自我记录时排除发起者（出牌有 `combat_decision` 决策记录）；
 - 观察类广播：发起者对该事件没有其他记录时保留（过牌等）。
 
@@ -14,13 +16,16 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     Card,
     HandComponent,
     PartyMemberComponent,
     PlayCardsAction,
+    StageComponent,
     TargetType,
 )
 
@@ -55,20 +60,25 @@ def _make_actor(context: Context, name: str, card: Card) -> Entity:
     return entity
 
 
-def _make_game(actor: Entity, stage: Entity) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_ongoing = True
-    game.current_dungeon_combat_room.combat.rounds = [SimpleNamespace()]
-    game.current_dungeon_combat_room.combat.latest_round = SimpleNamespace(
+def _make_game(actor: Entity, stage: Entity) -> Any:
+    game = MagicMock()
+    game.ecs = actor._context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    combat: Any = current_dungeon_combat_room(game).combat
+    combat.is_ongoing = True
+    combat.rounds = [SimpleNamespace()]
+    combat.latest_round = SimpleNamespace(
         is_completed=False, completed_actors=[], current_actor=actor.name
     )
-    game.resolve_stage_entity.return_value = stage
     return game
 
 
 def _make_stage(context: Context) -> Entity:
     stage = context.create_entity()
     stage._name = "场景.河湾芦苇丛"
+    stage.add(StageComponent, stage.name)
     return stage
 
 
@@ -85,13 +95,14 @@ async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
     with (
         patch(f"{_PLAY_MODULE}.get_current_turn_actor", return_value=actor.name),
         patch(f"{_PLAY_MODULE}.consume_energy"),
+        patch(f"{_PLAY_MODULE}.broadcast_to_stage") as mock_broadcast,
     ):
         await PlayCardsActionSystem(game).react([actor])
 
     # 出牌事实不再由本系统写（已折进 `combat_decision` 决策记录，见 PartyCombatDecisionSystem），
     # 因此这里只断言广播口径。
     # 广播：排除出牌者与场景实体
-    broadcast_kwargs = game.broadcast_to_stage.call_args.kwargs
+    broadcast_kwargs = mock_broadcast.call_args.kwargs
     assert broadcast_kwargs["exclude_entities"] == {actor, stage}
 
 
@@ -111,12 +122,13 @@ async def test_pass_turn_broadcast_keeps_actor(context: Context) -> None:
         patch(f"{_PASS_MODULE}.get_current_turn_actor", return_value=actor.name),
         patch(f"{_PASS_MODULE}.get_energy", return_value=2),
         patch(f"{_PASS_MODULE}.consume_energy"),
+        patch(f"{_PASS_MODULE}.broadcast_to_stage") as mock_broadcast,
     ):
         await pass_module.PassTurnActionSystem(game).react([actor])
 
-    broadcast_kwargs = game.broadcast_to_stage.call_args.kwargs
+    broadcast_kwargs = mock_broadcast.call_args.kwargs
     assert broadcast_kwargs["exclude_entities"] == {stage}
     assert actor not in broadcast_kwargs["exclude_entities"]
 
     # 过牌者不额外收到私发消息（唯一凭据就是那条广播）
-    game.add_human_message.assert_not_called()
+    assert not game.world.agent_memories

@@ -1,13 +1,15 @@
 """副本开场场景流程管道工厂模块。"""
 
-from typing import cast
+from typing import TYPE_CHECKING
 
-from .base_game import BaseGame
-from .rpg_game_pipeline_manager import RPGGameProcessPipeline
+from .game_process_pipeline import RPGGameProcessPipeline
+
+if TYPE_CHECKING:
+    from .dbg_game import DBGGame
 
 
 def create_dungeon_opening_room_pipeline(
-    game: BaseGame,
+    game: "DBGGame",
 ) -> RPGGameProcessPipeline:
     """创建副本开场场景的流程管道（叙事 + 牌库初始化，无战斗；奖励生成由外部显式触发 GenerateSpoilsAction）"""
 
@@ -27,9 +29,8 @@ def create_dungeon_opening_room_pipeline(
         PickSpoilsActionSystem,
     )
     from ..systems.prologue_system import PrologueSystem
-    from .dbg_game import DBGGame
 
-    dbg_game = cast(DBGGame, game)
+    dbg_game = game
     processors = RPGGameProcessPipeline()
 
     # 起始系统

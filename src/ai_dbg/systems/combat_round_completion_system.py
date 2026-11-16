@@ -7,6 +7,12 @@ from loguru import logger
 from ..entitas import ExecuteProcessor
 from ..game.dbg_combat_processor import get_alive_actors_in_stage
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+)
 
 
 ###############################################################################################################################################
@@ -21,10 +27,10 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
         # 守卫①：战斗未进行中 → 跳过
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             return
 
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
 
         # 守卫②：无回合，或回合已标记完成 → 跳过
         if latest_round is None or latest_round.is_completed:
@@ -35,7 +41,7 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
             return
 
         # 获取本场景所有存活角色
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "player_entity is None"
 
         # 获取本场景所有存活角色（不包括已死亡的角色）

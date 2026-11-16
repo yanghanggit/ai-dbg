@@ -3,6 +3,9 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
+from ..game.game_dungeon import (
+    current_dungeon,
+)
 from ..models import (
     Dungeon,
     DungeonListResponse,
@@ -53,7 +56,7 @@ async def get_dungeon_state(
 
     # 返回副本状态
     return DungeonStateResponse(
-        dungeon=current_room.game.current_dungeon,
+        dungeon=current_dungeon(current_room.game),
     )
 
 
@@ -92,7 +95,7 @@ async def get_dungeon_room(
         )
 
     # 获取当前副本房间，current_room_index == -1 或超出范围时返回 None
-    current_dungeon_room = current_room.game.current_dungeon.current_room
+    current_dungeon_room = current_dungeon(current_room.game).current_room
     if current_dungeon_room is None:
         logger.error(f"get_dungeon_room: {user_name} has no current dungeon room")
         raise HTTPException(

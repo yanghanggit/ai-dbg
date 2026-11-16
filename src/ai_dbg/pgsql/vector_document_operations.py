@@ -119,7 +119,7 @@ def search_similar_documents(
         # 直接使用原生SQL进行向量搜索
         sql = f"""
             SELECT *, (1 - (embedding <=> :query_vector)) as similarity
-            FROM vector_documents 
+            FROM vector_documents
             WHERE {where_clause}
                 AND (1 - (embedding <=> :query_vector)) >= :threshold
             ORDER BY embedding <=> :query_vector

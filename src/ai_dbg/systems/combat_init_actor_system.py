@@ -11,6 +11,18 @@ from ..game.dbg_combat_processor import (
     get_alive_actors_in_stage,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+    is_player_in_dungeon_stage,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_ai_message,
+    add_human_message,
+)
 from ..game.rpg_stage_environment import get_stage_environment
 from ..models import (
     AIMessage,
@@ -92,7 +104,7 @@ class CombatInitActorSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_initializing:
+        if not current_dungeon_combat_room(self._game).combat.is_initializing:
             logger.debug("当前战斗状态非 initializing，跳过战斗初始化（角色侧）")
             return
 
@@ -100,17 +112,19 @@ class CombatInitActorSystem(ExecuteProcessor):
             "战斗初始化（角色侧）开始，正在为参战角色初始化牌堆并注入战场环境..."
         )
 
-        assert self._game.is_player_in_dungeon_stage, "战斗初始化阶段玩家必须在场景中！"
+        assert is_player_in_dungeon_stage(
+            self._game
+        ), "战斗初始化阶段玩家必须在场景中！"
         assert (
-            len(self._game.current_dungeon_combat_room.combat.rounds or []) == 0
+            len(current_dungeon_combat_room(self._game).combat.rounds or []) == 0
         ), "战斗触发阶段不允许有回合数！"
 
         # 获取玩家实体，player 所在场景即战斗场景
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "无法找到玩家实体！"
 
         # 获取当前场景实体
-        current_stage_entity = self._game.resolve_stage_entity(player_entity)
+        current_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert current_stage_entity is not None, "无法找到当前场景实体！"
 
         # 读取场景环境叙事（缺失时降级为占位文案，不阻断初始化）
@@ -231,7 +245,8 @@ class CombatInitActorSystem(ExecuteProcessor):
             )
 
             # 注入战场环境信息
-            self._game.add_human_message(
+            add_human_message(
+                self._game,
                 entity=actor_entity,
                 human_message=HumanMessage(
                     content=combat_init_prompt,
@@ -240,7 +255,8 @@ class CombatInitActorSystem(ExecuteProcessor):
             )
 
             # 注入模拟 AI 回应，维护 Human↔AI 交替结构
-            self._game.add_ai_message(
+            add_ai_message(
+                self._game,
                 entity=actor_entity,
                 ai_message=AIMessage(content="已感知战场环境，进入战斗准备状态。"),
             )

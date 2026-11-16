@@ -35,6 +35,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..deepseek import agent_loop
 from ..entitas import Entity, Matcher
 from ..game.dbg_game import DBGGame
+from ..game.game_memory import (
+    get_agent_memory,
+)
 from ..llm import ToolDefinition, ToolFunction
 from ..models import (
     DESIGNABLE_AFFIX_FIELDS,
@@ -723,7 +726,7 @@ _ACTOR_LABEL_SEPARATOR: Final[str] = "|"
 #######################################################################################################################################
 def resolve_card_design_entity(game: DBGGame) -> Entity:
     """定位唯一的「卡牌设计」世界实体（蓝图必须提供，缺失即数据错误）。"""
-    entities = game.get_group(Matcher(all_of=[CardDesignComponent])).entities.copy()
+    entities = game.ecs.get_group(Matcher(all_of=[CardDesignComponent])).entities.copy()
     assert (
         len(entities) == 1
     ), f"卡牌设计世界实体数量异常: {len(entities)}（应为 1 个 CardDesignComponent 世界实体）。蓝图缺少该实体时请刷新：python -m scripts.setup_demo"
@@ -733,7 +736,7 @@ def resolve_card_design_entity(game: DBGGame) -> Entity:
 #######################################################################################################################################
 def read_actor_system_prompt(game: DBGGame, actor_entity: Entity) -> str:
     """读目标 actor 的 system prompt（`agent_memory.messages[0]`，由 add_system_message 写入）。"""
-    messages = game.get_agent_memory(actor_entity).messages
+    messages = get_agent_memory(game, actor_entity).messages
     assert messages and isinstance(
         messages[0], SystemMessage
     ), f"{actor_entity.name} 缺少首条 SystemMessage（add_system_message 未执行）"
@@ -759,7 +762,7 @@ def read_motif_from_components(components: Mapping[str, Any]) -> str:
 def _actor_session_context(game: DBGGame, actor_name: str) -> Tuple[str, SystemMessage]:
     """取 (会话 label, 世界实体的 system prompt)；世界实体与 label 只解析一次。"""
     world_entity = resolve_card_design_entity(game)
-    messages = game.get_agent_memory(world_entity).messages
+    messages = get_agent_memory(game, world_entity).messages
     assert messages and isinstance(
         messages[0], SystemMessage
     ), f"{world_entity.name} 缺少首条 SystemMessage"

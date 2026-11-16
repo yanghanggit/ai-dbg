@@ -6,6 +6,11 @@
 from loguru import logger
 
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    destroy_entity,
+    get_actor_entity,
+    get_stage_entity,
+)
 from ..models import Dungeon
 
 
@@ -18,18 +23,18 @@ def teardown_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> None:
     # 1. 销毁所有副本中的 actor 实体
     for room in dungeon.rooms:
         for actor in room.stage.actors:
-            destroy_actor_entity = dbg_game.get_actor_entity(actor.name)
+            destroy_actor_entity = get_actor_entity(dbg_game, actor.name)
             if destroy_actor_entity is not None:
-                dbg_game.destroy_entity(destroy_actor_entity)
+                destroy_entity(dbg_game, destroy_actor_entity)
 
     # 2. 销毁所有副本中的 stage 实体
     for room in dungeon.rooms:
-        destroy_stage_entity = dbg_game.get_stage_entity(room.stage.name)
+        destroy_stage_entity = get_stage_entity(dbg_game, room.stage.name)
         if destroy_stage_entity is not None:
-            dbg_game.destroy_entity(destroy_stage_entity)
+            destroy_entity(dbg_game, destroy_stage_entity)
 
     # 3. 重置副本数据为空副本
-    dbg_game._world.dungeon = Dungeon(name="", rooms=[], profile="")
+    dbg_game.world.dungeon = Dungeon(name="", rooms=[], profile="")
 
     # 4. 打印副本销毁完成日志
     logger.debug("[teardown_dungeon] 副本实体清理完成，dungeon 已重置")

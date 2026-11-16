@@ -11,6 +11,13 @@ from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_memory import (
+    add_human_message,
+    get_agent_memory,
+)
 from ..models import (
     DeathComponent,
     HandComponent,
@@ -35,7 +42,7 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
     """为队员的出牌 / 过牌决策补一条决策记录（无推理、原因为占位句）。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     #######################################################################################################################################
@@ -60,11 +67,11 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
     #######################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("PartyCombatDecisionSystem: 战斗未进行中，跳过")
             return
 
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds or [])
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
 
         for entity in entities:
             if entity.has(PlayCardsAction):
@@ -80,7 +87,7 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
     #######################################################################################################################################
     def _played_this_round(self, entity: Entity, round_number: int) -> bool:
         """本回合是否已出过牌（用于区分「纯过牌」与「出完牌后交权」）。"""
-        for message in reversed(self._game.get_agent_memory(entity).messages):
+        for message in reversed(get_agent_memory(self._game, entity).messages):
             tag = getattr(message, "combat_decision", None)
             if tag is None:
                 continue
@@ -137,7 +144,8 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
         forced_outcome: str = "过牌",
     ) -> None:
         """写一条与怪物侧同构的决策记录（原因为占位句）。"""
-        self._game.add_human_message(
+        add_human_message(
+            self._game,
             entity=entity,
             human_message=HumanMessage(
                 content=build_combat_decision_record(

@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 """DiscardCardsActionSystem 单元测试。"""
 
 import json
@@ -7,7 +9,9 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -57,14 +61,18 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_ongoing = True
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
     return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> DiscardCardsActionSystem:
+def system(mock_game: Any) -> DiscardCardsActionSystem:
     return DiscardCardsActionSystem(mock_game)
 
 
@@ -80,10 +88,10 @@ class TestDiscardCardsActionSystemSkip:
     async def test_skips_when_not_ongoing(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         entity = _make_entity(context, "英雄")
         card = _make_card("闪击", source="英雄")
         entity.get(HandComponent).cards.append(card)
@@ -102,7 +110,7 @@ class TestDiscardCardsActionSystemOwnCard:
     async def test_card_removed_from_hand(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -118,7 +126,7 @@ class TestDiscardCardsActionSystemOwnCard:
     async def test_card_added_to_discard_pile(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -131,7 +139,7 @@ class TestDiscardCardsActionSystemOwnCard:
         assert card in entity.get(DiscardPileComponent).cards
 
         # 事实层：哪张牌进了弃牌堆，只写给本人
-        message = mock_game.add_human_message.call_args.kwargs["human_message"]
+        message = mock_game.world.agent_memories["英雄"].messages[-1]
         assert "# 出牌结算 · 弃牌" in message.content
         assert "「斩击」离开手牌进入弃牌堆" in message.content
         assert json.loads(message.card_pile_change) == {
@@ -147,7 +155,7 @@ class TestDiscardCardsActionSystemExhaustCard:
     async def test_exhaust_card_moves_without_discard_record(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -168,7 +176,7 @@ class TestDiscardCardsActionSystemForeignCard:
     async def test_foreign_card_added_to_discard_pile(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")

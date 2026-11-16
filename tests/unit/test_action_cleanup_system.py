@@ -1,3 +1,5 @@
+from typing import Any
+
 """ActionCleanupSystem 单元测试。"""
 
 from unittest.mock import MagicMock
@@ -5,7 +7,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.rpg_game import RPGGame
 from ai_dbg.models import DrawCardsAction, FillDrawPileAction, PassTurnAction
 from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
@@ -22,15 +23,17 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game(context: Context) -> MagicMock:
-    """Mock RPGGame，将 get_group() 代理到真实 Context，避免初始化重量级 DBGGame。"""
-    game = MagicMock(spec=RPGGame)
+def mock_game(context: Context) -> Any:
+    """Mock DBGGame，将 get_group() 代理到真实 Context，避免初始化重量级 DBGGame。"""
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
     game.get_group.side_effect = context.get_group
     return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> ActionCleanupSystem:
+def system(mock_game: Any) -> ActionCleanupSystem:
     return ActionCleanupSystem(mock_game)
 
 

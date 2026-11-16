@@ -14,6 +14,12 @@ from ..game.dbg_combat_processor import (
     set_character_hp,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_stage_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..game.rpg_stage_transition import stage_transition
 from ..models import (
     Combat,
@@ -68,7 +74,7 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
     next_room = dungeon.rooms[next_room_index]
 
     # 下一房间的关卡实体必须存在
-    next_stage_entity = dbg_game.get_stage_entity(next_room.stage.name)
+    next_stage_entity = get_stage_entity(dbg_game, next_room.stage.name)
     assert (
         next_stage_entity is not None
     ), f"{next_room.stage.name} 没有对应的 stage 实体！"
@@ -77,7 +83,7 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
     ), f"{next_room.stage.name} 没有 DungeonComponent 组件！"
 
     # 确保存在队伍成员
-    party_member_entities = dbg_game.get_group(
+    party_member_entities = dbg_game.ecs.get_group(
         Matcher(all_of=[PartyMemberComponent])
     ).entities.copy()
     assert len(party_member_entities) > 0, "没有找到队伍成员"
@@ -107,7 +113,8 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
     # 生成并发送传送提示消息
     trans_message = _build_dungeon_advance_message(dungeon.name, next_stage_entity.name)
     for party_member in party_member_entities:
-        dbg_game.add_human_message(
+        add_human_message(
+            dbg_game,
             party_member,
             HumanMessage(
                 content=trans_message,

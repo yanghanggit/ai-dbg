@@ -15,6 +15,9 @@ from ..game.dbg_combat_processor import (
     set_character_hp,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..game.rpg_stage_transition import stage_transition
 from ..models import (
     CombatRoom,
@@ -64,13 +67,15 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
             return False, "战斗未结束，无法退出"
 
     # 确保存在队伍成员
-    party_member_entities = dbg_game.get_group(
+    party_member_entities = dbg_game.ecs.get_group(
         Matcher(all_of=[PartyMemberComponent])
     ).entities.copy()
     assert len(party_member_entities) > 0, "没有找到队伍成员"
 
     # 确保存在大厅场景
-    lobby_stages = dbg_game.get_group(Matcher(all_of=[LobbyComponent])).entities.copy()
+    lobby_stages = dbg_game.ecs.get_group(
+        Matcher(all_of=[LobbyComponent])
+    ).entities.copy()
     assert len(lobby_stages) >= 1, "必须存在至少一个大厅场景！"
     dest_stage = next(iter(lobby_stages))
 
@@ -79,7 +84,8 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # =========================================================================
     # 传送队伍成员回大厅
     for party_member_entity in party_member_entities:
-        dbg_game.add_human_message(
+        add_human_message(
+            dbg_game,
             party_member_entity,
             HumanMessage(
                 content=_build_dungeon_exit_message(dungeon.name, dest_stage.name),

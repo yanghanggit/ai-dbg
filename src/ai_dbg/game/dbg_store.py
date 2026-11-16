@@ -11,15 +11,18 @@ from typing import Optional
 
 from ..paths import WORLDS_DIR
 from .dbg_game import DBGGame
+from .game_lifecycle import (
+    flush_entities,
+)
 from .world_persistence import save_world
 
 
 def _store_game(dbg_game: DBGGame, save_dir: Optional[Path] = None) -> bool:
     """先刷新实体状态再持久化存档。"""
-    dbg_game.flush_entities()
+    flush_entities(dbg_game)
     return save_world(
-        dbg_game._world,
-        dbg_game._player_session,
+        dbg_game.world,
+        dbg_game.player_session,
         worlds_dir=WORLDS_DIR,
         save_dir=save_dir,
     )

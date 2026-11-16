@@ -7,6 +7,9 @@ from procrastinate import JobContext
 
 from ..game.dbg_game import DBGGame
 from ..game.dbg_store import store_game_async
+from ..game.game_dungeon import (
+    is_current_room_dungeon_opening,
+)
 from ..pgsql import procrastinate_app, save_task_error
 from .game_server_runtime import get_runtime_game_server
 
@@ -38,11 +41,11 @@ async def execute_opening_room_init_task(
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
             # 验证当前副本房间是否为开场房间
-            if not rpg_game.is_current_room_dungeon_opening:
+            if not is_current_room_dungeon_opening(rpg_game):
                 raise ValueError("当前副本房间不是开场房间")
 
             # 推进开场房间流程（叙事 + 牌库初始化，无战斗）
-            await rpg_game._dungeon_opening_room_pipeline.process()
+            await rpg_game.opening_pipeline.process()
 
             # 存储开场房间初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

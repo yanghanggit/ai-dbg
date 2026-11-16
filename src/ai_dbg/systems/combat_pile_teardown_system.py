@@ -6,6 +6,12 @@ from loguru import logger
 
 from ..entitas import ExecuteProcessor, Matcher
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+)
 from ..models import (
     ActorComponent,
     DeckComponent,
@@ -37,14 +43,14 @@ class CombatPileTeardownSystem(ExecuteProcessor):
     ####################################################################################################################################
     def _return_equipped_gear(self) -> None:
         """战斗结束时，收集所有角色实体上的 EquippedGearComponent 装备，归还玩家背包。"""
-        gear_entities = self._game.get_group(
+        gear_entities = self._game.ecs.get_group(
             Matcher(EquippedGearComponent)
         ).entities.copy()
         if not gear_entities:
             return
 
         # 获取玩家实体及其背包组件，准备归还装备
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "玩家实体不存在！"
         assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
         inventory = player_entity.get(InventoryComponent)
@@ -67,14 +73,14 @@ class CombatPileTeardownSystem(ExecuteProcessor):
 
         logger.debug("CombatPileTeardownSystem: 执行战斗堆拆除系统")
 
-        if not self._game.current_dungeon_combat_room.combat.is_post_combat:
+        if not current_dungeon_combat_room(self._game).combat.is_post_combat:
             logger.debug("CombatPileTeardownSystem: 当前非战斗后阶段，跳过")
             return
 
         # 战斗结束：归还所有当前行动者登记的装备到玩家背包
         self._return_equipped_gear()
 
-        entities = self._game.get_group(
+        entities = self._game.ecs.get_group(
             Matcher(
                 ActorComponent,
                 DeckComponent,

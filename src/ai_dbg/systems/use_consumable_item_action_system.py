@@ -12,6 +12,16 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_broadcast import (
+    broadcast_to_stage,
+)
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
 from ..models import (
     Card,
     ConsumableItem,
@@ -44,7 +54,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
     """消耗品使用系统：先扣减队伍背包库存，再把消耗品内置卡牌物化进当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -61,7 +71,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("UseConsumableItemActionSystem: 战斗未进行中，跳过")
             return
 
@@ -84,7 +94,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
             return
 
         # 先扣库存：按 uuid 移除整条消耗品（消耗其全部 count）；扣库存成功后才物化。
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert (
             player_entity is not None
         ), "UseConsumableItemActionSystem: player_entity is None"
@@ -117,7 +127,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
         entity.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
 
         # 记录本回合消耗品使用结果（与装备记录同队列）
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         if latest_round is not None:
             latest_round.record(
                 RoundEntryKind.CONSUMABLE,
@@ -126,12 +136,13 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
             )
 
         # 向场景内其他角色广播消耗品使用通知
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds)
-        stage_entity = self._game.resolve_stage_entity(entity)
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds)
+        stage_entity = resolve_stage_entity(self._game, entity)
         assert (
             stage_entity is not None
         ), f"UseConsumableItemActionSystem: 无法找到 {entity.name} 所在的场景实体"
-        self._game.broadcast_to_stage(
+        broadcast_to_stage(
+            self._game,
             entity=entity,
             agent_event=NoneEvent(
                 message=_build_consumable_notice(

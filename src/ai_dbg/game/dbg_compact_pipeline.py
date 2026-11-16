@@ -1,12 +1,14 @@
 """上下文压缩流程管道工厂模块（与具体场景状态无关，仅处理 CompactContextAction）。"""
 
-from typing import cast
+from typing import TYPE_CHECKING
 
-from .base_game import BaseGame
-from .rpg_game_pipeline_manager import RPGGameProcessPipeline
+from .game_process_pipeline import RPGGameProcessPipeline
+
+if TYPE_CHECKING:
+    from .dbg_game import DBGGame
 
 
-def create_compact_pipeline(game: BaseGame) -> RPGGameProcessPipeline:
+def create_compact_pipeline(game: "DBGGame") -> RPGGameProcessPipeline:
     """创建上下文压缩流程管道（仅处理 CompactContextAction）"""
 
     ### 不这样就循环引用
@@ -15,9 +17,8 @@ def create_compact_pipeline(game: BaseGame) -> RPGGameProcessPipeline:
     from ..systems.destroy_entity_system import DestroyEntitySystem
     from ..systems.epilogue_system import EpilogueSystem
     from ..systems.prologue_system import PrologueSystem
-    from .dbg_game import DBGGame
 
-    dbg_game = cast(DBGGame, game)
+    dbg_game = game
     processors = RPGGameProcessPipeline()
 
     # 前置系统：序章

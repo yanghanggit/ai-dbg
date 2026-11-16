@@ -4,14 +4,13 @@
 直接断言，不做 warning + 降级。
 """
 
-from typing import List
+from typing import Any, List
 from unittest.mock import MagicMock
 
 import pytest
 
 from ai_dbg.entitas import Entity
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -54,13 +53,11 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def game() -> Any:
+    return MagicMock()
 
 
-async def test_fills_draw_pile_with_deck_copies(
-    context: Context, game: MagicMock
-) -> None:
+async def test_fills_draw_pile_with_deck_copies(context: Context, game: Any) -> None:
     """填充的是深拷贝：顺序可变，但内容与数量与牌库一致，且不回写牌库对象。"""
     deck_cards = [_make_card("攻击"), _make_card("防守")]
     actor = _make_actor(context, deck_cards)
@@ -78,7 +75,7 @@ async def test_fills_draw_pile_with_deck_copies(
     assert all(c is not d for c in draw_pile.cards for d in deck_cards)
 
 
-async def test_empty_deck_asserts(context: Context, game: MagicMock) -> None:
+async def test_empty_deck_asserts(context: Context, game: Any) -> None:
     """空牌库直接断言（数据损坏），不降级。"""
     actor = _make_actor(context, [])
 

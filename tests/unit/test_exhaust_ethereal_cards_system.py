@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 """ExhaustEtherealCardsSystem 单元测试。"""
 
 import json
@@ -7,7 +9,9 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -57,14 +61,18 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_ongoing = True
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
     return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> ExhaustEtherealCardsSystem:
+def system(mock_game: Any) -> ExhaustEtherealCardsSystem:
     return ExhaustEtherealCardsSystem(mock_game)
 
 
@@ -80,10 +88,10 @@ class TestExhaustEtherealCardsSystemSkip:
     async def test_skips_when_not_ongoing(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         entity = _make_entity(context, "英雄")
         card = _make_card("虚无斩", ethereal=True)
         entity.get(HandComponent).cards.append(card)
@@ -102,7 +110,7 @@ class TestExhaustEtherealCardsSystemEtherealTrue:
     async def test_ethereal_card_moves_to_exhaust_pile(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -114,7 +122,7 @@ class TestExhaustEtherealCardsSystemEtherealTrue:
         assert card not in entity.get(HandComponent).cards
         assert card in entity.get(ExhaustPileComponent).cards
 
-        message = mock_game.add_human_message.call_args.kwargs["human_message"]
+        message = mock_game.world.agent_memories["英雄"].messages[-1]
         assert "# 虚无牌消散" in message.content
         assert "「虚无斩」" in message.content
         assert json.loads(message.card_pile_change) == {
@@ -126,7 +134,7 @@ class TestExhaustEtherealCardsSystemEtherealTrue:
     async def test_exhaust_pile_accumulates(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
         """多次 pass 时 ExhaustPile 应累积。"""
@@ -153,7 +161,7 @@ class TestExhaustEtherealCardsSystemEtherealFalse:
     async def test_normal_card_stays_in_hand(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
         entity = _make_entity(context, "英雄")
@@ -169,7 +177,7 @@ class TestExhaustEtherealCardsSystemEtherealFalse:
     async def test_mixed_hand_only_ethereal_moved(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
         """混合手牌：仅 ethereal=True 的牌被移走，其余保留。"""

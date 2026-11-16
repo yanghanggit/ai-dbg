@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
@@ -38,7 +37,7 @@ def _make_actor(
 
 
 def _system() -> CombatRoundStartSystem:
-    return CombatRoundStartSystem(MagicMock(spec=DBGGame), ActionOrderStrategy.SPEED)
+    return CombatRoundStartSystem(MagicMock(), ActionOrderStrategy.SPEED)
 
 
 def test_speed_orders_descending() -> None:

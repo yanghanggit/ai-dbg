@@ -9,6 +9,15 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+)
+from ..game.game_memory import (
+    add_human_message,
+)
 from ..models import (
     ActorComponent,
     Card,
@@ -84,7 +93,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
     """可传递卡牌转移系统。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -116,7 +125,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
         本系统负责「副本进入谁的手牌」这一数据流转，因此也负责把这笔流转告知双方：
         每个接收方一条「获得卡牌」，传递者一条「传递卡牌」结果。
         """
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("TransferCardsActionSystem: 战斗未进行中，跳过卡牌转移")
             return
 
@@ -133,7 +142,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
             source_hand = entity.get(HandComponent)
 
             # 本回合编号（消息标注用），取法与出牌记录一致。
-            round_number = len(self._game.current_dungeon_combat_room.combat.rounds)
+            round_number = len(current_dungeon_combat_room(self._game).combat.rounds)
 
             # 从源手牌移除本体（原卡后续由 DiscardCardsActionSystem 归入弃牌堆）。
             entity.replace(
@@ -151,7 +160,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
             for target_name, count in deliveries:
 
                 # 获取目标实体并进行基本校验
-                target = self._game.get_actor_entity(target_name)
+                target = get_actor_entity(self._game, target_name)
                 assert target is not None, f"目标 {target_name} 不存在"
                 assert target.has(HandComponent), f"目标 {target_name} 不存在手牌组件"
                 assert not target.has(DeathComponent), f"目标 {target_name} 已死亡"
@@ -179,7 +188,8 @@ class TransferCardsActionSystem(ReactiveProcessor):
 
                 # 副本已落地就必须告知持有者，否则目标（如怪物）下一回合会在决策提示词的
                 # 「手牌」里凭空多出牌却无从解释来源，只能自行编造归因。
-                self._game.add_human_message(
+                add_human_message(
+                    self._game,
                     entity=target,
                     human_message=HumanMessage(
                         content=_build_received_card_prompt(
@@ -196,7 +206,8 @@ class TransferCardsActionSystem(ReactiveProcessor):
             # 传递者同样需要知道副本落到谁手里、每人几份：出牌记录只说明「打出了哪张牌」，
             # 副本流向属于本系统的职责，不由出牌层代述。
             if deliveries:
-                self._game.add_human_message(
+                add_human_message(
+                    self._game,
                     entity=entity,
                     human_message=HumanMessage(
                         content=_build_transfer_outcome_prompt(

@@ -146,7 +146,7 @@ def test_basic_vector_operations() -> None:
                 conn.execute(
                     text(
                         """
-                    INSERT INTO test_vectors (content, embedding) 
+                    INSERT INTO test_vectors (content, embedding)
                     VALUES (:content, :vector)
                 """
                     ),
@@ -240,7 +240,7 @@ def test_high_dimension_vectors() -> None:
             conn.execute(
                 text(
                     """
-                INSERT INTO test_vectors_1536 (content, embedding) 
+                INSERT INTO test_vectors_1536 (content, embedding)
                 VALUES (:content, :vector)
             """
                 ),

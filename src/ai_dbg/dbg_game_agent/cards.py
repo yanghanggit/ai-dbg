@@ -22,6 +22,10 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
+from ai_dbg.game.game_entities import (
+    get_actor_entity,
+)
+
 from ..game.dbg_game import DBGGame
 from ..models import (
     DESIGNABLE_AFFIX_FIELDS,
@@ -218,7 +222,7 @@ def format_prototype_line(entry: CardPrototypeIndexEntry) -> str:
 #######################################################################################################################################
 def read_actor_motif(game: DBGGame, actor_name: str) -> str:
     """读角色挂载的艺术锚点；未挂 `MotifComponent` 时返回空串（与生产侧口径一致）。"""
-    entity = game.get_actor_entity(actor_name)
+    entity = get_actor_entity(game, actor_name)
     if entity is None:
         raise ValueError(f"找不到角色: {actor_name}")
     return entity.get(MotifComponent).motif if entity.has(MotifComponent) else ""
@@ -241,7 +245,7 @@ async def design_cards_preview(
     if not prototype_ids:
         raise ValueError("design-cards 至少需要一个原型 id")
 
-    entity = game.get_actor_entity(actor_name)
+    entity = get_actor_entity(game, actor_name)
     if entity is None:
         raise ValueError(f"找不到角色: {actor_name}")
 

@@ -15,6 +15,16 @@ from ..game.dbg_combat_processor import (
     get_alive_party_members_in_stage,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    get_agent_memory,
+)
 from ..llm import ToolDefinition, ToolFunction
 from ..models import (
     Artifact,
@@ -158,7 +168,7 @@ def _handle_change_hp(
     game: DBGGame, ctx: ArbitrationContext, entity_name: str, delta: int
 ) -> str:
     """按有符号 delta 变更 HP（自动 clamp），并累积规范化「旧→新」；待仲裁结束后统一落库。"""
-    entity = game.get_actor_entity(entity_name)
+    entity = get_actor_entity(game, entity_name)
     if entity is None:
         return f"错误：找不到战斗角色 {entity_name}"
 
@@ -205,7 +215,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
     """响应 PlayCardsAction，由所在场景（stage）结算其携带的神器修正规则。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     #######################################################################################################################################
@@ -223,7 +233,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
     #######################################################################################################################################
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("ArtifactPostArbitrationSystem: 战斗未进行中，跳过神器仲裁")
             return
 
@@ -236,7 +246,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
         """对一次动作触发的场景神器执行一次仲裁。"""
 
         # 场景实体（当前战斗舞台），同时即本次仲裁者
-        stage_entity = self._game.resolve_stage_entity(action_entity)
+        stage_entity = resolve_stage_entity(self._game, action_entity)
         assert (
             stage_entity is not None
         ), f"ArtifactPostArbitrationSystem: 无法找到 {action_entity.name} 所在的场景实体"
@@ -270,7 +280,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
             return
 
         current_round_number = len(
-            self._game.current_dungeon_combat_room.combat.rounds or []
+            current_dungeon_combat_room(self._game).combat.rounds or []
         )
 
         # 场上存活阵营（供 agent 判断「队伍方/怪物方」）
@@ -292,7 +302,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
         ctx = ArbitrationContext()
 
         # 以 stage 实体为仲裁者：直接使用其持久记忆，prompt / 工具轨迹 / 结果都写入其记忆。
-        stage_memory = self._game.get_agent_memory(stage_entity)
+        stage_memory = get_agent_memory(self._game, stage_entity)
         assert stage_memory.messages, "场景实体缺少首条 SystemMessage"
 
         # 本次 loop 的身份标记；结束后据 loop_start_index 把整段新增记忆压缩为一条总结。

@@ -3,6 +3,9 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
+from ..game.game_lifecycle import (
+    exit_game,
+)
 from ..models import (
     LoginRequest,
     LoginResponse,
@@ -94,7 +97,7 @@ async def logout(
             logger.info(f"logout: {payload.user_name} save game = {game.name}")
 
             # 退出游戏
-            game.exit()
+            exit_game(game)
             logger.info(f"logout: {payload.user_name} exit game = {game.name}")
 
         else:

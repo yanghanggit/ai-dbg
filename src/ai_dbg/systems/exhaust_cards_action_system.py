@@ -7,6 +7,9 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ..models import (
     ActorComponent,
     DiscardPileComponent,
@@ -22,7 +25,7 @@ class ExhaustCardsActionSystem(ReactiveProcessor):
     """消耗牌处理系统。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -47,7 +50,7 @@ class ExhaustCardsActionSystem(ReactiveProcessor):
 
         将 exhaust=True 的自有牌从 DiscardPile 移至 ExhaustPile。
         """
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("ExhaustCardsActionSystem: 战斗未进行中，跳过消耗牌处理")
             return
 

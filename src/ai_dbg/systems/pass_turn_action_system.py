@@ -12,6 +12,15 @@ from ..game.dbg_combat_processor import (
     get_energy,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_broadcast import (
+    broadcast_to_stage,
+)
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    resolve_stage_entity,
+)
 from ..models import (
     ActorComponent,
     HandComponent,
@@ -35,7 +44,7 @@ class PassTurnActionSystem(ReactiveProcessor):
     """过牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -57,7 +66,7 @@ class PassTurnActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("PassTurnActionSystem: 战斗未进行中，跳过过牌处理")
             return
 
@@ -66,12 +75,12 @@ class PassTurnActionSystem(ReactiveProcessor):
         assert len(entities) == 1, "PassTurnActionSystem: 一次只能处理一个过牌动作实体"
         entity = entities[0]
 
-        current_rounds = self._game.current_dungeon_combat_room.combat.rounds
+        current_rounds = current_dungeon_combat_room(self._game).combat.rounds
         assert (
             current_rounds is not None
         ), "PassTurnActionSystem: current_rounds is None"
 
-        last_round = self._game.current_dungeon_combat_room.combat.latest_round
+        last_round = current_dungeon_combat_room(self._game).combat.latest_round
         assert last_round is not None, "PassTurnActionSystem: latest_round is None"
 
         pass_turn_action = entity.get(PassTurnAction)
@@ -103,11 +112,12 @@ class PassTurnActionSystem(ReactiveProcessor):
         )
 
         # 广播过牌通知给场景内所有角色（含过牌者本人），仅排除场景实体
-        stage_entity = self._game.resolve_stage_entity(entity)
+        stage_entity = resolve_stage_entity(self._game, entity)
         assert (
             stage_entity is not None
         ), f"PassTurnActionSystem: 无法找到 {entity.name} 所在的场景实体"
-        self._game.broadcast_to_stage(
+        broadcast_to_stage(
+            self._game,
             entity=entity,
             agent_event=NoneEvent(
                 message=_build_pass_turn_notice(

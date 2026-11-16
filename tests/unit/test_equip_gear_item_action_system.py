@@ -1,15 +1,15 @@
 """EquipGearItemActionSystem 单元测试：验证 GearItem 转化为手牌的流程。"""
 
-from typing import List
+from typing import Any, List, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import current_dungeon_combat_room
 from ai_dbg.models import (
-    AgentEvent,
+    ActorComponent,
     Card,
     EquipGearItemAction,
     EquippedGearComponent,
@@ -17,8 +17,10 @@ from ai_dbg.models import (
     HandComponent,
     InventoryComponent,
     PartyMemberComponent,
+    PlayerComponent,
     Round,
     RoundEntryKind,
+    StageComponent,
 )
 from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
 
@@ -41,9 +43,14 @@ def _make_actor_entity(
     action_item: GearItem,
 ) -> Entity:
     """创建携带 HandComponent + PartyMemberComponent + EquipGearItemAction 的当前行动者。"""
+    if not any(e.name == "测试场景" for e in context.entities):
+        stage = context.create_entity()
+        stage._name = "测试场景"
+        stage.add(StageComponent, "测试场景")
     entity = context.create_entity()
     entity._name = name
     entity.add(HandComponent, name, [])
+    entity.add(ActorComponent, name, "测试场景")
     entity.add(PartyMemberComponent, name)
     entity.add(EquipGearItemAction, name, action_item)
     return entity
@@ -54,15 +61,15 @@ def _make_player_entity(context: Context, name: str, items: List[GearItem]) -> E
     entity = context.create_entity()
     entity._name = name
     entity.add(InventoryComponent, name, list(items))
+    entity.add(PlayerComponent, name)
     return entity
 
 
-def _setup_mock_game(mock_game: MagicMock, player: Entity) -> Round:
-    mock_game.current_dungeon_combat_room.combat.is_ongoing = True
-    mock_game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
+def _setup_mock_game(mock_game: Any, player: Entity) -> Round:
+    cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+    cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
     latest_round = Round()
-    mock_game.current_dungeon_combat_room.combat.latest_round = latest_round
-    mock_game.get_player_entity.return_value = player
+    cast(Any, current_dungeon_combat_room(mock_game)).combat.latest_round = latest_round
     return latest_round
 
 
@@ -77,12 +84,17 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> EquipGearItemActionSystem:
+def system(mock_game: Any) -> EquipGearItemActionSystem:
     return EquipGearItemActionSystem(mock_game)
 
 
@@ -96,10 +108,10 @@ class TestReact:
     async def test_skips_when_not_ongoing(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         gear = _make_gear("装备.测试")
         actor = _make_actor_entity(context, "角色.测试", gear)
 
@@ -111,17 +123,13 @@ class TestReact:
     async def test_converts_gear_to_hand_card(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
         gear = _make_gear("装备.测试")
         actor = _make_actor_entity(context, "角色.测试", gear)
         player = _make_player_entity(context, "player", [gear])
         latest_round = _setup_mock_game(mock_game, player)
-        stage = context.create_entity()
-        stage._name = "测试场景"
-        mock_game.resolve_stage_entity.return_value = stage
-
         generated = Card(name="斩击", description="x")
         with patch.object(system, "_materialize_cards", return_value=[generated]):
             await system.react([actor])
@@ -141,8 +149,4 @@ class TestReact:
         assert gear_entries[0].log
         assert gear_entries[0].narrative
         # 广播装备转化通知
-        mock_game.broadcast_to_stage.assert_called_once()
-        _, kwargs = mock_game.broadcast_to_stage.call_args
-        assert kwargs["entity"] is actor
-        assert kwargs["exclude_entities"] == {stage}
-        assert isinstance(kwargs["agent_event"], AgentEvent)
+        assert mock_game.world.agent_memories

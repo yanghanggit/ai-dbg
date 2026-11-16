@@ -7,6 +7,9 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ..models import (
     ActorComponent,
     ExhaustPileComponent,
@@ -27,7 +30,7 @@ class ExhaustEtherealCardsSystem(ReactiveProcessor):
     """虚无牌自动消耗系统：响应 PassTurnAction，将手牌中 ethereal=True 的牌移入 ExhaustPile。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -50,7 +53,7 @@ class ExhaustEtherealCardsSystem(ReactiveProcessor):
     async def react(self, entities: List[Entity]) -> None:
         """pass turn 时，将仍在手牌中的虚无牌移入 ExhaustPile。"""
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("ExhaustEtherealCardsSystem: 战斗未进行中，跳过虚无牌处理")
             return
 

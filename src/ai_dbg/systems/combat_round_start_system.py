@@ -13,6 +13,13 @@ from ..game.dbg_combat_processor import (
     get_energy,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
 from ..models import (
     CharacterStatsComponent,
     DeathComponent,
@@ -53,7 +60,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
         game: DBGGame,
         strategy: ActionOrderStrategy = ActionOrderStrategy.SPEED,
     ) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
         self._strategy: Final[ActionOrderStrategy] = strategy
 
@@ -76,12 +83,12 @@ class CombatRoundStartSystem(ReactiveProcessor):
         )
 
         # 状态守卫①：战斗未进行中 → 静默跳过
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，跳过回合创建")
             return
 
         # 状态守卫②：已有进行中的回合（未完成）→ 不重复创建
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         if latest_round is not None and not latest_round.is_completed:
             logger.debug("当前已有未完成回合，跳过回合创建")
             return
@@ -89,7 +96,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
         logger.debug("DrawCardsAction 触发，开始创建新回合...")
 
         # 玩家角色
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "player_entity is None"
 
         # 所有存活角色
@@ -104,11 +111,11 @@ class CombatRoundStartSystem(ReactiveProcessor):
             ), f"actor {actor.name} 缺少 IdentityComponent"
 
         # 当前舞台（必须是副本）
-        stage_entity = self._game.resolve_stage_entity(player_entity)
+        stage_entity = resolve_stage_entity(self._game, player_entity)
         assert stage_entity is not None, "stage_entity is None"
         assert stage_entity.has(DungeonComponent), "stage_entity 没有 DungeonComponent"
 
-        round_number = len(self._game.current_dungeon_combat_room.combat.rounds) + 1
+        round_number = len(current_dungeon_combat_room(self._game).combat.rounds) + 1
         new_round = self._start_new_round(actors_in_stage)
 
         # 快照必须在 start_new_round 之后构建，此时 RoundStatsComponent 已按新回合重置
@@ -132,20 +139,20 @@ class CombatRoundStartSystem(ReactiveProcessor):
     ############################################################################################################
     def _start_new_round(self, actors: set[Entity]) -> Round:
         """创建并追加新回合，同时重置所有参战角色的 RoundStatsComponent。"""
-        assert (
-            self._game.current_dungeon_combat_room.combat.is_ongoing
-        ), "当前战斗未进行中，无法开始新回合"
+        assert current_dungeon_combat_room(
+            self._game
+        ).combat.is_ongoing, "当前战斗未进行中，无法开始新回合"
 
         # 守卫：若当前已有回合，则必须确保上一回合已完成
-        current_rounds = self._game.current_dungeon_combat_room.combat.rounds or []
+        current_rounds = current_dungeon_combat_room(self._game).combat.rounds or []
         if len(current_rounds) > 0:
-            last_round = self._game.current_dungeon_combat_room.combat.latest_round
+            last_round = current_dungeon_combat_room(self._game).combat.latest_round
             assert last_round is not None, "latest_round is None"
             assert last_round.is_completed, "上一回合尚未完成，无法创建新回合"
 
         # 创建新回合并追加到当前战斗
         new_round = Round()
-        self._game.current_dungeon_combat_room.combat.rounds.append(new_round)
+        current_dungeon_combat_room(self._game).combat.rounds.append(new_round)
 
         # 重置所有参战角色的 RoundStatsComponent
         for actor in actors:

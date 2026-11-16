@@ -8,6 +8,9 @@
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
+from ..game.game_dungeon import (
+    is_current_room_dungeon_combat,
+)
 from ..models import (
     DungeonSpoilsGenerateRequest,
     DungeonSpoilsGenerateResponse,
@@ -60,7 +63,7 @@ async def dungeon_spoils_generate(
     )
 
     # 验证当前副本房间为非战斗房间（奖励隶属于非战斗房间）
-    if rpg_game.is_current_room_dungeon_combat:
+    if is_current_room_dungeon_combat(rpg_game):
         logger.error(f"玩家 {payload.user_name} 奖励生成失败: 当前副本房间是战斗房间")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -113,7 +116,7 @@ async def dungeon_spoils_pick_card(
     )
 
     # 验证当前副本房间为非战斗房间
-    if rpg_game.is_current_room_dungeon_combat:
+    if is_current_room_dungeon_combat(rpg_game):
         logger.error(f"玩家 {payload.user_name} 领卡失败: 当前副本房间是战斗房间")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

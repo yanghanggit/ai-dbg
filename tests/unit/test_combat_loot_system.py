@@ -1,13 +1,15 @@
 """CombatLootSystem 单元测试：掉落推理必须写回怪物记忆（与出牌决策一致）。"""
 
-from typing import List
+from typing import Any, List, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas import Entity
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
 from ai_dbg.models import (
     ActorComponent,
@@ -16,6 +18,8 @@ from ai_dbg.models import (
     LootComponent,
     MonsterComponent,
     PartyMemberComponent,
+    PlayerComponent,
+    StageComponent,
 )
 from ai_dbg.systems.combat_loot_system import CombatLootSystem
 
@@ -33,8 +37,9 @@ _LOOT_JSON = """{
 def _make_player(context: Context) -> Entity:
     entity = context.create_entity()
     entity._name = "角色.无名"
-    entity.add(ActorComponent, entity._name, "stage")
+    entity.add(ActorComponent, entity._name, "场景.河湾芦苇丛")
     entity.add(PartyMemberComponent, entity._name)
+    entity.add(PlayerComponent, entity._name)
     entity.add(LootComponent, entity._name, [])
     return entity
 
@@ -42,7 +47,7 @@ def _make_player(context: Context) -> Entity:
 def _make_monster(context: Context, name: str) -> Entity:
     entity = context.create_entity()
     entity._name = name
-    entity.add(ActorComponent, name, "stage")
+    entity.add(ActorComponent, name, "场景.河湾芦苇丛")
     entity.add(MonsterComponent, name)
     entity.add(AppearanceComponent, name, "体型基础", "一头灰褐色的野狗")
     return entity
@@ -53,17 +58,23 @@ def context() -> Context:
     return Context()
 
 
-def _make_game(context: Context, monsters: List[Entity], player: Entity) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.current_dungeon_combat_room.combat.is_combat_completed = True
-    game.current_dungeon_combat_room.combat.is_won = True
-    game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
-    game.get_player_entity.return_value = player
-    game.get_actors_in_stage.return_value = monsters
-    game.get_agent_memory.return_value = MagicMock(messages=[])
-    stage = MagicMock()
-    stage.name = "场景.河湾芦苇丛"
-    game.resolve_stage_entity.return_value = stage
+def _make_game(context: Context, monsters: List[Entity], player: Entity) -> Any:
+    stage = context.create_entity()
+    stage._name = "场景.河湾芦苇丛"
+    stage.add(StageComponent, stage.name)
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    game.world.dungeon = MagicMock()
+    game.world.dungeon.current_room = MagicMock(
+        combat=MagicMock(
+            is_combat_completed=True,
+            is_won=True,
+            rounds=[MagicMock()],
+        )
+    )
     return game
 
 
@@ -91,21 +102,14 @@ class TestLootMemory:
             await system.execute()
 
         # human：怪物侧记请求原文 + 结构化标记
-        monster_calls = [
-            c
-            for c in game.add_human_message.call_args_list
-            if c.kwargs["entity"] is monster
-        ]
-        assert len(monster_calls) == 1
-        kwargs = monster_calls[0].kwargs
-        assert kwargs["human_message"].combat_loot_reasoning == monster.name
-        assert "掉落" in kwargs["human_message"].content
-
-        # ai：回包原文
-        game.add_ai_message.assert_called_once()
-        ai_entity, ai_message = game.add_ai_message.call_args.args
-        assert ai_entity is monster
-        assert ai_message.content == _LOOT_JSON
+        messages = game.world.agent_memories[monster.name].messages
+        human_messages = [m for m in messages if m.type == "human"]
+        assert len(human_messages) == 1
+        assert human_messages[0].combat_loot_reasoning == monster.name
+        assert "掉落" in human_messages[0].content
+        ai_messages = [m for m in messages if m.type == "ai"]
+        assert len(ai_messages) == 1
+        assert ai_messages[0].content == _LOOT_JSON
 
         # 掉落照常写入玩家
         assert [item.name for item in player.get(LootComponent).items] == [
@@ -114,13 +118,10 @@ class TestLootMemory:
         ]
 
         # 玩家侧也留一条自我状态说明（只写给本人）
-        player_calls = [
-            c
-            for c in game.add_human_message.call_args_list
-            if c.kwargs["entity"] is player
-        ]
-        assert len(player_calls) == 1
-        loot_message = player_calls[0].kwargs["human_message"]
+        player_messages = game.world.agent_memories[player.name].messages
+        loot_messages = [m for m in player_messages if m.type == "human"]
+        assert len(loot_messages) == 1
+        loot_message = loot_messages[0]
         assert loot_message.content.startswith("# 你的战利品")
         assert "材料.兽骨 ×2" in loot_message.content
         assert "材料.利爪 ×1" in loot_message.content
@@ -144,8 +145,9 @@ class TestLootMemory:
         with patch(f"{_MODULE}.batch_complete", side_effect=fake_batch_complete):
             await system.execute()
 
-        assert len(game.add_human_message.call_args_list) == 1  # 只有怪物侧请求
-        game.add_ai_message.assert_not_called()
+        messages = game.world.agent_memories[monster.name].messages
+        assert len([m for m in messages if m.type == "human"]) == 1
+        assert not [m for m in messages if m.type == "ai"]
         assert player.get(LootComponent).items == []
 
     async def test_skips_entirely_when_combat_not_won(self, context: Context) -> None:
@@ -153,20 +155,19 @@ class TestLootMemory:
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")
         game = _make_game(context, [monster], player)
-        game.current_dungeon_combat_room.combat.is_won = False
+        cast(Any, current_dungeon_combat_room(game)).combat.is_won = False
         system = CombatLootSystem(game)
 
         await system.execute()
 
-        game.add_human_message.assert_not_called()
-        game.add_ai_message.assert_not_called()
+        assert not game.world.agent_memories
 
     async def test_asserts_when_player_has_no_stage(self, context: Context) -> None:
         """actor 与 stage 不允许脱离：缺失场景是断言失败，而不是降级空串。"""
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")
         game = _make_game(context, [monster], player)
-        game.resolve_stage_entity.return_value = None
+        player.replace(ActorComponent, player.name, "不存在的场景")
         system = CombatLootSystem(game)
 
         with pytest.raises(AssertionError):

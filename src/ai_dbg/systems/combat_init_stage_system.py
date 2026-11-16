@@ -10,6 +10,17 @@ from ..game.dbg_combat_processor import (
     get_alive_party_members_in_stage,
 )
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_player_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    add_ai_message,
+    add_human_message,
+)
 from ..game.rpg_stage_environment import get_stage_environment
 from ..models import AIMessage, HumanMessage
 from ..utils import prompt_builder
@@ -51,18 +62,18 @@ class CombatInitStageSystem(ExecuteProcessor):
     @override
     async def execute(self) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_initializing:
+        if not current_dungeon_combat_room(self._game).combat.is_initializing:
             logger.debug("当前战斗状态非 initializing，跳过战斗初始化（场景侧）")
             return
 
         logger.info("战斗初始化（场景侧）开始，正在注入战斗规则并转换战斗状态...")
 
         # 获取玩家实体，player 所在场景即战斗场景
-        player_entity = self._game.get_player_entity()
+        player_entity = get_player_entity(self._game)
         assert player_entity is not None, "无法找到玩家实体！"
 
         # 获取当前场景实体
-        current_stage_entity = self._game.resolve_stage_entity(player_entity)
+        current_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert current_stage_entity is not None, "无法找到当前场景实体！"
 
         # 向场景实体注入当前战斗场景状态（谁在场上、阵营分别是什么），供后续仲裁阶段作为上下文。
@@ -73,7 +84,8 @@ class CombatInitStageSystem(ExecuteProcessor):
         )
         monsters = get_alive_monsters_in_stage(current_stage_entity, self._game)
 
-        self._game.add_human_message(
+        add_human_message(
+            self._game,
             current_stage_entity,
             HumanMessage(
                 content=_build_stage_combat_state_prompt(
@@ -84,16 +96,17 @@ class CombatInitStageSystem(ExecuteProcessor):
                 combat_initialization=current_stage_entity.name,
             ),
         )
-        self._game.add_ai_message(
+        add_ai_message(
+            self._game,
             current_stage_entity,
             AIMessage(content="已感知当前战斗场景状态。"),
         )
 
         # 设置战斗为进行中（第一回合将由 DrawCardsAction 触发的 CombatRoundStartSystem 创建）
-        self._game.current_dungeon_combat_room.combat.transition_to_ongoing()
-        assert (
-            self._game.current_dungeon_combat_room.combat.is_ongoing
-        ), "战斗状态转换失败，当前状态非 ONGOING！"
+        current_dungeon_combat_room(self._game).combat.transition_to_ongoing()
+        assert current_dungeon_combat_room(
+            self._game
+        ).combat.is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"
 
 
 ###################################################################################################################################################################

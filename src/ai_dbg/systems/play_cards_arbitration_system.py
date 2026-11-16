@@ -10,6 +10,16 @@ from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_combat_processor import compute_character_stats
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    get_agent_memory,
+)
 from ..llm import ToolDefinition
 from ..models import (
     Card,
@@ -233,7 +243,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
     """响应 PlayCardsAction 事件，对单张出牌立即进行 AI 仲裁结算（工具调用模式）。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     #######################################################################################################################################
@@ -250,7 +260,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("PlayCardsArbitrationSystem: 战斗未进行中，跳过仲裁")
             return
 
@@ -264,7 +274,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
     async def _run_arbitration(self, actor_entity: Entity) -> None:
         """驱动单次出牌的完整仲裁流程。"""
 
-        stage_entity = self._game.resolve_stage_entity(actor_entity)
+        stage_entity = resolve_stage_entity(self._game, actor_entity)
         assert stage_entity is not None, f"无法获取 {actor_entity.name} 所在场景实体！"
 
         assert actor_entity.has(
@@ -278,11 +288,11 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
 
         # 获取当前回合数，用于仲裁提示生成
         current_round_number = len(
-            self._game.current_dungeon_combat_room.combat.rounds or []
+            current_dungeon_combat_room(self._game).combat.rounds or []
         )
 
         # 获取最新回合的行动信息，供仲裁提示词扩展使用
-        latest_round = self._game.current_dungeon_combat_room.combat.latest_round
+        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
         assert latest_round is not None, "仲裁阶段最新回合不应为 None"
         round_action_order = latest_round.action_order
         round_completed_actors = latest_round.completed_actors
@@ -303,7 +313,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
         ctx = ArbitrationContext()
 
         # 以 stage 实体为仲裁者：直接使用其持久记忆，prompt / 工具轨迹 / 结果都写入其记忆。
-        stage_memory = self._game.get_agent_memory(stage_entity)
+        stage_memory = get_agent_memory(self._game, stage_entity)
         assert stage_memory.messages, "场景实体缺少首条 SystemMessage"
 
         # 本次 loop 的身份标记；结束后据 loop_start_index 把整段新增记忆压缩为一条总结。
@@ -393,7 +403,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
         for notify_name in notify_names:
             if notify_name in ctx.hp_changes:
                 continue
-            entity = self._game.get_actor_entity(notify_name)
+            entity = get_actor_entity(self._game, notify_name)
             assert entity is not None, f"无法找到需通知角色: {notify_name}"
             ctx.hp_changes[notify_name] = compute_character_stats(entity).hp
 

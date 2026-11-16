@@ -10,6 +10,9 @@ from typing import Tuple
 from loguru import logger
 
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_entity_by_name,
+)
 from ..models import CompactContextAction
 
 
@@ -30,7 +33,7 @@ def activate_compact_context(dbg_game: DBGGame, target_name: str) -> Tuple[bool,
     target_name = target_name.strip()
 
     # 按名字解析目标实体（角色/怪物/场景/世界均可）
-    target_entity = dbg_game.get_entity_by_name(target_name)
+    target_entity = get_entity_by_name(dbg_game, target_name)
     if target_entity is None:
         error_detail = f"目标实体 {target_name} 不存在"
         logger.error(f"激活上下文压缩失败: {error_detail}")

@@ -26,6 +26,10 @@ from ..models import (
     compute_hand_block,
 )
 from .dbg_game import DBGGame
+from .game_entities import (
+    get_actor_entity,
+    get_actors_in_stage,
+)
 
 
 #################################################################################################################################################
@@ -117,7 +121,7 @@ def get_current_turn_actor(game: DBGGame, round: Round) -> Optional[str]:
     for actor_name in round.action_order:
         if actor_name in completed:
             continue
-        actor_entity = game.get_actor_entity(actor_name)
+        actor_entity = get_actor_entity(game, actor_name)
         assert actor_entity is not None, f"无法找到角色实体: {actor_name}"
         if actor_entity.has(DeathComponent):
             continue
@@ -129,7 +133,7 @@ def get_current_turn_actor(game: DBGGame, round: Round) -> Optional[str]:
 #################################################################################################################################################
 def get_alive_actors_in_stage(game: DBGGame, entity: Entity) -> Set[Entity]:
     """获取指定场景上存活的 Actor 实体。"""
-    return game.get_actors_in_stage(entity, Matcher(none_of=[DeathComponent]))
+    return get_actors_in_stage(game, entity, Matcher(none_of=[DeathComponent]))
 
 
 #################################################################################################################################################
@@ -138,7 +142,8 @@ def get_alive_party_members_in_stage(
 ) -> List[Entity]:
     """获取锚点实体所在场景中所有存活的队伍成员。"""
     return list(
-        dbg_game.get_actors_in_stage(
+        get_actors_in_stage(
+            dbg_game,
             anchor_entity,
             Matcher(all_of=[PartyMemberComponent], none_of=[DeathComponent]),
         )
@@ -151,8 +156,10 @@ def get_alive_monsters_in_stage(
 ) -> List[Entity]:
     """获取锚点实体所在场景中所有存活的怪物。"""
     return list(
-        dbg_game.get_actors_in_stage(
-            anchor_entity, Matcher(all_of=[MonsterComponent], none_of=[DeathComponent])
+        get_actors_in_stage(
+            dbg_game,
+            anchor_entity,
+            Matcher(all_of=[MonsterComponent], none_of=[DeathComponent]),
         )
     )
 
@@ -281,7 +288,7 @@ def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card
     settlements: List[Tuple[Entity, List[Card], List[Card]]] = []
 
     # 清除所有角色实体的手牌组件（STS 标准：回合末未出牌进弃牌堆）
-    for entity in game.get_group(
+    for entity in game.ecs.get_group(
         Matcher(all_of=[HandComponent, DiscardPileComponent, DrawPileComponent])
     ).entities.copy():
 
@@ -331,7 +338,7 @@ def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card
         entity.remove(HandComponent)
 
     # 清除所有角色实体的回合动态属性组件
-    for entity in game.get_group(Matcher(RoundStatsComponent)).entities.copy():
+    for entity in game.ecs.get_group(Matcher(RoundStatsComponent)).entities.copy():
         logger.debug(f"clear round stats: {entity.name}")
         entity.remove(RoundStatsComponent)
 
@@ -342,7 +349,7 @@ def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card
 def assert_no_residual_combat_state(dbg_game: DBGGame) -> None:
     """断言战斗临时组件已被 pipeline（CombatRoundCleanupSystem/CombatOutcomeSystem/CombatPileTeardownSystem）清理干净，此函数不做任何清理动作。"""
 
-    residual_entities = dbg_game.get_group(
+    residual_entities = dbg_game.ecs.get_group(
         Matcher(
             any_of=[
                 HandComponent,

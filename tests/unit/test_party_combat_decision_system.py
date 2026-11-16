@@ -5,7 +5,8 @@
 """
 
 import json
-from typing import Any, Dict, List
+from types import SimpleNamespace
+from typing import Any, Dict, List, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,7 +14,9 @@ import pytest
 from ai_dbg.entitas import GroupEvent
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -69,24 +72,29 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def game() -> MagicMock:
-    mock = MagicMock(spec=DBGGame)
-    mock.current_dungeon_combat_room.combat.is_ongoing = True
-    mock.current_dungeon_combat_room.combat.rounds = [MagicMock()]
+def game(context: Context) -> Any:
+    mock = MagicMock()
+    mock.ecs = context
+    mock.entity_index = {}
+    mock.world.agent_memories = {}
+    mock.player_session = MagicMock()
+    cast(Any, current_dungeon_combat_room(mock)).combat.is_ongoing = True
+    cast(Any, current_dungeon_combat_room(mock)).combat.rounds = [MagicMock()]
     return mock
 
 
-def _records(game: MagicMock) -> List[Any]:
+def _records(game: Any) -> List[Any]:
     return [
-        call.kwargs["human_message"]
-        for call in game.add_human_message.call_args_list
-        if getattr(call.kwargs["human_message"], "combat_decision", None) is not None
+        message
+        for memory in game.world.agent_memories.values()
+        for message in memory.messages
+        if getattr(message, "combat_decision", None) is not None
     ]
 
 
 class TestPartyDecisionRecord:
     async def test_play_writes_same_shape_as_monster(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         actor = _make_actor(context, "角色.无名")
         card = _make_card()
@@ -113,9 +121,7 @@ class TestPartyDecisionRecord:
             "forced": False,
         }
 
-    async def test_pass_writes_pass_record(
-        self, context: Context, game: MagicMock
-    ) -> None:
+    async def test_pass_writes_pass_record(self, context: Context, game: Any) -> None:
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 
@@ -127,7 +133,7 @@ class TestPartyDecisionRecord:
         assert json.loads(records[0].combat_decision)["action"] == "pass"
 
     async def test_unplayable_card_records_blocked_play(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """结算层会拦下不可出的牌，记录必须同步：本想打、没打出去（与怪物侧同形）。"""
         actor = _make_actor(context, "角色.无名")
@@ -152,70 +158,77 @@ class TestPartyDecisionRecord:
         assert tag["forced"] is True
 
     async def test_pass_after_play_is_not_recorded_again(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """出完牌后交出行动权是机械步骤，不是第二次决策：不再写一条「不出牌」。"""
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
-        game.get_agent_memory.return_value.messages = [
-            HumanMessage(
-                content="# 第 1 回合 · 你的行动\n你打出了「攻击」。",
-                combat_decision=build_combat_decision_tag(
-                    1,
-                    ACTION_PLAY,
-                    card_name="攻击",
-                    targets=["怪物.渡口野狗"],
-                    reason=REASON_PLACEHOLDER,
-                    forced=False,
-                ),
-            )
-        ]
+        game.world.agent_memories[actor.name] = SimpleNamespace(
+            messages=[
+                HumanMessage(
+                    content="# 第 1 回合 · 你的行动\n你打出了「攻击」。",
+                    combat_decision=build_combat_decision_tag(
+                        1,
+                        ACTION_PLAY,
+                        card_name="攻击",
+                        targets=["怪物.渡口野狗"],
+                        reason=REASON_PLACEHOLDER,
+                        forced=False,
+                    ),
+                )
+            ]
+        )
 
         await PartyCombatDecisionSystem(game).react([actor])
 
-        game.add_human_message.assert_not_called()
+        assert len(_records(game)) == 1
 
     async def test_pass_in_a_new_round_is_still_recorded(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """上一回合出过牌不影响本回合：本回合只过牌，就是一次真的过牌决策。"""
-        game.current_dungeon_combat_room.combat.rounds = [MagicMock(), MagicMock()]
+        cast(Any, current_dungeon_combat_room(game)).combat.rounds = [
+            MagicMock(),
+            MagicMock(),
+        ]
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
-        game.get_agent_memory.return_value.messages = [
-            HumanMessage(
-                content="# 第 1 回合 · 你的行动\n你打出了「攻击」。",
-                combat_decision=build_combat_decision_tag(
-                    1,
-                    ACTION_PLAY,
-                    card_name="攻击",
-                    targets=["怪物.渡口野狗"],
-                    reason=REASON_PLACEHOLDER,
-                    forced=False,
-                ),
-            )
-        ]
+        game.world.agent_memories[actor.name] = SimpleNamespace(
+            messages=[
+                HumanMessage(
+                    content="# 第 1 回合 · 你的行动\n你打出了「攻击」。",
+                    combat_decision=build_combat_decision_tag(
+                        1,
+                        ACTION_PLAY,
+                        card_name="攻击",
+                        targets=["怪物.渡口野狗"],
+                        reason=REASON_PLACEHOLDER,
+                        forced=False,
+                    ),
+                )
+            ]
+        )
 
         await PartyCombatDecisionSystem(game).react([actor])
 
         records = _records(game)
-        assert len(records) == 1
-        assert "你选择不出牌，直接过牌。" in records[0].content
-        assert json.loads(records[0].combat_decision)["round"] == 2
+        assert len(records) == 2
+        assert "你选择不出牌，直接过牌。" in records[-1].content
+        assert json.loads(records[-1].combat_decision)["round"] == 2
 
     async def test_skips_when_combat_not_ongoing(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
-        game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = False
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 
         await PartyCombatDecisionSystem(game).react([actor])
 
-        game.add_human_message.assert_not_called()
+        assert len(_records(game)) == 0
 
     def test_filter_requires_party_member_and_liveness(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         system = PartyCombatDecisionSystem(game)
         alive_party = _make_actor(context, "角色.无名")
@@ -230,7 +243,7 @@ class TestPartyDecisionRecord:
         assert not system.filter(monster)
 
     def test_triggers_on_both_decision_actions(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """出牌与过牌共用同一触发集合（怪物侧两种决策都会记录）。"""
         triggers = PartyCombatDecisionSystem(game).get_trigger()

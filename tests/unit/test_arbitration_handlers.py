@@ -4,12 +4,11 @@
 handler 核心已收敛到 `arbitration_common`；此处经 `turn_end` 的薄包装验证（含持有者目标约束）。
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -38,9 +37,9 @@ def _make_actor(
     return entity
 
 
-def _make_game(entities: Dict[str, Entity]) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
-    game.get_actor_entity.side_effect = lambda name: entities.get(name)
+def _make_game(entities: Dict[str, Entity]) -> Any:
+    game = MagicMock()
+    game.entity_index = entities
     return game
 
 

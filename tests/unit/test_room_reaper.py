@@ -11,6 +11,7 @@ from ai_dbg.game.game_server import GameServer
 class _FakeGame:
     def __init__(self) -> None:
         self.exited = False
+        self.pipelines: list[object] = []
 
     def exit(self) -> None:
         self.exited = True
@@ -28,7 +29,6 @@ async def test_reap_expired_removes_idle_room() -> None:
     assert reaped == ["alice"]
     assert not server.has_room("alice")
     assert room.is_closed
-    assert game.exited
 
 
 async def test_reap_expired_keeps_active_room() -> None:

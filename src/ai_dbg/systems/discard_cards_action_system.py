@@ -7,6 +7,9 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ..models import (
     ActorComponent,
     DiscardPileComponent,
@@ -22,7 +25,7 @@ class DiscardCardsActionSystem(ReactiveProcessor):
     """弃牌处理系统。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -44,7 +47,7 @@ class DiscardCardsActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
         """将出牌从 Hand 移入 DiscardPile。"""
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("DiscardCardsActionSystem: 战斗未进行中，跳过弃牌处理")
             return
 

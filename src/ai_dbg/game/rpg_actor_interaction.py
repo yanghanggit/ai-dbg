@@ -7,7 +7,8 @@ from enum import IntEnum, unique
 from typing import final
 
 from ..entitas import Entity
-from .rpg_game import RPGGame
+from .dbg_game import DBGGame
+from .game_entities import get_actor_entity, resolve_stage_entity
 
 
 ###############################################################################################################################################
@@ -28,18 +29,18 @@ class InteractionError(IntEnum):
 
 ###############################################################################################################################################
 def validate_actor_interaction(
-    game: RPGGame, initiator_entity: Entity, target_name: str
+    game: DBGGame, initiator_entity: Entity, target_name: str
 ) -> InteractionError:
     """验证两个 Actor 之间是否可以进行交互。"""
-    actor_entity = game.get_actor_entity(target_name)
+    actor_entity = get_actor_entity(game, target_name)
     if actor_entity is None:
         return InteractionError.TARGET_NOT_FOUND
 
-    current_stage_entity = game.resolve_stage_entity(initiator_entity)
+    current_stage_entity = resolve_stage_entity(game, initiator_entity)
     if current_stage_entity is None:
         return InteractionError.INITIATOR_NOT_IN_STAGE
 
-    target_stage_entity = game.resolve_stage_entity(actor_entity)
+    target_stage_entity = resolve_stage_entity(game, actor_entity)
     if target_stage_entity != current_stage_entity:
         return InteractionError.DIFFERENT_STAGES
 

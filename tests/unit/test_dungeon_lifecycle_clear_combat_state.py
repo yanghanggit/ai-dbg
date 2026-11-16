@@ -1,12 +1,16 @@
 """CombatPileTeardownSystem 单元测试：验证 EquippedGearComponent 装备归还玩家背包。"""
 
-from typing import List
+from typing import Any, List
 from unittest.mock import MagicMock
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
-from ai_dbg.models import EquippedGearComponent, GearItem, InventoryComponent
+from ai_dbg.models import (
+    EquippedGearComponent,
+    GearItem,
+    InventoryComponent,
+    PlayerComponent,
+)
 from ai_dbg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
 
 
@@ -18,6 +22,7 @@ def _make_player(context: Context, name: str, items: List[GearItem]) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(InventoryComponent, name, list(items))
+    entity.add(PlayerComponent, name)
     return entity
 
 
@@ -29,10 +34,11 @@ def _make_gear_holder(context: Context, name: str, gears: List[GearItem]) -> Ent
     return entity
 
 
-def _make_mock_game(context: Context, player: Entity) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
+def _make_mock_game(context: Context, player: Entity) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
     game.get_group.side_effect = context.get_group
-    game.get_player_entity.return_value = player
     return game
 
 

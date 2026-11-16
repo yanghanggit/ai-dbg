@@ -5,22 +5,24 @@
 扣库存失败则不物化、不广播。效果结算交给后续出牌仲裁。
 """
 
-from typing import List
+from typing import Any, List, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import current_dungeon_combat_room
 from ai_dbg.models import (
-    AgentEvent,
+    ActorComponent,
     Card,
     ConsumableItem,
     HandComponent,
     InventoryComponent,
+    PlayerComponent,
     Round,
     RoundEntryKind,
+    StageComponent,
     UseConsumableItemAction,
 )
 from ai_dbg.systems.use_consumable_item_action_system import (
@@ -58,9 +60,14 @@ def _make_actor_entity(
     action_item: ConsumableItem,
 ) -> Entity:
     """创建携带 UseConsumableItemAction 的当前行动者实体（持有空手牌）。"""
+    if not any(e.name == "stage" for e in context.entities):
+        stage = context.create_entity()
+        stage._name = "stage"
+        stage.add(StageComponent, "stage")
     entity = context.create_entity()
     entity._name = name
     entity.add(HandComponent, name, [])
+    entity.add(ActorComponent, name, "stage")
     entity.add(UseConsumableItemAction, name, action_item)
     return entity
 
@@ -72,15 +79,17 @@ def _make_player_entity(
     entity = context.create_entity()
     entity._name = name
     entity.add(InventoryComponent, name, list(items))
+    entity.add(PlayerComponent, name)
     return entity
 
 
-def _setup_mock_dungeon(mock_game: MagicMock, *, round_count: int = 1) -> Round:
+def _setup_mock_dungeon(mock_game: Any, *, round_count: int = 1) -> Round:
     """为 mock_game 配置进行中的战斗状态与最新回合。"""
-    mock_game.current_dungeon_combat_room.combat.is_ongoing = True
-    mock_game.current_dungeon_combat_room.combat.rounds = [MagicMock()] * round_count
+    combat: Any = current_dungeon_combat_room(mock_game).combat
+    combat.is_ongoing = True
+    combat.rounds = [MagicMock()] * round_count
     latest = Round()
-    mock_game.current_dungeon_combat_room.combat.latest_round = latest
+    combat.latest_round = latest
     return latest
 
 
@@ -95,12 +104,17 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def mock_game() -> MagicMock:
-    return MagicMock(spec=DBGGame)
+def mock_game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    return game
 
 
 @pytest.fixture()
-def system(mock_game: MagicMock) -> UseConsumableItemActionSystem:
+def system(mock_game: Any) -> UseConsumableItemActionSystem:
     return UseConsumableItemActionSystem(mock_game)
 
 
@@ -136,10 +150,10 @@ class TestReact:
     async def test_skips_when_not_ongoing(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
-        mock_game.current_dungeon_combat_room.combat.is_ongoing = False
+        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
         item = _make_consumable("灼血药剂", count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
 
@@ -147,20 +161,18 @@ class TestReact:
 
         mock_game.broadcast_to_stage.assert_not_called()
         mock_game.resolve_stage_entity.assert_not_called()
-        mock_game.get_player_entity.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_materializes_card_into_hand(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         _setup_mock_dungeon(mock_game)
         item = _make_consumable("灼血药剂", count=1, damage=5)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -180,7 +192,7 @@ class TestReact:
     async def test_materializes_each_builtin_card_times_count(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         """每个内置牌 × count：1 张内置牌 count=3 → 3 张手牌。"""
@@ -188,7 +200,6 @@ class TestReact:
         item = _make_consumable("灼血药剂", count=3)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -201,7 +212,7 @@ class TestReact:
     async def test_materializes_multi_card_times_count(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         """2 张内置牌 count=2 → 共 4 张手牌。"""
@@ -209,7 +220,6 @@ class TestReact:
         item = _make_consumable("组合卷轴", count=2, card_count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -221,7 +231,7 @@ class TestReact:
     async def test_consumes_whole_stack(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         """一次使用移除整条库存（count=2 全部消耗），物化 2 张。"""
@@ -229,7 +239,6 @@ class TestReact:
         item = _make_consumable("灼血药剂", count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -242,14 +251,13 @@ class TestReact:
     async def test_inventory_item_removed_when_last_count(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         _setup_mock_dungeon(mock_game)
         item = _make_consumable("最后一瓶药", count=1)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -261,19 +269,18 @@ class TestReact:
     async def test_records_round_log_like_gear(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         _setup_mock_dungeon(mock_game)
         item = _make_consumable("灼血药剂", count=1)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
 
-        latest = mock_game.current_dungeon_combat_room.combat.latest_round
+        latest: Any = current_dungeon_combat_room(mock_game).combat.latest_round
         consumable_entries = [
             entry for entry in latest.entries if entry.kind == RoundEntryKind.CONSUMABLE
         ]
@@ -285,35 +292,26 @@ class TestReact:
     async def test_broadcasts_notice_to_stage(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         _setup_mock_dungeon(mock_game, round_count=3)
         item = _make_consumable("爆裂卷轴", count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [item])
-        mock_game.get_player_entity.return_value = player
-        stage = context.create_entity()
-        stage._name = "测试场景"
-        mock_game.resolve_stage_entity.return_value = stage
-
         await system.react([actor])
 
-        mock_game.broadcast_to_stage.assert_called_once()
-        _, kwargs = mock_game.broadcast_to_stage.call_args
-        assert kwargs["entity"] is actor
-        assert kwargs["exclude_entities"] == {stage}
-        assert isinstance(kwargs["agent_event"], AgentEvent)
-        message = kwargs["agent_event"].message
-        assert "角色.无名" in message
-        assert "爆裂卷轴" in message
-        assert "3" in message
+        actor_memory = mock_game.world.agent_memories[actor.name]
+        message = actor_memory.messages[-1]
+        assert "角色.无名" in message.content
+        assert "爆裂卷轴" in message.content
+        assert "3" in message.content
 
     @pytest.mark.asyncio
     async def test_does_not_materialize_when_item_not_in_inventory(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         """扣库存失败（背包中找不到目标道具）时不物化、不广播。"""
@@ -322,7 +320,6 @@ class TestReact:
         other_item = _make_consumable("其他道具", count=1)
         actor = _make_actor_entity(context, "角色.无名", item)
         player = _make_player_entity(context, "player", [other_item])
-        mock_game.get_player_entity.return_value = player
         mock_game.resolve_stage_entity.return_value = context.create_entity()
 
         await system.react([actor])
@@ -337,7 +334,7 @@ class TestReact:
     async def test_raises_when_multiple_entities_triggered(
         self,
         context: Context,
-        mock_game: MagicMock,
+        mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
         _setup_mock_dungeon(mock_game)

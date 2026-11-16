@@ -7,11 +7,17 @@
 """
 
 import json
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional
 
 import pytest
 
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.game_entities import (
+    create_entity,
+)
+from ai_dbg.game.game_memory import (
+    get_agent_memory,
+)
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,
@@ -62,7 +68,7 @@ def _make_card(*, cost: int = 1, playable: bool = True) -> Card:
 
 
 def _make_entity(game: Any, name: str, *, monster: bool) -> Entity:
-    entity = cast(Entity, game._create_entity(name))
+    entity = create_entity(game, name)
     entity.add(ActorComponent, name, _STAGE_NAME)
     entity.add(CharacterStatsComponent, name, CharacterStats(hp=10, max_hp=10))
     entity.add(HandComponent, name, [])
@@ -92,7 +98,7 @@ def _arm_combat(game: Any) -> None:
             current_actor="怪物.渡口野狗",
         )
     ]
-    game._world.dungeon = Dungeon(
+    game.world.dungeon = Dungeon(
         name="副本.断桥渡口",
         rooms=[CombatRoom(stage=stage, combat=combat)],
         profile="",
@@ -205,7 +211,7 @@ def _play_call(**overrides: Any) -> Dict[str, Any]:
 def _decision_messages(game: Any, monster: Entity) -> List[Any]:
     return [
         m
-        for m in game.get_agent_memory(monster).messages
+        for m in get_agent_memory(game, monster).messages
         if getattr(m, "combat_decision", None) is not None
     ]
 
@@ -240,7 +246,7 @@ class TestMonsterDecisionRecord:
         """记忆里不留提示词 / 工具轨迹，但原文（含工具回显）能在 replaced_messages 里反查。"""
         game, monster, _ = await _run(scene, monkeypatch, calls=[_play_call()])
 
-        messages = game.get_agent_memory(monster).messages
+        messages: list[Any] = get_agent_memory(game, monster).messages
         assert len(messages) == 1  # 只剩决策记录
         assert "# 第 1 回合 · 出牌决策" not in messages[0].content
         replaced = messages[0].replaced_messages

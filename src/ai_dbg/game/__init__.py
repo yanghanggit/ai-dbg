@@ -7,14 +7,12 @@ from .game_server import (
     RoomNotFoundError,
 )
 from .player_room import PlayerRoom, RoomClosedError
-from .rpg_game import RPGGame
 from .world_persistence import (
     restore_world,
     save_world,
 )
 
 __all__ = [
-    "RPGGame",
     "DBGGame",
     "GameServer",
     "RoomAlreadyExistsError",

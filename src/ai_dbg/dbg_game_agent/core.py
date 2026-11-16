@@ -10,6 +10,17 @@ from loguru import logger
 
 from ai_dbg.game.dbg_game import DBGGame
 from ai_dbg.game.dbg_store import store_game_async
+from ai_dbg.game.game_dungeon import (
+    current_dungeon,
+)
+from ai_dbg.game.game_entities import (
+    build_from_blueprint,
+    get_actors_by_stage_as_names,
+)
+from ai_dbg.game.game_lifecycle import (
+    initialize_game,
+    restore_from_snapshot,
+)
 from ai_dbg.models import Blueprint, Dungeon, PlayerSession, WorldState
 from ai_dbg.paths import (
     BLUEPRINTS_DIR,
@@ -65,17 +76,17 @@ async def create_and_initialize_game(
     )
 
     # 创建实体数据（敌人和场景），并初始化游戏状态
-    assert len(terminal_game._world.entities) == 0, "新游戏创建时不应该有实体数据！"
-    terminal_game.build_from_blueprint()
+    assert len(terminal_game.world.entities) == 0, "新游戏创建时不应该有实体数据！"
+    build_from_blueprint(terminal_game)
 
     # 初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    await terminal_game.initialize()
+    await initialize_game(terminal_game)
 
     # 加载预置副本并直接进入首间：新局不再经过大厅中转
     success, error_detail = setup_dungeon(terminal_game, dungeon_name)
     if not success:
         raise RuntimeError(f"副本实体创建失败: {error_detail}")
-    success, error_detail = enter_dungeon(terminal_game, terminal_game.current_dungeon)
+    success, error_detail = enter_dungeon(terminal_game, current_dungeon(terminal_game))
     if not success:
         raise RuntimeError(f"进入副本失败: {error_detail}")
 
@@ -97,7 +108,7 @@ async def stages_game(
 ) -> Dict[str, List[str]]:
     """返回当前各场景内角色名单（只读，不归档）。"""
     terminal_game = await restore_game(world, player_session)
-    return terminal_game.get_actors_by_stage_as_names()
+    return get_actors_by_stage_as_names(terminal_game)
 
 
 ###############################################################################
@@ -116,10 +127,10 @@ async def restore_game(
     )
 
     # 从快照恢复游戏状态，并初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    terminal_game.restore_from_snapshot()
+    restore_from_snapshot(terminal_game)
 
     # 初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    await terminal_game.initialize()
+    await initialize_game(terminal_game)
     logger.info(f"游戏已从存档恢复：user={player_session.name}, game={game}")
 
     # 返回游戏实例

@@ -9,6 +9,14 @@ from ..deepseek import batch_complete
 from ..entitas import Entity, ExecuteProcessor, Matcher
 from ..game.dbg_combat_processor import get_alive_actors_in_stage
 from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_entity_by_name,
+)
+from ..game.game_memory import (
+    add_ai_message,
+    add_human_message,
+    get_agent_memory,
+)
 from ..game.rpg_actor_appearances import get_actor_appearances_in_stage
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import (
@@ -72,7 +80,7 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
     async def execute(self) -> None:
 
         # 获取所有场景实体（StageComponent）且尚未生成环境描述（EnvironmentComponent）的实体
-        stage_entities = self._game.get_group(
+        stage_entities = self._game.ecs.get_group(
             Matcher(all_of=[StageComponent], none_of=[EnvironmentComponent])
         ).entities.copy()
 
@@ -153,7 +161,7 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
         return ChatCompletionRequest(
             label=stage_entity.name,
             input_message=_build_environment_prompt(actor_appearances),
-            messages=self._game.get_agent_memory(stage_entity).messages,
+            messages=get_agent_memory(self._game, stage_entity).messages,
         )
 
     #######################################################################################################################################
@@ -167,7 +175,7 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
             )
             return False
 
-        stage_entity = self._game.get_entity_by_name(result.label)
+        stage_entity = get_entity_by_name(self._game, result.label)
         assert stage_entity is not None, f"stage_entity is None, name={result.label}"
 
         # 直接取 LLM 返回的纯文本作为环境描述（去除首尾空白）。
@@ -179,7 +187,8 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
             return False
 
         # 添加消息（写入与请求一致的完整 prompt，保证记忆与实际请求不错位）。
-        self._game.add_human_message(
+        add_human_message(
+            self._game,
             stage_entity,
             HumanMessage(
                 content=result.request.input_message,
@@ -189,7 +198,7 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
 
         # 添加消息。
         assert result.ai_message is not None
-        self._game.add_ai_message(stage_entity, result.ai_message)
+        add_ai_message(self._game, stage_entity, result.ai_message)
 
         # 更新环境叙事
         stage_entity.replace(

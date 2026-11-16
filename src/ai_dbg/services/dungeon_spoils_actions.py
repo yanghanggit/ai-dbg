@@ -12,6 +12,13 @@ from loguru import logger
 
 from ..entitas import Matcher
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    is_current_room_dungeon_combat,
+    is_player_in_dungeon_stage,
+)
+from ..game.game_entities import (
+    get_actor_entity,
+)
 from ..models import (
     DeathComponent,
     DeckComponent,
@@ -32,7 +39,7 @@ def party_has_any_spoils(dbg_game: DBGGame) -> bool:
     """
     return any(
         entity.has(SpoilsComponent)
-        for entity in dbg_game.get_group(
+        for entity in dbg_game.ecs.get_group(
             Matcher(all_of=[PartyMemberComponent])
         ).entities
     )
@@ -43,7 +50,9 @@ def clear_party_spoils(dbg_game: DBGGame) -> List[str]:
     """移除所有队伍成员身上的 SpoilsComponent，返回被清理的成员名（无前置校验，供房间生命周期内部调用）。"""
 
     cleared: List[str] = []
-    for entity in dbg_game.get_group(Matcher(all_of=[PartyMemberComponent])).entities:
+    for entity in dbg_game.ecs.get_group(
+        Matcher(all_of=[PartyMemberComponent])
+    ).entities:
         if entity.has(SpoilsComponent):
             entity.remove(SpoilsComponent)
             cleared.append(entity.name)
@@ -59,12 +68,12 @@ def remove_spoils(dbg_game: DBGGame) -> Tuple[bool, str]:
     """
 
     # 检查当前是否在玩家的副本阶段
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "清理奖励失败：玩家不在副本场景中"
         logger.error(error_msg)
         return False, error_msg
 
-    party_member_entities = dbg_game.get_group(
+    party_member_entities = dbg_game.ecs.get_group(
         Matcher(all_of=[PartyMemberComponent])
     ).entities
     assert (
@@ -98,19 +107,19 @@ def activate_generate_spoils(
     """
 
     # 检查当前是否在玩家的副本阶段
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "激活奖励生成失败：玩家不在副本场景中"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本房间是否为非战斗房间（奖励隶属于非战斗房间）
-    if dbg_game.is_current_room_dungeon_combat:
+    if is_current_room_dungeon_combat(dbg_game):
         error_msg = "当前副本房间是战斗房间，无法生成奖励"
         logger.error(error_msg)
         return False, error_msg
 
     # 获取当前副本中所有队伍成员实体，用于为他们添加奖励生成动作组件
-    party_member_entities = dbg_game.get_group(
+    party_member_entities = dbg_game.ecs.get_group(
         Matcher(all_of=[PartyMemberComponent])
     ).entities.copy()
     assert (
@@ -167,19 +176,19 @@ def activate_pick_spoils_card(
     """
 
     # 检查当前是否在玩家的副本阶段
-    if not dbg_game.is_player_in_dungeon_stage:
+    if not is_player_in_dungeon_stage(dbg_game):
         error_msg = "从 Spoils 领卡失败：玩家不在副本场景中"
         logger.error(error_msg)
         return False, error_msg
 
     # 检查当前副本房间是否为非战斗房间
-    if dbg_game.is_current_room_dungeon_combat:
+    if is_current_room_dungeon_combat(dbg_game):
         error_msg = "当前副本房间是战斗房间，无法从 Spoils 领卡"
         logger.error(error_msg)
         return False, error_msg
 
     # 获取指定角色实体
-    actor_entity = dbg_game.get_actor_entity(actor_name)
+    actor_entity = get_actor_entity(dbg_game, actor_name)
     if actor_entity is None:
         error_msg = f"找不到角色：{actor_name}"
         logger.error(error_msg)

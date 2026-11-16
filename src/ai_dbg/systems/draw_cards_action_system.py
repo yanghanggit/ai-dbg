@@ -7,6 +7,9 @@ from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ..models import (
     ActorComponent,
     Card,
@@ -38,7 +41,7 @@ class DrawCardsActionSystem(ReactiveProcessor):
     """
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     ####################################################################################################################################
@@ -166,16 +169,16 @@ class DrawCardsActionSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，DrawCardsActionSystem 不执行")
             return
 
         # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
-        last_round = self._game.current_dungeon_combat_room.combat.latest_round
+        last_round = current_dungeon_combat_room(self._game).combat.latest_round
         assert last_round is not None, "DrawCardsActionSystem: 无法获取当前回合信息！"
         if last_round.draw_completed:
             logger.debug(
-                f"DrawCardsActionSystem: 第 {len(self._game.current_dungeon_combat_room.combat.rounds)} 回合已抽牌，跳过重复抽牌"
+                f"DrawCardsActionSystem: 第 {len(current_dungeon_combat_room(self._game).combat.rounds)} 回合已抽牌，跳过重复抽牌"
             )
             return
 
@@ -215,7 +218,7 @@ class DrawCardsActionSystem(ReactiveProcessor):
 
             self._record_draw(
                 entity,
-                round_number=len(self._game.current_dungeon_combat_room.combat.rounds),
+                round_number=len(current_dungeon_combat_room(self._game).combat.rounds),
                 retained=retained,
                 drawn=drawn,
                 reshuffled=reshuffled,

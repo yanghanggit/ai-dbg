@@ -11,7 +11,9 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
@@ -35,8 +37,12 @@ def _make_game(
     action_order: List[str],
     current_actor: str,
 ) -> tuple[MagicMock, Round]:
-    game = MagicMock(spec=DBGGame)
-    game.get_actor_entity.side_effect = lambda name: entities.get(name)
+    context = next(iter(entities.values()))._context
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = entities
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
 
     combat = MagicMock()
     combat.is_ongoing = True
@@ -44,11 +50,8 @@ def _make_game(
         action_order=action_order, completed_actors=[], current_actor=current_actor
     )
     combat.latest_round = rnd
-    game.current_dungeon_combat_room.combat = combat
+    current_dungeon_combat_room(game).combat = combat
 
-    group = MagicMock()
-    group.entities = list(entities.values())
-    game.get_group.return_value = group
     return game, rnd
 
 
@@ -68,7 +71,7 @@ async def test_current_actor_death_advances_pointer() -> None:
     assert dying.has(DeathComponent)
     assert rnd.current_actor == "角色.无名"
     # 死亡通知带结构化标记
-    death_message = game.add_human_message.call_args.args[1]
+    death_message = game.world.agent_memories["角色.坏运气"].messages[-1]
     assert death_message.death_notification == "角色.坏运气"
 
 

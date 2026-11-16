@@ -8,14 +8,16 @@
 """
 
 import json
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_dungeon import (
+    current_dungeon_combat_room,
+)
 from ai_dbg.models import (
     ActorComponent,
     AgentMemory,
@@ -76,11 +78,14 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def game(context: Context) -> MagicMock:
-    game = MagicMock(spec=DBGGame)
+def game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
     game.get_group.side_effect = context.get_group
-    game.current_dungeon_combat_room.combat.is_ongoing = True
-    game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
+    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
+    cast(Any, current_dungeon_combat_room(game)).combat.rounds = [MagicMock()]
     game.get_agent_memory.return_value = AgentMemory(
         name="角色.无名", messages=[SystemMessage(content="你是无名。")]
     )
@@ -106,9 +111,7 @@ def _fake_loop(
 
 #######################################################################################################
 class TestFilter:
-    def test_plain_card_does_not_trigger(
-        self, context: Context, game: MagicMock
-    ) -> None:
+    def test_plain_card_does_not_trigger(self, context: Context, game: Any) -> None:
         """没有运转型词缀的牌不唤起结算。"""
         entity = _make_actor(context)
         card = _make_card("攻击", engine_affixes=[])
@@ -117,7 +120,7 @@ class TestFilter:
 
         assert not CardOperationSystem(game).filter(entity)
 
-    def test_engine_card_triggers(self, context: Context, game: MagicMock) -> None:
+    def test_engine_card_triggers(self, context: Context, game: Any) -> None:
         entity = _make_actor(context)
         card = _make_card()
         entity.get(HandComponent).cards.append(card)
@@ -129,7 +132,7 @@ class TestFilter:
 #######################################################################################################
 class TestCardReference:
     def test_reference_tolerates_decorated_input(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """模型常把整行抄进参数：容器名、牌名、书名号都要能容忍。"""
         entity = _make_actor(context)
@@ -147,7 +150,7 @@ class TestCardReference:
             assert found is card
 
     def test_deck_is_excluded_from_reference_resolution(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """战斗牌是牌库副本、uuid 与牌库原牌相同：只读牌库不参与解析，否则一个引用命中两张。"""
         entity = _make_actor(context)
@@ -159,7 +162,7 @@ class TestCardReference:
         assert pile == "discard_pile"
         assert found is card
 
-    def test_name_fallback_when_unique(self, context: Context, game: MagicMock) -> None:
+    def test_name_fallback_when_unique(self, context: Context, game: Any) -> None:
         """退化路径：模型直接给牌名，且该名字在可写牌堆里唯一时按名字定位。"""
         entity = _make_actor(context)
         card = _make_card()
@@ -174,7 +177,7 @@ class TestCardReference:
 class TestResolution:
     @pytest.mark.asyncio
     async def test_copy_card_lands_in_discard_and_is_recorded(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """模型复制本体进弃牌堆：复制体落地（uuid 全新、词缀保留），并留一条牌堆变更记录。"""
         entity = _make_actor(context)
@@ -196,8 +199,7 @@ class TestResolution:
         assert copy.uuid != card.uuid
         assert copy.engine_affixes == card.engine_affixes
 
-        kwargs = game.add_human_message.call_args.kwargs
-        message = kwargs["human_message"]
+        message = game.world.agent_memories[entity.name].messages[-1]
         assert "# 牌堆运转 · 「怒火」" in message.content
         assert json.loads(message.card_pile_change) == {
             "change": "card_operation",
@@ -206,7 +208,7 @@ class TestResolution:
 
     @pytest.mark.asyncio
     async def test_copy_is_capped_per_resolution(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """单次结算最多新造一张牌：第二次复制被拒绝，不落牌。"""
         entity = _make_actor(context)
@@ -231,7 +233,7 @@ class TestResolution:
         assert "额度已用完" in replies[1]
 
     @pytest.mark.asyncio
-    async def test_deck_is_read_only(self, context: Context, game: MagicMock) -> None:
+    async def test_deck_is_read_only(self, context: Context, game: Any) -> None:
         """牌库只读：往 deck 复制会被拒绝。"""
         entity = _make_actor(context)
         card = _make_card()
@@ -252,7 +254,7 @@ class TestResolution:
 
     @pytest.mark.asyncio
     async def test_unsubmitted_loop_leaves_piles_untouched(
-        self, context: Context, game: MagicMock
+        self, context: Context, game: Any
     ) -> None:
         """loop 未提交结果：不落任何牌，也不写牌堆变更记录。"""
         entity = _make_actor(context)

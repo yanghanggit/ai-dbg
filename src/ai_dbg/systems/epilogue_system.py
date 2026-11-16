@@ -6,7 +6,10 @@ from typing import Dict, Final, List, final, override
 from loguru import logger
 
 from ..entitas import Entity, ExecuteProcessor
-from ..game.rpg_game import RPGGame
+from ..game.dbg_game import DBGGame
+from ..game.game_entities import (
+    get_actors_by_stage,
+)
 from ..models import (
     DeathComponent,
 )
@@ -20,14 +23,14 @@ class EpilogueSystem(ExecuteProcessor):
     """
 
     ############################################################################################################
-    def __init__(self, game: RPGGame) -> None:
-        self._game: Final[RPGGame] = game
+    def __init__(self, game: DBGGame) -> None:
+        self._game: Final[DBGGame] = game
 
     ############################################################################################################
     @override
     async def execute(self) -> None:
         """记录各场景中的角色分布情况到日志。"""
-        actor_distribution = self._game.get_actors_by_stage()
+        actor_distribution = get_actors_by_stage(self._game)
 
         actor_distribution_info: Dict[str, List[str]] = {}
         for stage, actors in actor_distribution.items():

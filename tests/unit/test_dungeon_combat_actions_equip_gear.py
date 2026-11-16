@@ -1,48 +1,65 @@
 from types import SimpleNamespace
-from typing import List
 from unittest.mock import MagicMock, patch
 
+from ai_dbg.entitas import Context
+from ai_dbg.entitas.entity import Entity
 from ai_dbg.models import (
+    ActorComponent,
+    DungeonComponent,
     GearItem,
     HandComponent,
+    InventoryComponent,
     PartyMemberComponent,
+    PlayerComponent,
+    StageComponent,
 )
 from ai_dbg.services.dungeon_combat_actions import activate_equip_gear
 
 
-def _make_game() -> MagicMock:
+def _make_game() -> tuple[MagicMock, Context, Entity]:
+    context = Context()
+    stage = context.create_entity()
+    stage._name = "场景.测试"
+    stage.add(StageComponent, stage.name)
+    stage.add(DungeonComponent, stage.name)
+    player = context.create_entity()
+    player._name = "player"
+    player.add(ActorComponent, player.name, stage.name)
+    player.add(PlayerComponent, player.name)
+    player.add(InventoryComponent, player.name, [])
     game = MagicMock()
-    game.is_player_in_dungeon_stage = True
-    game.current_dungeon_combat_room.combat.is_ongoing = True
-    game.current_dungeon_combat_room.combat.latest_round = SimpleNamespace(
-        draw_completed=True,
+    game.ecs = context
+    game.entity_index = {}
+    game.world.agent_memories = {}
+    game.player_session = MagicMock()
+    game.world.dungeon = SimpleNamespace(
+        current_room_index=0,
+        current_room=MagicMock(
+            combat=SimpleNamespace(
+                is_ongoing=True,
+                latest_round=SimpleNamespace(draw_completed=True),
+                rounds=[object()],
+            )
+        ),
     )
-    return game
+    return game, context, player
 
 
-def _make_actor(name: str, *, party: bool, hand: bool) -> MagicMock:
-    actor = MagicMock()
-    actor.name = name
-    actor.has.side_effect = lambda component_type: (
-        component_type == PartyMemberComponent and party
-    ) or (component_type == HandComponent and hand)
+def _make_actor(context: Context, name: str, *, party: bool, hand: bool) -> Entity:
+    actor = context.create_entity()
+    actor._name = name
+    actor.add(ActorComponent, name, "场景.测试")
+    if party:
+        actor.add(PartyMemberComponent, name)
+    if hand:
+        actor.add(HandComponent, name, [])
     return actor
 
 
-def _make_player(items: List[GearItem]) -> MagicMock:
-    player = MagicMock()
-    player.name = "player"
-    player.has.return_value = True
-    player.get.return_value = SimpleNamespace(items=items)
-    return player
-
-
 def test_activate_equip_gear_rejects_non_party_actor() -> None:
-    game = _make_game()
-    game.get_entity_by_name.return_value = _make_actor(
-        "怪物.测试", party=False, hand=True
-    )
-    game.get_player_entity.return_value = _make_player([])
+    game, context, _ = _make_game()
+    actor = _make_actor(context, "怪物.测试", party=False, hand=True)
+    game.entity_index[actor.name] = actor
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
@@ -55,11 +72,9 @@ def test_activate_equip_gear_rejects_non_party_actor() -> None:
 
 
 def test_activate_equip_gear_rejects_missing_hand() -> None:
-    game = _make_game()
-    game.get_entity_by_name.return_value = _make_actor(
-        "角色.测试", party=True, hand=False
-    )
-    game.get_player_entity.return_value = _make_player([])
+    game, context, _ = _make_game()
+    actor = _make_actor(context, "角色.测试", party=True, hand=False)
+    game.entity_index[actor.name] = actor
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
@@ -72,11 +87,11 @@ def test_activate_equip_gear_rejects_missing_hand() -> None:
 
 
 def test_activate_equip_gear_activates_action() -> None:
-    game = _make_game()
+    game, context, player = _make_game()
     gear = GearItem(name="装备.测试", description="测试装备")
-    actor = _make_actor("角色.测试", party=True, hand=True)
-    game.get_entity_by_name.return_value = actor
-    game.get_player_entity.return_value = _make_player([gear])
+    player.get(InventoryComponent).items.append(gear)
+    actor = _make_actor(context, "角色.测试", party=True, hand=True)
+    game.entity_index[actor.name] = actor
 
     with patch(
         "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
@@ -86,4 +101,8 @@ def test_activate_equip_gear_activates_action() -> None:
 
     assert ok is True
     assert "成功激活装备使用" in msg
-    actor.replace.assert_called_once()
+    assert actor.has(
+        __import__(
+            "ai_dbg.models", fromlist=["EquipGearItemAction"]
+        ).EquipGearItemAction
+    )

@@ -14,8 +14,8 @@
 # # ---------------------------------------------------------------------------
 
 
-# def _make_game(ctx: Context) -> MagicMock:
-#     game = MagicMock(spec=DBGGame)
+# def _make_game(ctx: Context) -> Any:
+#     game = MagicMock()
 #     game.get_group.side_effect = ctx.get_group
 #     return game
 
@@ -31,12 +31,12 @@
 
 
 # @pytest.fixture()
-# def game(ctx: Context) -> MagicMock:
+# def game(ctx: Context) -> Any:
 #     return _make_game(ctx)
 
 
 # @pytest.fixture()
-# def system(game: MagicMock) -> CombatRoundCleanupSystem:
+# def system(game: Any) -> CombatRoundCleanupSystem:
 #     return CombatRoundCleanupSystem(game)
 
 
@@ -47,40 +47,40 @@
 
 # @pytest.mark.asyncio
 # async def test_execute_skips_when_not_ongoing(
-#     game: MagicMock, system: CombatRoundCleanupSystem
+#     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     game.current_dungeon_combat_room.combat.is_ongoing = False
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
 #     await system.execute()
 #     #game.clear_round_state.assert_not_called()
 
 
 # @pytest.mark.asyncio
 # async def test_execute_skips_when_no_rounds(
-#     game: MagicMock, system: CombatRoundCleanupSystem
+#     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     game.current_dungeon_combat_room.combat.is_ongoing = True
-#     game.current_dungeon_combat_room.combat.rounds = []
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = []
 #     await system.execute()
 #     game.clear_round_state.assert_not_called()
 
 
 # @pytest.mark.asyncio
 # async def test_execute_skips_when_round_not_completed(
-#     game: MagicMock, system: CombatRoundCleanupSystem
+#     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     game.current_dungeon_combat_room.combat.is_ongoing = True
-#     game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
-#     game.current_dungeon_combat_room.combat.latest_round.is_completed = False
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
+#     current_dungeon_combat_room(mock_game).combat.latest_round.is_completed = False
 #     await system.execute()
 #     game.clear_round_state.assert_not_called()
 
 
 # @pytest.mark.asyncio
 # async def test_execute_clears_state_when_completed(
-#     game: MagicMock, system: CombatRoundCleanupSystem
+#     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     game.current_dungeon_combat_room.combat.is_ongoing = True
-#     game.current_dungeon_combat_room.combat.rounds = [MagicMock()]
-#     game.current_dungeon_combat_room.combat.latest_round.is_completed = True
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
+#     current_dungeon_combat_room(mock_game).combat.latest_round.is_completed = True
 #     await system.execute()
 #     game.clear_round_state.assert_called_once()

@@ -9,6 +9,15 @@ from overrides import override
 from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.dbg_game import DBGGame
+from ..game.game_dungeon import (
+    current_dungeon_combat_room,
+)
+from ..game.game_entities import (
+    resolve_stage_entity,
+)
+from ..game.game_memory import (
+    get_agent_memory,
+)
 from ..llm import ToolDefinition
 from ..models import (
     Card,
@@ -181,7 +190,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
     """响应 PassTurnAction，由所在场景（stage）仲裁行动者手牌中的回合结束词缀。"""
 
     def __init__(self, game: DBGGame) -> None:
-        super().__init__(game)
+        super().__init__(game.ecs)
         self._game: Final[DBGGame] = game
 
     #######################################################################################################################################
@@ -203,7 +212,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
     @override
     async def react(self, entities: List[Entity]) -> None:
 
-        if not self._game.current_dungeon_combat_room.combat.is_ongoing:
+        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
             logger.debug("TurnEndArbitrationSystem: 战斗未进行中，跳过回合结束仲裁")
             return
 
@@ -216,13 +225,13 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
         """驱动单个持有者的完整回合结束仲裁流程。"""
 
         # 以 pass turn 实体定位场景
-        stage_entity = self._game.resolve_stage_entity(pass_turn_entity)
+        stage_entity = resolve_stage_entity(self._game, pass_turn_entity)
         assert (
             stage_entity is not None
         ), f"TurnEndArbitrationSystem: 无法找到 {pass_turn_entity.name} 所在的场景实体"
 
         current_round_number = len(
-            self._game.current_dungeon_combat_room.combat.rounds or []
+            current_dungeon_combat_room(self._game).combat.rounds or []
         )
 
         turn_end_cards = self._collect_hand_turn_end_cards(pass_turn_entity)
@@ -240,7 +249,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
         ctx = ArbitrationContext()
 
         # 以 stage 实体为仲裁者：直接使用其持久记忆，prompt / 工具轨迹 / 结果都写入其记忆。
-        stage_memory = self._game.get_agent_memory(stage_entity)
+        stage_memory = get_agent_memory(self._game, stage_entity)
         assert stage_memory.messages, "场景实体缺少首条 SystemMessage"
 
         # 本次 loop 的身份标记；结束后据 loop_start_index 把整段新增记忆压缩为一条总结。
