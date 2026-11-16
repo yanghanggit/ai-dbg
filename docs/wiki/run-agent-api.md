@@ -4,122 +4,38 @@
 
 ## 定位
 
-`ai_dbg/cli/dbg_agent_api.py`（入口命令 `ai-dbg-agent-api`）是面向 **AI 代理**的服务器 API 走查入口：
-通过 HTTP 逐步驱动常驻的游戏服务端（`ai-dbg-server` / `ai_dbg.cli.dbg_server:app`），供代理（或开发者）观察状态、
-触发动作、逐条验证接口契约。
+`ai-dbg-agent-api` 是 AI 代理对常驻服务端做 HTTP 走查的入口：一次调用只完成一次动作，世界状态只存在于服务端。它既是接口契约的探针，也是代理在真实运行态上观察、试探与纠错的工具；不承担本地游戏推进。
 
-服务端是真相所在，对外只暴露一套 HTTP/OpenAPI 契约。
-因此本项目内的 API 走查职责，天然由代理承担。
+服务端是唯一真相，CLI 不缓存世界状态、不读写 `.worlds/`，只以 `--user/--game` 寻址。每次动作前用 `status` 取当前局面；`login` 会清除该 user 已有房间，只应在开新局时调用一次。
 
-它与 `ai-dbg-agent-game` 构成一对，区别在「通过哪一层操作游戏」：
+→ 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
+→ 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 
-| | `ai-dbg-agent-game` | `ai-dbg-agent-api` |
-| --- | --- | --- |
-| 交互层 | 进程内直接调 `ai_dbg.services.*` | 走 HTTP（`ai_dbg.dbg_api_agent.server_client`） |
-| 状态位置 | 本地快照 `.worlds/...`（一次性进程） | 服务端**内存**（常驻进程） |
-| 前提 | 无服务器 | 需 `ai-dbg-server` 在跑 |
-| 用途 | 服务层规则的无状态、可回溯验证 | HTTP 契约走查、交互式探索与边界试探 |
+## 交互契约
 
----
+- **单一 JSON 封套**：成功返回动作结果；失败返回错误详情并以非零退出码结束。服务端 HTTP 4xx/5xx 的 `detail` 原样透出，代理据此自我纠错。
+- **异步任务自动等待**：服务端返回任务 ID 的动作，CLI 通过 SSE 等到终态再输出，代理无需轮询。
+- **stdout 只放 JSON**：运行日志写 stderr 与文件，控制台级别由 `AI_DBG_API_LOG_LEVEL` 控制，避免污染代理输出。
+- **身份无状态**：只按 `--user/--game` 寻址，不落盘对局状态；同一身份可在多条命令间复用服务端内存中的房间。
 
-## 用法
+命令面按动作域分组：顶层 `login` / `logout` / `new-game` / `status` / `blueprint-list` / `dungeon-list` / `compact`，以及 `home`、`dungeon`、`opening`、`spoils`、`combat`。命令是服务端 API 的薄映射，参数与校验以服务端为准。
 
-```bash
-export AI_DBG_API_HOST=127.0.0.1 AI_DBG_API_PORT=8000
-export AI_DBG_USER=alice AI_DBG_GAME=Game1
+## 观测与流程推断
 
-uv run ai-dbg-agent-api login
-uv run ai-dbg-agent-api new-game
-uv run ai-dbg-agent-api status            # 观测 + suggested_actions
-uv run ai-dbg-agent-api home enter-dungeon --dungeon "副本.坍塌庙祠"
-uv run ai-dbg-agent-api opening init
-uv run ai-dbg-agent-api opening generate-spoils
-uv run ai-dbg-agent-api opening pick-spoils-card --actor 角色.无名 --card 沉马
-uv run ai-dbg-agent-api dungeon advance-stage
-uv run ai-dbg-agent-api combat init
-uv run ai-dbg-agent-api combat draw-cards
-uv run ai-dbg-agent-api combat play-cards --actor 角色.无名 --card 基础攻击 --target 怪物.纸人
-uv run ai-dbg-agent-api combat pass-turn --actor 角色.无名
-```
+`status` 是走查的核心：它把跨接口取数收拢为一次只读快照，覆盖当前模式（家园/副本）、场景与角色、属性/手牌、副本房间与开场奖励、战斗状态与最近回合、家园队伍/背包/储物箱、会话消息；`--actor` 可显式指定玩家角色，`--messages-since` 只拉增量消息。
 
-命令分组：顶层（`login`/`logout`/`new-game`/`status`/`dungeon-list`/`blueprint-list`/`compact`）、
-`home`、`dungeon`、`opening`、`combat`。
+快照同时附带 `suggested_actions`，沉淀的是流程推进知识，而非固定脚本：
 
-### 约定
+- **家园**：`home advance` / `home speak` / `home switch-stage` / `home generate-dungeon` / `home enter-dungeon` / `home roster-add` / `home roster-remove` / `home item-to-inventory` / `home item-to-storage` / `home craft-consumable` / `home craft-gear` / `home craft-costume` / `home wear-costume` / `home remove-costume` / `compact`。
+- **开场房间**：未初始化 → `opening init`；未生成奖励 → `spoils generate`；已生成 → 逐角色 `spoils pick-card`，随后 `dungeon advance-stage`；`spoils remove` 用于复位，`dungeon exit` 离开。
+- **战斗房间**：`NONE` / `INITIALIZATION` → `combat init`；`ONGOING` 未抓牌或回合已结束 → `combat draw-cards`；轮到角色 → `combat play-cards` / `combat pass-turn` / `combat use-consumable` / `combat equip-gear`（怪物回合由服务端决策），也可 `combat retreat`；`COMPLETE` / `POST_COMBAT` 胜利 → `combat collect-loot`，有下一关再 `dungeon advance-stage`；其余结束态 → `dungeon exit`。
 
-- **统一 JSON 输出**：成功为 `{"ok": true, "action", "result"}`；失败为
-  `{"ok": false, "action", "detail"/"error", ...}` 并以**非零退出码**结束。
-  HTTP 4xx/5xx 的 `detail` 原样透出，代理可据此自我纠错。
-- **异步动作自动等待**：凡服务端返回 `job_id` 的动作，CLI 内部用 SSE 等到终态再输出，
-  代理无需自行轮询。
-- **状态在服务端**：本工具不缓存任何世界状态，也不读取 `.worlds/`；每次动作前建议先 `status`。
-- **身份（L1）**：只通过 `--user/--game`（或环境变量）寻址，不落盘任何对局状态。
-  注意 `/api/login/v1/` 会**清掉该 user 已有房间**，故只在开新局时调用一次。
+建议字符串已带命令组前缀，可直接作为 CLI 参数；它只是提示，最终以服务端校验为准。
 
-### 连接层（HTTPS / JWT）与日志
+## 连接层
 
-连接层配置全部集中在 `ai_dbg/dbg_api_agent/config.py` 的 `ServerConfig`，并由
-`server_client.build_client()` 统一构造 `httpx.AsyncClient`（scheme / TLS 校验 / 鉴权头）。
-因此引入 HTTPS 与 JWT 只需改一处：
-
-```bash
-# HTTPS：指定协议；自签证书用 --server-verify false，或传 CA bundle 路径
-export AI_DBG_API_SCHEME=https
-export AI_DBG_API_VERIFY=/etc/ssl/corp-ca.pem   # 或 false
-
-# JWT：非空 token 会以 Authorization: Bearer <token> 注入所有请求
-export AI_DBG_API_TOKEN=eyJ...
-```
-
-> 当前服务端尚无 JWT，`auth_token` 为静态 token。若将来需要登录换 token +
-> 401 自动刷新，只需在 `build_client()`（或新增的鉴权过滤器）中接入，调用方无需改动。
-
-日志：每次调用写一份 `logs/run_agent_api_<timestamp>.log`（DEBUG）；控制台级别由
-`AI_DBG_API_LOG_LEVEL` 决定（默认 `WARNING`）。**日志只写 stderr/文件，stdout 始终是 JSON**。
-
----
-
-## 观测（status）与流程推断（suggested_actions）
-
-`status` 是核心，把散落各处的取数逻辑收拢成一次结构化快照：
-当前模式（家园/副本）、所在场景与角色、角色属性/手牌、副本房间与初始化标记、
-开场奖励候选、战斗状态与最近回合、家园队伍/背包/储物箱、会话消息。
-
-并在 `suggested_actions` 中给出下一步建议，沉淀的正是驱动流程推进的知识：
-
-- **家园**：`home advance` / `home speak` / `home switch-stage` / `home generate-dungeon` /
-  `home enter-dungeon` / `home roster-*` / `home item-*` / `home craft-*` /
-  `home wear-costume` / `compact`。
-- **开场房间**：未初始化 → `opening init`；未生成奖励 → `opening generate-spoils`；
-  否则逐个候选卡 `opening pick-spoils-card`，以及 `dungeon advance-stage`。
-- **战斗房间**：`INITIALIZATION` → `combat init`；`ONGOING` 且未抓牌/回合已结束 →
-  `combat draw-cards`；轮到某角色 → `combat play-cards` / `combat pass-turn` /
-  `combat use-consumable` / `combat equip-gear`（怪物回合由服务端自动决策）；
-  `COMPLETE`/`POST_COMBAT` → `combat collect-loot` / `dungeon advance-stage`（有下一关时）/
-  `dungeon exit`；撤退用 `combat retreat`。
-
-上述字符串已带组前缀，**可直接作为 `ai-dbg-agent-api` 的参数**。
-
-建议只是提示，**以服务端校验为准**。
-
----
+连接配置集中在 `ServerConfig`：host/port、`http`/`https`、TLS 校验与 JWT 都由 CLI 参数或 `AI_DBG_API_*` 环境变量注入；自签证书可关闭校验或传 CA bundle。当前鉴权是静态 Bearer token；将来若改为登录换 token、401 自动刷新，只需改连接层，命令面与代理协议不变。
 
 ## 与回归测试的分工
 
-代理动态走查**不可复现**（依赖 LLM 判断），不能取代固定回归：
-
-- **契约 / 回归** → `tests/integration/test_api_e2e_smoke.py`；
-- **探索 / 新特性走查 / 边界试探 / 交互式调试** → 代理 + `ai-dbg-agent-api`。
-
----
-
-## 目录结构
-
-```bash
-src/ai_dbg/dbg_api_agent/
-  config.py         # ServerConfig / server_config（host/port/scheme/verify/token 由 CLI 注入）
-  server_client.py  # 全部 HTTP 接口封装（含 SSE 任务等待）
-  status.py         # build_status：一次调用产出世界状态快照
-  flow.py           # suggest_actions：由状态推断下一步
-src/ai_dbg/cli/dbg_agent_api.py  # Click CLI 薄壳（入口命令 ai-dbg-agent-api）
-```
+代理走查依赖 LLM 判断，不可复现，不能替代固定回归：接口契约与回归由集成测试固定，代理负责探索、新特性走查与边界试探。
