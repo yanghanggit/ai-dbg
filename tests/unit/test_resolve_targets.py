@@ -22,7 +22,6 @@ from ai_dbg.models import (
     MonsterComponent,
     PartyMemberComponent,
     PlayCardsAction,
-    PlayerSession,
     StageComponent,
     TargetType,
     WorldState,
@@ -46,8 +45,12 @@ def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame
         agent_memories={},
         blueprint=blueprint,
     )
-    session = PlayerSession(name=player_name, actor=actor_name, game="test")
-    return create_dbg_game(name="test", player_session=session, world=world)
+    return create_dbg_game(
+        name="test",
+        player_name=player_name,
+        player_actor=actor_name,
+        world=world,
+    )
 
 
 def _make_stage(game: Any, name: str) -> Entity:

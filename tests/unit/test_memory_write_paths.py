@@ -114,10 +114,8 @@ class TestTransferWritesRealMemory:
 
         # 标记能过存档闸门（真实校验路径）
         save_dir = tmp_path / "snap"
-        assert persistence.save_world(
-            game.world, game.player_session, tmp_path, save_dir
-        )
-        restored, _ = persistence.restore_world(save_dir)
+        assert persistence.save_world(game.world, tmp_path, save_dir)
+        restored = persistence.restore_world(save_dir)
         assert any(
             getattr(m, "received_card", None) is not None
             for m in restored.agent_memories[receiver.name].messages
@@ -139,9 +137,7 @@ class TestSaveGateCatchesDirectWrites:
         )
 
         with pytest.raises(AssertionError, match="未登记的记忆标记"):
-            persistence.save_world(
-                game.world, game.player_session, tmp_path, tmp_path / "snap"
-            )
+            persistence.save_world(game.world, tmp_path, tmp_path / "snap")
 
     def test_direct_append_with_loop_tags_saves(
         self, sample_game: Any, tmp_path: Path
@@ -154,9 +150,7 @@ class TestSaveGateCatchesDirectWrites:
         )
 
         save_dir = tmp_path / "snap"
-        assert persistence.save_world(
-            game.world, game.player_session, tmp_path, save_dir
-        )
+        assert persistence.save_world(game.world, tmp_path, save_dir)
 
 
 #######################################################################################################
@@ -171,9 +165,7 @@ def test_agent_memory_direct_write_is_checked_at_save(
     )
 
     with pytest.raises(AssertionError, match="未登记的记忆标记"):
-        persistence.save_world(
-            world, sample_game.player_session, tmp_path, tmp_path / "snap"
-        )
+        persistence.save_world(world, tmp_path, tmp_path / "snap")
 
 
 #######################################################################################################
@@ -222,6 +214,4 @@ class TestPileChangeWritesRealMemory:
 
         # 标记能过存档闸门
         save_dir = tmp_path / "snap"
-        assert persistence.save_world(
-            game.world, game.player_session, tmp_path, save_dir
-        )
+        assert persistence.save_world(game.world, tmp_path, save_dir)

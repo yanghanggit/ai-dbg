@@ -33,7 +33,7 @@ def broadcast_to_stage(
             ),
         )
 
-    dbg_game.player_session.add_agent_event(agent_event=agent_event)
+    dbg_game.events.publish(agent_event)
 
 
 #################################################################################################################################################
@@ -52,4 +52,4 @@ def notify_entities(
                 agent_event=agent_event.type,
             ),
         )
-    dbg_game.player_session.add_agent_event(agent_event=agent_event)
+    dbg_game.events.publish(agent_event)

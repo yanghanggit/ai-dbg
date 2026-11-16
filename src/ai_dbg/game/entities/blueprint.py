@@ -63,16 +63,16 @@ def build_from_blueprint(dbg_game: DBGGame) -> None:
     )
     create_stage_entities(dbg_game, dbg_game.world.blueprint.stages)
 
-    assert dbg_game.player_session.name.strip() != "", "玩家名字不能为空"
-    assert dbg_game.player_session.actor.strip() != "", "玩家角色不能为空"
-    player_actor_entity = get_actor_entity(dbg_game, dbg_game.player_session.actor)
+    assert dbg_game.player_name.strip() != "", "玩家名字不能为空"
+    assert dbg_game.player_actor.strip() != "", "玩家角色不能为空"
+    player_actor_entity = get_actor_entity(dbg_game, dbg_game.player_actor)
     assert (
         player_actor_entity is not None
-    ), f"找不到玩家角色实体: {dbg_game.player_session.actor}"
+    ), f"找不到玩家角色实体: {dbg_game.player_actor}"
     assert not player_actor_entity.has(PlayerComponent)
-    player_actor_entity.replace(PlayerComponent, dbg_game.player_session.name)
+    player_actor_entity.replace(PlayerComponent, dbg_game.player_name)
     logger.info(
-        f"玩家: {dbg_game.player_session.name} 选择控制: {dbg_game.player_session.actor}"
+        f"玩家: {dbg_game.player_name} 选择控制: {dbg_game.player_actor}"
     )
     assert player_actor_entity.has(
         InventoryComponent

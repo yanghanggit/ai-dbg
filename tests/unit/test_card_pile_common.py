@@ -66,7 +66,7 @@ def context() -> Context:
 def game() -> Any:
     game = MagicMock()
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     return game
 
 

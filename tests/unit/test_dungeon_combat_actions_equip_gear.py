@@ -31,7 +31,7 @@ def _make_game() -> tuple[MagicMock, Context, Entity]:
     game.ecs = context
     game.entity_index = {}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(game, room_name=stage.name)
     return game, context, player
 

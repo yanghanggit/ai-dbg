@@ -25,6 +25,12 @@ WORLDS_DIR.mkdir(parents=True, exist_ok=True)
 assert WORLDS_DIR.exists(), f"找不到目录: {WORLDS_DIR}"
 
 ###########################################################################################################################################
+# 用户会话历史目录（跨游戏、append-only，不随世界快照回滚）
+SESSIONS_DIR: Path = Path(".sessions")
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+assert SESSIONS_DIR.exists(), f"找不到目录: {SESSIONS_DIR}"
+
+###########################################################################################################################################
 # 资源资产目录（raw 资源 + 同名 .meta）
 ASSETS_DIR: Path = Path(".assets/image")
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)

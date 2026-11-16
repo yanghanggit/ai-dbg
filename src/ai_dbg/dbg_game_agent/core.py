@@ -23,6 +23,7 @@ from ai_dbg.models import Blueprint, PlayerSession, WorldState
 from ai_dbg.paths import BLUEPRINTS_DIR
 from ai_dbg.services.dungeon_enter_action import enter_dungeon
 from ai_dbg.services.dungeon_setup_action import setup_dungeon
+from ai_dbg.session import PlayerSessionEventSink, SessionStore
 
 
 ###############################################################################
@@ -47,16 +48,24 @@ async def create_and_initialize_game(
         blueprint=world_blueprint,
     )
 
-    # 创建 DBGGame 实例并初始化
+    # 会话属于用户，跨游戏保留；新局只更新当前上下文
+    session_store = SessionStore()
+    session = session_store.load_or_create(
+        user,
+        actor=world_data.blueprint.player_actor,
+        game=game,
+    )
+    session.set_context(actor=world_data.blueprint.player_actor, game=game)
+    session_store.save_meta(session)
+
+    # 创建 DBGGame 实例并初始化；领域事件写入用户会话
     assert world_data is not None, "WorldState data must exist to create a game"
     terminal_game = create_dbg_game(
         name=game,
-        player_session=PlayerSession(
-            name=user,
-            actor=world_data.blueprint.player_actor,
-            game=game,
-        ),
+        player_name=user,
+        player_actor=world_data.blueprint.player_actor,
         world=world_data,
+        events=PlayerSessionEventSink(session, session_store),
     )
 
     # 创建实体数据（敌人和场景），并初始化游戏状态
@@ -104,10 +113,14 @@ async def restore_game(
 
     # 创建 DBGGame 实例并从快照恢复游戏状态
     game = str(world.blueprint.name)
+    session_store = SessionStore()
+    player_actor = player_session.actor or world.blueprint.player_actor
     terminal_game = create_dbg_game(
         name=game,
-        player_session=player_session,
+        player_name=player_session.name,
+        player_actor=player_actor,
         world=world,
+        events=PlayerSessionEventSink(player_session, session_store),
     )
 
     # 从快照恢复游戏状态，并初始化游戏状态，包括场景描述、初始状态效果、创建新回合等

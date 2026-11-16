@@ -30,7 +30,6 @@ from ai_dbg.models import (
     LobbyComponent,
     NPCComponent,
     PlayerComponent,
-    PlayerSession,
     Stage,
     StageComponent,
     StageType,
@@ -63,8 +62,12 @@ def _make_game(
         agent_memories={},
         blueprint=blueprint,
     )
-    session = PlayerSession(name=player_name, actor=actor_name, game="test")
-    return create_dbg_game(name="test", player_session=session, world=world)
+    return create_dbg_game(
+        name="test",
+        player_name=player_name,
+        player_actor=actor_name,
+        world=world,
+    )
 
 
 def _make_lobby_stage_entity(game: Any, name: str) -> Entity:
@@ -206,8 +209,12 @@ class TestBuildFromBlueprint:
             agent_memories={},
             blueprint=bp,
         )
-        session = PlayerSession(name="p1", actor="hero", game="full_test")
-        return create_dbg_game(name="full_test", player_session=session, world=world)
+        return create_dbg_game(
+            name="full_test",
+            player_name="p1",
+            player_actor="hero",
+            world=world,
+        )
 
     # def test_actor_entity_created(self) -> None:
     #     game = self._make_game_for_build()

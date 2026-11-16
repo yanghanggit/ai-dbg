@@ -155,12 +155,12 @@ async def fetch_blueprint_list() -> BlueprintListResponse:
 
 
 async def fetch_session_messages(
-    user_name: str, game_name: str, last_sequence_id: int
+    user_name: str, last_sequence_id: int
 ) -> SessionMessageResponse:
-    """增量获取玩家会话消息。"""
+    """增量获取用户会话消息（用户级历史，不依赖当前 game）。"""
     async with build_client(10) as client:
         response = await client.get(
-            f"/api/session_messages/v1/{user_name}/{game_name}/since",
+            f"/api/session_messages/v1/{user_name}/since",
             params={"last_sequence_id": last_sequence_id},
         )
         response.raise_for_status()

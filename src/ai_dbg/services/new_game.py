@@ -19,10 +19,10 @@ from ..models import (
     BlueprintListResponse,
     NewGameRequest,
     NewGameResponse,
-    PlayerSession,
     WorldState,
 )
 from ..paths import BLUEPRINTS_DIR
+from ..session import PlayerSessionEventSink, SessionStore
 from .dungeon_enter_action import enter_dungeon
 from .dungeon_setup_action import setup_dungeon
 from .game_server_dependencies import CurrentGameServer
@@ -91,21 +91,32 @@ async def new_game(
     # 所有房间状态变更都在事务锁内完成，避免与其他请求 / 后台任务并发写坏状态
     async with room.transaction():
 
-        # 创建玩家客户端
-        player_session = PlayerSession(
-            name=payload.user_name,
+        # 会话属于用户，不属于某一局游戏；新局只更新当前上下文
+        session_store = SessionStore()
+        player_session = room.player_session
+        if player_session is None:
+            player_session = session_store.load_or_create(
+                payload.user_name,
+                actor=blueprint_data.player_actor,
+                game=payload.game_name,
+            )
+            room.attach_session(player_session)
+        player_session.set_context(
             actor=blueprint_data.player_actor,
             game=payload.game_name,
         )
+        session_store.save_meta(player_session)
 
-        # 依赖注入，创建新的游戏
+        # 依赖注入，创建新的游戏；事件出口写入用户会话
         game = create_dbg_game(
             name=payload.game_name,
-            player_session=player_session,
+            player_name=player_session.name,
+            player_actor=blueprint_data.player_actor,
             world=world_data,
+            events=PlayerSessionEventSink(player_session, session_store),
         )
 
-        # 绑定房间的游戏与会话实例（唯一写入入口）
+        # 绑定房间的游戏；会话实例保持为用户级对象
         room.bind(game=game, player_session=player_session)
 
         # 根据蓝图构建游戏实例，并刷新实体数据到world中
@@ -135,6 +146,6 @@ async def new_game(
     # 返回成功响应
     return NewGameResponse(
         blueprint=blueprint_data,
-        player_session=player_session,
+        player_session=player_session.info(),
         dungeon=dungeon_state_view(game),
     )

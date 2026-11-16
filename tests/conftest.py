@@ -4,12 +4,12 @@ import pytest
 
 from ai_dbg.game.assembly import create_dbg_game
 from ai_dbg.game.context import DBGGame
+from ai_dbg.game.events import RecordingEventSink
 from ai_dbg.models import (
     Actor,
     ActorType,
     Blueprint,
     CharacterStats,
-    PlayerSession,
     WorldState,
 )
 
@@ -32,13 +32,12 @@ def sample_game() -> DBGGame:
         agent_memories={},
         blueprint=blueprint,
     )
-    player = PlayerSession(
-        name="test_player", actor="test_actor", game="test_blueprint"
-    )
     return create_dbg_game(
         name="test_blueprint",
-        player_session=player,
+        player_name="test_player",
+        player_actor="test_actor",
         world=world,
+        events=RecordingEventSink(),
     )
 
 

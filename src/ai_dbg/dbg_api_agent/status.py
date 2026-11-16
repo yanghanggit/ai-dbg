@@ -315,7 +315,7 @@ async def build_status(
         status["player"] = _player_extras(player_entity)
 
     # 会话消息
-    messages_resp = await fetch_session_messages(user_name, game_name, messages_since)
+    messages_resp = await fetch_session_messages(user_name, messages_since)
     status["session_messages"] = [
         message.model_dump(mode="json") for message in messages_resp.session_messages
     ]

@@ -66,7 +66,7 @@ def _make_game(context: Context, monsters: List[Entity], player: Entity) -> Any:
     game.ecs = context
     game.entity_index = {}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(
         game,
         room_name=stage.name,

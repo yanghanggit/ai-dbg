@@ -62,7 +62,7 @@ def _make_game(actor: Entity, stage: Entity) -> Any:
     game.ecs = actor._context
     game.entity_index = {}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(
         game,
         action_order=[actor.name],

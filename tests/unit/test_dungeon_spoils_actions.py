@@ -53,7 +53,7 @@ def _mock_game(
     game.ecs = context
     game.entity_index = {}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     stage = context.create_entity()
     stage._name = "场景.测试"
     stage.add(StageComponent, stage.name)

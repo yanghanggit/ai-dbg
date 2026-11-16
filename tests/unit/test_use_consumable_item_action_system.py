@@ -124,7 +124,7 @@ def mock_game(context: Context) -> Any:
     game.ecs = context
     game.entity_index = {}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(game)
     return game
 

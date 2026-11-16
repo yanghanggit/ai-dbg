@@ -9,7 +9,7 @@ from .blueprint import Blueprint
 from .combat import CombatView
 from .dungeon import Dungeon
 from .dungeon_room import DungeonRoomType
-from .player_session import PlayerSession
+from .player_session import PlayerSessionInfo
 from .session_message import SessionMessage
 from .task import TaskSnapshot
 
@@ -89,7 +89,7 @@ class DungeonStateView(BaseModel):
 @final
 class NewGameResponse(BaseModel):
     blueprint: Blueprint
-    player_session: PlayerSession
+    player_session: PlayerSessionInfo
     dungeon: DungeonStateView
 
 

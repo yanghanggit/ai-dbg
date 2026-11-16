@@ -242,11 +242,11 @@ class TestNotifyEntities:
         assert get_agent_memory(game, actor).messages[-1].content == "broadcast"
         assert get_agent_memory(game, second_actor).messages[-1].content == "broadcast"
 
-    def test_notify_sends_to_player_session(self, game: Any, actor: Entity) -> None:
-        """notify_entities 向 player_session 发送 SessionMessage。"""
-        before = len(game.player_session.session_messages)
+    def test_notify_publishes_domain_event(self, game: Any, actor: Entity) -> None:
+        """notify_entities 向领域事件出口发布事件。"""
+        before = len(game.events.events)
         notify_entities(game, {actor}, _agent_event("event1"))
-        assert len(game.player_session.session_messages) == before + 1
+        assert len(game.events.events) == before + 1
 
     def test_notify_stamps_event_type_without_broadcast_stage(
         self, game: Any, actor: Entity
@@ -258,19 +258,19 @@ class TestNotifyEntities:
         assert message.agent_event == "none"
         assert not hasattr(message, "broadcast_stage")
 
-    def test_notify_empty_set_still_sends_to_player(self, game: Any) -> None:
-        """实体集合为空时，玩家仍收到事件（session_messages 增加）。"""
-        before = len(game.player_session.session_messages)
+    def test_notify_empty_set_still_publishes(self, game: Any) -> None:
+        """实体集合为空时，领域事件仍会发布。"""
+        before = len(game.events.events)
         notify_entities(game, set(), _agent_event("empty broadcast"))
-        assert len(game.player_session.session_messages) == before + 1
+        assert len(game.events.events) == before + 1
 
-    def test_player_session_event_sequence_increments(
+    def test_domain_events_accumulate_in_order(
         self, game: Any, actor: Entity
     ) -> None:
-        """每次 notify_entities 后 player_session.event_sequence 递增。"""
-        seq_before = game.player_session.event_sequence
+        """每次 notify_entities 都会追加一条领域事件。"""
+        before = list(game.events.events)
         notify_entities(game, {actor}, _agent_event("seq test"))
-        assert game.player_session.event_sequence == seq_before + 1
+        assert game.events.events == before + [_agent_event("seq test")]
 
 
 # ---------------------------------------------------------------------------

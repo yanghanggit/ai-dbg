@@ -6,10 +6,11 @@
 
 `ai-dbg-agent-api` 是 AI 代理对常驻服务端做 HTTP 走查的入口：一次调用只完成一次动作，世界状态只存在于服务端。它既是接口契约的探针，也是代理在真实运行态上观察、试探与纠错的工具；不承担本地游戏推进。
 
-服务端是唯一真相，CLI 不缓存世界状态、不读写 `.worlds/`，只以 `--user/--game` 寻址。每次动作前用 `status` 取当前局面。
+服务端是唯一真相，CLI 不缓存世界状态、不读写 `.worlds/`，只以 `--user/--game` 寻址。世界状态与用户级会话历史都由服务端持有；会话历史跨游戏持续累积，不随新局清空。每次动作前用 `status` 取当前局面。
 
 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
 → 参见：[世界快照持久化（World Persistence）](world-persistence.md)
+→ 参见：[用户会话历史（PlayerSession）](session-history.md)
 
 ## 交互契约
 

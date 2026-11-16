@@ -68,7 +68,7 @@ def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
             messages=[SystemMessage(content="你是本场景的仲裁者")]
         )
     }
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(game)
     stage = context.create_entity()
     stage._name = "场景.测试密室"

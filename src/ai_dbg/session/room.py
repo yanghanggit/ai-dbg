@@ -71,6 +71,13 @@ class PlayerRoom:
             yield self
 
     ###############################################################################################################################################
+    def attach_session(self, player_session: PlayerSession) -> None:
+        """绑定用户级会话；不依赖当前是否已有游戏。"""
+        if self._closed:
+            raise RoomClosedError(self._username)
+        self._player_session = player_session
+
+    ###############################################################################################################################################
     def bind(self, *, game: DBGGame, player_session: PlayerSession) -> None:
         """绑定游戏与会话实例，应在 ``transaction()`` 内调用。"""
         if self._closed:

@@ -205,7 +205,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
     game.ecs = context
     game.entity_index = {entity.name: entity}
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
     install_combat(game)
     assert issubclass(CombatArbitrationEvent, object)
 

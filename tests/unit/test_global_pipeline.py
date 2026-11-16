@@ -14,7 +14,6 @@ from ai_dbg.models import (
     EnvironmentComponent,
     PartyMemberComponent,
     PlayerComponent,
-    PlayerSession,
     WorldState,
 )
 from dungeon_support import install_opening_room, make_dungeon_entity
@@ -38,7 +37,8 @@ def _make_opening_game() -> Any:
     )
     game = create_dbg_game(
         name="test",
-        player_session=PlayerSession(name="player", actor="角色.玩家", game="test"),
+        player_name="player",
+        player_actor="角色.玩家",
         world=world,
     )
 

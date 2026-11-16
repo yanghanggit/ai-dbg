@@ -40,7 +40,7 @@ def _make_game(
     game.ecs = context
     game.entity_index = entities
     game.world.agent_memories = {}
-    game.player_session = MagicMock()
+    game.events = MagicMock()
 
     install_combat(
         game,

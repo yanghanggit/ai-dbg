@@ -12,6 +12,7 @@ from ..models import (
     LogoutRequest,
     LogoutResponse,
 )
+from ..session import SessionStore
 from .game_server_dependencies import CurrentGameServer
 
 ###################################################################################################################################################################
@@ -52,6 +53,14 @@ async def login(
         )
         logger.info(f"login: {payload.user_name} create room = {new_room.username}")
         assert new_room.game is None, "新创建的房间不应该有游戏实例"
+
+        # 会话是用户级、跨游戏的历史，不属于某个 DBGGame
+        session_store = SessionStore()
+        session = session_store.load_or_create(
+            payload.user_name,
+            game=payload.game_name,
+        )
+        new_room.attach_session(session)
 
     # 如果有房间，就获取房间。
     assert (

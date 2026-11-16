@@ -4,6 +4,7 @@
 .DEFAULT_GOAL := help
 
 # 游戏运行时临时目录（对应 src/ai_dbg/paths.py 的 WORLDS_DIR / DEBUG_CACHE_DIR / CHAT_DUMP_DIR / LOGS_DIR）
+# .sessions 是用户级持久会话历史，故意不纳入 clean-temp。
 GAME_TEMP_DIRS := .worlds .debug_cache .chat_dumps logs
 
 # 推荐：uv 环境完整设置

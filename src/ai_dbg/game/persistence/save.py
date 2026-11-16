@@ -13,7 +13,6 @@ from loguru import logger
 from ...models import (
     MEMORY_TAGS,
     AgentMemory,
-    PlayerSession,
     WorldState,
     get_buffer_string,
 )
@@ -30,41 +29,41 @@ def _assert_memory_tags_registered(agent_name: str, agent_memory: AgentMemory) -
 
 def save_world(
     world: WorldState,
-    player_session: PlayerSession,
     worlds_dir: Path,
     save_dir: Optional[Path] = None,
+    *,
+    user_name: Optional[str] = None,
+    game_name: Optional[str] = None,
 ) -> bool:
-    """保存游戏世界与玩家会话到存档目录。
+    """保存游戏世界到存档目录。
 
     存档目录结构：
         {save_dir}/
             ├── world_state.json
-            ├── player_session.jsonl    # JSONL 格式，首行为元数据，后续每行一个事件
             ├── blueprint/{blueprint_name}.json
             ├── entities/{entity}.json ...
             ├── memories/{agent}.jsonl, {agent}.meta.json, {agent}_buffer.txt ...
+
+    用户会话历史不在这里保存，见 session/store.py。
     """
 
     # 如果未指定 save_dir，则根据玩家名、游戏名和时间戳生成目录
     if save_dir is None:
-        username = player_session.name
-        game = str(world.blueprint.name)
+        assert user_name is not None, "save_world: 自动生成目录需要 user_name"
+        assert game_name is not None, "save_world: 自动生成目录需要 game_name"
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        save_dir = worlds_dir / username / game / timestamp
+        save_dir = worlds_dir / user_name / game_name / timestamp
 
     # 主线程集中完成 CPU 序列化，产出「相对路径 → 内容」清单
     files: List[Tuple[str, str]] = []
 
-    # 保存 world_state.json 和 player_session.jsonl
+    # 保存 world_state.json
     files.append(
         (
             "world_state.json",
             world.model_dump_json(exclude={"agent_memories", "entities", "blueprint"}),
         )
     )
-
-    # 保存 player_session.jsonl
-    files.append(("player_session.jsonl", _build_session_jsonl(player_session)))
 
     # 保存实体数据（name-keyed：文件名即实体名，内容为该实体的组件 dict）
     for entity_name, entity_data in world.entities.items():
@@ -148,22 +147,6 @@ def save_world(
         shutil.rmtree(tmp_dir, ignore_errors=True)
         logger.error(f"存档失败: {e}")
         return False
-
-
-def _build_session_jsonl(player_session: PlayerSession) -> str:
-    """将 PlayerSession 序列化为 JSONL（首行元数据，后续每行一个事件）。"""
-    lines = [
-        json.dumps(
-            {
-                "name": player_session.name,
-                "actor": player_session.actor,
-                "game": player_session.game,
-            },
-            ensure_ascii=False,
-        )
-    ]
-    lines.extend(msg.model_dump_json() for msg in player_session.session_messages)
-    return "\n".join(lines) + "\n"
 
 
 def _write_text(path: Path, text: str) -> None:

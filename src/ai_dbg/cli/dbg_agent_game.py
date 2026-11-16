@@ -1,7 +1,7 @@
 """DBG AI 操作工具 —— 基于快照的无状态副本推进 CLI。
 
-每条命令 = 读快照 → 执行动作 → 写新快照。命令间无持久内存，状态全在 .worlds/ 中。
-存档位置：.worlds/{user}/{game}/{timestamp}/（含 world_state.json / player_session.json）
+每条命令 = 读快照 → 执行动作 → 写新快照。世界状态在 .worlds/，用户级会话历史在 .sessions/。
+存档位置：.worlds/{user}/{game}/{timestamp}/（含 world_state.json）
 查存档：find .worlds -mindepth 3 -maxdepth 3 -type d | sort
 日志：logs/run_agent_game_{timestamp}.log
 
@@ -61,9 +61,29 @@ from loguru import logger
 
 from ai_dbg.dbg_game_agent.core import restore_game
 from ai_dbg.game import restore_world
+from ai_dbg.models import PlayerSession, WorldState
 from ai_dbg.paths import LOGS_DIR, WORLDS_DIR
+from ai_dbg.session import SessionStore
 
 LOG_LEVEL: Final[str] = "DEBUG"
+
+
+def _restore_snapshot(snapshot_path: Path) -> Tuple[WorldState, PlayerSession]:
+    """读取世界快照，并从用户级 session store 取回独立会话历史。"""
+    world = restore_world(snapshot_path)
+    user_name = snapshot_path.parent.parent.name
+    store = SessionStore()
+    session = store.load_or_create(
+        user_name,
+        actor=world.blueprint.player_actor,
+        game=str(world.blueprint.name),
+    )
+    session.set_context(
+        actor=world.blueprint.player_actor,
+        game=str(world.blueprint.name),
+    )
+    store.save_meta(session)
+    return world, session
 
 
 def _setup_logger(log_file_path: Path) -> None:
@@ -178,7 +198,7 @@ def stages(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
 
     logger.info(f"本次运行日志文件：{_log_file}")
     logger.info(f"读取存档：{snapshot_path}")
@@ -213,7 +233,7 @@ def compact_context(snapshot: str, target: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -250,7 +270,7 @@ def enter_dungeon(snapshot: str, dungeon: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -282,7 +302,7 @@ def combat_init(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -314,7 +334,7 @@ def draw_cards(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -371,7 +391,7 @@ def play_cards_specified(
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -416,7 +436,7 @@ def pass_turn(snapshot: str, actor: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -453,7 +473,7 @@ def use_consumable(snapshot: str, item: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -490,7 +510,7 @@ def equip_gear(snapshot: str, item: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -522,7 +542,7 @@ def exit_dungeon(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -554,7 +574,7 @@ def next_dungeon(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -586,7 +606,7 @@ def collect_loot(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -618,7 +638,7 @@ def retreat(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -650,7 +670,7 @@ def opening_init(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -727,7 +747,7 @@ def generate_spoils(
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -791,7 +811,7 @@ def pick_spoils_card(snapshot: str, actor: str, card: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -823,7 +843,7 @@ def remove_spoils(snapshot: str) -> None:
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
     _save_dir = (
         WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
     )
@@ -948,7 +968,7 @@ def design_cards(
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
 
     logger.info(f"本次运行日志文件：{_log_file}")
     logger.info(f"读取存档：{snapshot_path}")
@@ -1074,7 +1094,7 @@ def rebuild_deck(
     _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
     _setup_logger(_log_file)
 
-    world, player_session = restore_world(snapshot_path)
+    world, player_session = _restore_snapshot(snapshot_path)
 
     logger.info(f"本次运行日志文件：{_log_file}")
     logger.info(f"读取存档：{snapshot_path}")

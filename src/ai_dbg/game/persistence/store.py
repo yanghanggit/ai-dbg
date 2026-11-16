@@ -15,9 +15,10 @@ def _store_game(dbg_game: DBGGame, save_dir: Optional[Path] = None) -> bool:
     flush_entities(dbg_game)
     return save_world(
         dbg_game.world,
-        dbg_game.player_session,
         worlds_dir=WORLDS_DIR,
         save_dir=save_dir,
+        user_name=dbg_game.player_name,
+        game_name=dbg_game.name,
     )
 
 
