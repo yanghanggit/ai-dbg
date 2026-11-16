@@ -11,7 +11,7 @@ from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import compute_character_stats
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -263,7 +263,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("PlayCardsArbitrationSystem: 战斗未进行中，跳过仲裁")
             return
 
@@ -291,11 +291,11 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
 
         # 获取当前回合数，用于仲裁提示生成
         current_round_number = len(
-            current_dungeon_combat_room(self._game).combat.rounds or []
+            current_dungeon_combat(self._game).rounds or []
         )
 
         # 获取最新回合的行动信息，供仲裁提示词扩展使用
-        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
+        latest_round = current_dungeon_combat(self._game).latest_round
         assert latest_round is not None, "仲裁阶段最新回合不应为 None"
         round_action_order = latest_round.action_order
         round_completed_actors = latest_round.completed_actors

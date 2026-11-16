@@ -10,7 +10,7 @@ from overrides import override
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -128,7 +128,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
         """
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("TransferCardsActionSystem: 战斗未进行中，跳过卡牌转移")
             return
 
@@ -145,7 +145,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
             source_hand = entity.get(HandComponent)
 
             # 本回合编号（消息标注用），取法与出牌记录一致。
-            round_number = len(current_dungeon_combat_room(self._game).combat.rounds)
+            round_number = len(current_dungeon_combat(self._game).rounds)
 
             # 从源手牌移除本体（原卡后续由 DiscardCardsActionSystem 归入弃牌堆）。
             entity.replace(

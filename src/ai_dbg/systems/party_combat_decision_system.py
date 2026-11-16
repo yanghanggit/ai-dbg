@@ -12,7 +12,7 @@ from loguru import logger
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.memory import (
@@ -70,11 +70,11 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
     async def react(self, entities: List[Entity]) -> None:
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("PartyCombatDecisionSystem: 战斗未进行中，跳过")
             return
 
-        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
+        round_number = len(current_dungeon_combat(self._game).rounds or [])
 
         for entity in entities:
             if entity.has(PlayCardsAction):

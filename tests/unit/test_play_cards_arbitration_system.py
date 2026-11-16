@@ -14,7 +14,7 @@ from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
@@ -36,6 +36,7 @@ from ai_dbg.models import (
 )
 from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
+from dungeon_support import install_combat
 
 
 def _make_card() -> Card:
@@ -84,7 +85,8 @@ def mock_game(
     game.entity_index = {}
     game.world.agent_memories = {"场景.测试密室": stage_memory}
     game.player_session = MagicMock()
-    combat: Any = current_dungeon_combat_room(game).combat
+    install_combat(game, MagicMock())
+    combat: Any = current_dungeon_combat(game)
     combat.is_ongoing = True
     combat.rounds = [MagicMock()]
     combat.latest_round.action_order = []
@@ -217,7 +219,7 @@ class TestLoopMemoryCompression:
         assert getattr(summary, LOOP_END_ATTR) == loop_id
 
         # 落库先于压缩：HP 落库与回合记录均已发生
-        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest_round: Any = current_dungeon_combat(mock_game).latest_round
         assert latest_round.record.call_count == 1
 
     @pytest.mark.asyncio
@@ -254,7 +256,7 @@ class TestLoopMemoryCompression:
         assert getattr(notice, LOOP_ID_ATTR) == getattr(notice, LOOP_END_ATTR)
 
         # 回合日志留下失败痕迹（kind=failed，中性可展示文案）
-        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest_round: Any = current_dungeon_combat(mock_game).latest_round
         assert latest_round.record.call_count == 1
         kind, log, _narrative = latest_round.record.call_args.args
         assert kind == RoundEntryKind.FAILED
@@ -293,7 +295,7 @@ class TestLoopMemoryCompression:
         """落库（写 HP / 回合记录）必须发生在压缩记忆之前，避免「已完成」假象。"""
         system = PlayCardsArbitrationSystem(mock_game)
         actor = _make_actor(context, "角色.无名", _make_card(), [])
-        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest_round: Any = current_dungeon_combat(mock_game).latest_round
 
         order: List[str] = []
         latest_round.record.side_effect = lambda *a, **kw: order.append("record")

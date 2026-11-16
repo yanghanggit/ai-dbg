@@ -8,8 +8,8 @@ from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import mark_dead
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon,
-    current_dungeon_combat_room,
+    current_dungeon_combat,
+    current_dungeon_name,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -60,22 +60,19 @@ class RetreatActionSystem(ReactiveProcessor):
         # 状态守卫：仅在战斗进行中执行撤退处理
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("RetreatActionSystem: 战斗未进行中，跳过撤退处理")
             return
 
-        # 获取当前副本信息，生成撤退消息需要使用副本和关卡名称
-        assert (
-            current_dungeon(self._game) is not None
-        ), "RetreatActionSystem: current_dungeon is None"
-        dungeon = current_dungeon(self._game)
+        # 获取当前副本名，生成撤退消息需要使用
+        dungeon_name = current_dungeon_name(self._game)
 
         # 处理每个撤退实体，执行撤退逻辑
         for entity in entities:
-            self._process_retreat_action(entity, dungeon.name)
+            self._process_retreat_action(entity, dungeon_name)
 
         # 标记当前战斗为撤退状态
-        current_dungeon_combat_room(self._game).combat.retreated = True
+        current_dungeon_combat(self._game).retreated = True
 
     ####################################################################################################################################
     def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:

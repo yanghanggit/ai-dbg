@@ -4,7 +4,9 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
 from ..game.dungeon import (
-    current_dungeon,
+    current_dungeon_room,
+    dungeon_room_view,
+    dungeon_state_view,
 )
 from ..models import (
     Dungeon,
@@ -56,7 +58,7 @@ async def get_dungeon_state(
 
     # 返回副本状态
     return DungeonStateResponse(
-        dungeon=current_dungeon(current_room.game),
+        dungeon=dungeon_state_view(current_room.game),
     )
 
 
@@ -95,16 +97,16 @@ async def get_dungeon_room(
         )
 
     # 获取当前副本房间，current_room_index == -1 或超出范围时返回 None
-    current_dungeon_room = current_dungeon(current_room.game).current_room
-    if current_dungeon_room is None:
+    room_entity = current_dungeon_room(current_room.game)
+    if room_entity is None:
         logger.error(f"get_dungeon_room: {user_name} has no current dungeon room")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="当前副本没有进行中的房间",
         )
 
-    # 返回当前副本房间的响应对象，包含房间的关卡场景（若是战斗房间则包含战斗数据）
-    return DungeonRoomResponse(room=current_dungeon_room)
+    # 返回当前副本房间的运行时视图
+    return DungeonRoomResponse(room=dungeon_room_view(room_entity))
 
 
 ###################################################################################################################################################################

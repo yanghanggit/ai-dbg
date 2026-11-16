@@ -13,7 +13,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -69,7 +69,7 @@ class PassTurnActionSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("PassTurnActionSystem: 战斗未进行中，跳过过牌处理")
             return
 
@@ -78,12 +78,12 @@ class PassTurnActionSystem(ReactiveProcessor):
         assert len(entities) == 1, "PassTurnActionSystem: 一次只能处理一个过牌动作实体"
         entity = entities[0]
 
-        current_rounds = current_dungeon_combat_room(self._game).combat.rounds
+        current_rounds = current_dungeon_combat(self._game).rounds
         assert (
             current_rounds is not None
         ), "PassTurnActionSystem: current_rounds is None"
 
-        last_round = current_dungeon_combat_room(self._game).combat.latest_round
+        last_round = current_dungeon_combat(self._game).latest_round
         assert last_round is not None, "PassTurnActionSystem: latest_round is None"
 
         pass_turn_action = entity.get(PassTurnAction)

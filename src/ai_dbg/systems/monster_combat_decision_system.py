@@ -21,7 +21,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.memory import (
@@ -470,7 +470,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("MonsterCombatDecisionSystem: 战斗未进行中，跳过决策")
             return
 
@@ -478,7 +478,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             f"MonsterCombatDecisionSystem: 为 {len(entities)} 个怪物进行出牌决策推理"
         )
 
-        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
+        round_number = len(current_dungeon_combat(self._game).rounds or [])
 
         # 行动权由 `Round.current_actor` 唯一决定，决策天然串行：一个怪物一段 loop + 一次落库。
         # 不并发（并发会让同一回合的多个决策互相看不见对方的结算结果），也不做批量提交。
@@ -545,7 +545,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             for actor in get_alive_party_members_in_stage(entity, self._game)
         ]
 
-        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
+        latest_round = current_dungeon_combat(self._game).latest_round
         action_order: List[str] = latest_round.action_order if latest_round else []
         completed_actors: List[str] = (
             latest_round.completed_actors if latest_round else []

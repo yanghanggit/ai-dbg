@@ -16,15 +16,14 @@ from ..models import (
     AppearanceComponent,
     CharacterStatsComponent,
     Combat,
-    CombatRoom,
     DeathComponent,
+    DungeonRoomType,
     EnvironmentComponent,
     EquippedGearComponent,
     HandComponent,
     InventoryComponent,
     MonsterComponent,
     NPCComponent,
-    OpeningRoom,
     PlayerComponent,
     RoundStatsComponent,
     SpoilsComponent,
@@ -300,9 +299,9 @@ async def build_status(
         if name in entities_by_name
     ]
 
-    if isinstance(room, CombatRoom):
+    if room is not None and room.combat is not None:
         status["combat"] = _combat_info(room.combat)
-    elif isinstance(room, OpeningRoom):
+    elif room is not None and room.type == DungeonRoomType.OPENING:
         status["dungeon"]["spoils"] = _spoils_info(party_entities)
 
     # 玩家随身背包

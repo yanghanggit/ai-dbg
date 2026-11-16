@@ -10,7 +10,7 @@ from loguru import logger
 
 from ai_dbg.game.context import DBGGame
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ai_dbg.game.entities import (
@@ -47,7 +47,7 @@ async def init_combat_game(
         return terminal_game
 
     # 状态守卫：只能在战斗初始化阶段使用
-    if not current_dungeon_combat_room(terminal_game).combat.is_initializing:
+    if not current_dungeon_combat(terminal_game).is_initializing:
         logger.error("combat-init 只能在战斗初始化阶段使用")
         return terminal_game
 
@@ -70,7 +70,7 @@ async def draw_cards_game(
         logger.error("draw-cards 只能在战斗房间中使用")
         return terminal_game
 
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("draw-cards 只能在战斗进行中使用")
         return terminal_game
 
@@ -104,11 +104,11 @@ async def play_cards_specified_game(
         logger.error("play-cards-specified 只能在战斗房间中使用")
         return terminal_game
 
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("play-cards-specified 只能在战斗进行中使用")
         return terminal_game
 
-    last_round = current_dungeon_combat_room(terminal_game).combat.latest_round
+    last_round = current_dungeon_combat(terminal_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error("play-cards-specified 当前没有未完成且已抽牌的回合可供打牌")
         return terminal_game
@@ -141,7 +141,7 @@ async def play_cards_specified_game(
     await terminal_game.pipeline.process()
 
     if (
-        current_dungeon_combat_room(terminal_game).combat.state
+        current_dungeon_combat(terminal_game).state
         == CombatState.POST_COMBAT
     ):
         logger.debug("在本次处理中战斗已结束，进入后处理阶段")
@@ -165,11 +165,11 @@ async def use_consumable_game(
         logger.error("use-consumable 只能在战斗房间中使用")
         return terminal_game
 
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("use-consumable 只能在战斗进行中使用")
         return terminal_game
 
-    last_round = current_dungeon_combat_room(terminal_game).combat.latest_round
+    last_round = current_dungeon_combat(terminal_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error("use-consumable 当前没有未完成且已抽牌的回合可供使用消耗品")
         return terminal_game
@@ -199,11 +199,11 @@ async def equip_gear_game(
         logger.error("equip-gear 只能在战斗房间中使用")
         return terminal_game
 
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("equip-gear 只能在战斗进行中使用")
         return terminal_game
 
-    last_round = current_dungeon_combat_room(terminal_game).combat.latest_round
+    last_round = current_dungeon_combat(terminal_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error("equip-gear 当前没有未完成且已抽牌的回合可供装备")
         return terminal_game
@@ -233,11 +233,11 @@ async def pass_turn_game(
         logger.error("pass-turn 只能在战斗房间中使用")
         return terminal_game
 
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("pass-turn 只能在战斗进行中使用")
         return terminal_game
 
-    last_round = current_dungeon_combat_room(terminal_game).combat.latest_round
+    last_round = current_dungeon_combat(terminal_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error("pass-turn 当前没有未完成且已抽牌的回合可供过牌")
         return terminal_game
@@ -268,7 +268,7 @@ async def retreat_game(
         return terminal_game
 
     # 状态守卫：只能在战斗进行中撤退
-    if not current_dungeon_combat_room(terminal_game).combat.is_ongoing:
+    if not current_dungeon_combat(terminal_game).is_ongoing:
         logger.error("retreat 只能在战斗进行中使用")
         return terminal_game
 
@@ -283,7 +283,7 @@ async def retreat_game(
     await terminal_game.pipeline.execute()
 
     # 与 API 对齐：撤退流程执行后必须已进入 post_combat 状态
-    if not current_dungeon_combat_room(terminal_game).combat.is_post_combat:
+    if not current_dungeon_combat(terminal_game).is_post_combat:
         logger.error("撤退流程异常：全局 pipeline 执行后未进入 post_combat 状态")
         return terminal_game
 

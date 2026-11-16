@@ -10,7 +10,7 @@ from ..deepseek import batch_complete
 from ..entitas import Entity, ExecuteProcessor, Matcher
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -150,10 +150,10 @@ class CombatLootSystem(ExecuteProcessor):
         """每帧检查战斗是否胜利结束；未胜利则直接返回，胜利则推理掉落并写入 LootComponent。"""
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_combat_completed:
+        if not current_dungeon_combat(self._game).is_combat_completed:
             return
 
-        if not current_dungeon_combat_room(self._game).combat.is_won:
+        if not current_dungeon_combat(self._game).is_won:
             return
 
         player_entity = get_player_entity(self._game)
@@ -229,7 +229,7 @@ class CombatLootSystem(ExecuteProcessor):
     #######################################################################################################################################
     def _create_loot_request(self, monster: Entity) -> ChatCompletionRequest:
         """为单头怪物创建掉落推理请求，传入其消息历史。"""
-        total_rounds = len(current_dungeon_combat_room(self._game).combat.rounds or [])
+        total_rounds = len(current_dungeon_combat(self._game).rounds or [])
 
         player_entity = get_player_entity(self._game)
         assert player_entity is not None

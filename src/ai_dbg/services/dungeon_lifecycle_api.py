@@ -7,8 +7,9 @@ from loguru import logger
 
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon,
-    current_dungeon_combat_room,
+    current_dungeon_combat,
+    current_room_index,
+    get_dungeon_room_by_index,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
     is_player_in_lobby_stage,
@@ -114,7 +115,7 @@ def _validate_dungeon_prerequisites_lobby(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="只能在大厅开始副本",
         )
-    if current_dungeon(dbg_game).current_room_index >= 0:
+    if current_room_index(dbg_game) >= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="当前已有进行中的副本",
@@ -156,7 +157,7 @@ async def dungeon_advance_stage(
 
         # 若当前为战斗房间，验证战斗是否处于等待阶段（即战斗已结束）
         if is_current_room_dungeon_combat(rpg_game):
-            if not current_dungeon_combat_room(rpg_game).combat.is_post_combat:
+            if not current_dungeon_combat(rpg_game).is_post_combat:
                 logger.error(
                     f"玩家 {payload.user_name} 前进下一关失败: 战斗未处于等待阶段"
                 )
@@ -165,14 +166,14 @@ async def dungeon_advance_stage(
                     detail="战斗未处于等待阶段",
                 )
 
-            if current_dungeon_combat_room(rpg_game).combat.is_lost:
+            if current_dungeon_combat(rpg_game).is_lost:
                 logger.warning(f"玩家 {payload.user_name} 战斗失败")
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="战斗失败，无法继续",
                 )
 
-            if not current_dungeon_combat_room(rpg_game).combat.is_won:
+            if not current_dungeon_combat(rpg_game).is_won:
                 logger.error(f"玩家 {payload.user_name} 战斗状态异常: 既未胜利也未失败")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -180,8 +181,8 @@ async def dungeon_advance_stage(
                 )
 
         # 获取下一房间索引和房间实例，确保存在下一房间，否则无法推进副本
-        next_room_index = current_dungeon(rpg_game).current_room_index + 1
-        next_room = current_dungeon(rpg_game).get_room(next_room_index)
+        next_room_index = current_room_index(rpg_game) + 1
+        next_room = get_dungeon_room_by_index(rpg_game, next_room_index)
         if next_room is None:
             logger.error(f"玩家 {payload.user_name} 副本前进失败，没有更多房间")
             raise HTTPException(
@@ -190,7 +191,7 @@ async def dungeon_advance_stage(
             )
 
         # 推进副本到下一房间
-        success, msg = await advance_dungeon(rpg_game, current_dungeon(rpg_game))
+        success, msg = await advance_dungeon(rpg_game)
         if not success:
             logger.error(f"玩家 {payload.user_name} 副本前进失败: {msg}")
             raise HTTPException(
@@ -233,7 +234,7 @@ async def dungeon_exit(
 
     # 若当前为战斗房间，验证战斗是否已结束
     if is_current_room_dungeon_combat(dbg_game):
-        if not current_dungeon_combat_room(dbg_game).combat.is_post_combat:
+        if not current_dungeon_combat(dbg_game).is_post_combat:
             logger.error(f"玩家 {payload.user_name} 返回大厅失败: 战斗未结束")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -293,7 +294,7 @@ async def dungeon_start(
             )
 
         # 第二步：组建队伍并进入第一关
-        success, error_detail = enter_dungeon(rpg_game, current_dungeon(rpg_game))
+        success, error_detail = enter_dungeon(rpg_game)
         if not success:
             logger.error(f"玩家 {payload.user_name} 进入副本失败: {error_detail}")
             raise HTTPException(

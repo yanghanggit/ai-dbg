@@ -1,9 +1,19 @@
+from enum import StrEnum, unique
 from typing import Annotated, Literal, Union, final
 
 from pydantic import BaseModel, Field
 
-from .combat import Combat
 from .entities import Stage
+
+
+###############################################################################################################################################
+@final
+@unique
+class DungeonRoomType(StrEnum):
+    """副本房间类型；与静态定义中的 ``DungeonRoom.type`` 判别值一致。"""
+
+    OPENING = "opening"
+    COMBAT = "combat"
 
 
 ###############################################################################################################################################
@@ -17,10 +27,9 @@ class DungeonRoom(BaseModel):
 ###############################################################################################################################################
 @final
 class CombatRoom(DungeonRoom):
-    """战斗房间（含战斗数据）"""
+    """战斗房间定义；运行时战斗状态由房间实体上的组件承载。"""
 
     type: Literal["combat"] = "combat"
-    combat: Combat = Combat(name="")  # 当前房间的战斗数据，默认为空战斗（state=NONE）
 
 
 ###############################################################################################################################################

@@ -1,40 +1,47 @@
 """副本实体销毁模块
 
-负责销毁副本相关实体（敌人、场景）并重置副本数据，是 setup_dungeon 的逆操作。
+负责销毁副本相关实体（敌人、场景、房间、副本），是 setup_dungeon 的逆操作。
 """
 
 from loguru import logger
 
 from ..game.context import DBGGame
+from ..game.dungeon import (
+    dungeon_rooms,
+    get_dungeon_entity,
+)
 from ..game.entities import (
     destroy_entity,
-    get_actor_entity,
-    get_stage_entity,
+    get_actors_in_stage,
 )
-from ..models import Dungeon
+from ..models import MonsterComponent
 
 
 ###################################################################################################################################################################
-def teardown_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> None:
-    """销毁副本相关实体并重置副本数据，是 setup_dungeon 的逆操作。"""
+def teardown_dungeon(dbg_game: DBGGame) -> None:
+    """销毁副本相关实体，是 setup_dungeon 的逆操作。"""
 
-    logger.debug(f"[teardown_dungeon] 开始清理副本实体: dungeon={dungeon.name!r}")
+    dungeon_entity = get_dungeon_entity(dbg_game)
+    if dungeon_entity is None:
+        logger.debug("[teardown_dungeon] 当前没有副本实体，跳过")
+        return
 
-    # 1. 销毁所有副本中的 actor 实体
-    for room in dungeon.rooms:
-        for actor in room.stage.actors:
-            destroy_actor_entity = get_actor_entity(dbg_game, actor.name)
-            if destroy_actor_entity is not None:
-                destroy_entity(dbg_game, destroy_actor_entity)
+    logger.debug(
+        f"[teardown_dungeon] 开始清理副本实体: dungeon={dungeon_entity.name!r}"
+    )
+    rooms = dungeon_rooms(dbg_game)
 
-    # 2. 销毁所有副本中的 stage 实体
-    for room in dungeon.rooms:
-        destroy_stage_entity = get_stage_entity(dbg_game, room.stage.name)
-        if destroy_stage_entity is not None:
-            destroy_entity(dbg_game, destroy_stage_entity)
+    # 1. 销毁所有房间场景中的怪物实体（队伍成员此时应已传送回大厅）
+    for room_entity in rooms:
+        for actor_entity in get_actors_in_stage(dbg_game, room_entity):
+            if actor_entity.has(MonsterComponent):
+                destroy_entity(dbg_game, actor_entity)
 
-    # 3. 重置副本数据为空副本
-    dbg_game.world.dungeon = Dungeon(name="", rooms=[], profile="")
+    # 2. 销毁所有房间对应的 Stage 实体（房间组件随实体一起消失）
+    for room_entity in rooms:
+        destroy_entity(dbg_game, room_entity)
 
-    # 4. 打印副本销毁完成日志
-    logger.debug("[teardown_dungeon] 副本实体清理完成，dungeon 已重置")
+    # 3. 销毁副本实体
+    destroy_entity(dbg_game, dungeon_entity)
+
+    logger.debug("[teardown_dungeon] 副本实体清理完成")

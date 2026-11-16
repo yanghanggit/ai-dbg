@@ -16,7 +16,7 @@ import pytest
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.models import (
     ActorComponent,
@@ -37,6 +37,7 @@ from ai_dbg.systems.card_operation_system import (
     CardOperationSystem,
     _find_card,
 )
+from dungeon_support import install_combat
 
 
 #######################################################################################################
@@ -84,8 +85,9 @@ def game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.get_group.side_effect = context.get_group
-    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
-    cast(Any, current_dungeon_combat_room(game)).combat.rounds = [MagicMock()]
+    install_combat(game, MagicMock())
+    cast(Any, current_dungeon_combat(game)).is_ongoing = True
+    cast(Any, current_dungeon_combat(game)).rounds = [MagicMock()]
     game.get_agent_memory.return_value = AgentMemory(
         name="角色.无名", messages=[SystemMessage(content="你是无名。")]
     )

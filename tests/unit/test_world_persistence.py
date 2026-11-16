@@ -5,17 +5,24 @@
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
+from ai_dbg.entitas import dump_components
 from ai_dbg.game.persistence import restore_world
 from ai_dbg.game.persistence import save as persistence_save
 from ai_dbg.models import (
     AgentMemory,
     AIMessage,
     Blueprint,
-    Dungeon,
+    Combat,
+    CombatComponent,
+    CombatState,
+    DungeonRoomComponent,
+    DungeonRoomType,
+    DungeonRunComponent,
     HumanMessage,
     NoneEvent,
     PlayerSession,
@@ -42,7 +49,6 @@ def _make_world(entity_counter: int = 1) -> WorldState:
     return WorldState(
         entity_counter=entity_counter,
         entities={},
-        dungeon=Dungeon(name="dungeon_a", rooms=[], profile=""),
         blueprint=_make_blueprint(),
         agent_memories={},
     )
@@ -72,7 +78,6 @@ class TestRoundTrip:
 
         assert restored_world.entity_counter == 7
         assert restored_world.blueprint.name == "demo"
-        assert restored_world.dungeon.name == "dungeon_a"
         assert restored_session.name == "user"
         assert restored_session.actor == "hero"
         assert restored_session.game == "demo"
@@ -134,20 +139,45 @@ class TestRoundTrip:
         assert list(restored_world.entities) == ["goblin", "slime"]
         assert restored_world.entities["goblin"] == {"stats": {"hp": 10}}
 
-    def test_empty_dungeon_is_persisted_as_placeholder(self, tmp_path: Path) -> None:
-        """空副本（name 为空）落盘为 dungeon/.empty.json；还原时得到空副本。"""
+    def test_dungeon_ecs_components_round_trip(self, tmp_path: Path) -> None:
+        """副本/房间/战斗组件应按 JSON 模式落盘，并能还原出原始字段类型。"""
         world = _make_world()
-        world.dungeon = Dungeon(name="", rooms=[], profile="")
+        created_at = datetime(2026, 1, 2, 3, 4, 5)
+        combat = Combat(name="场景.测试")
+        combat.state = CombatState.ONGOING
+        world.entities = {
+            "副本.测试": dump_components(
+                DungeonRunComponent(
+                    name="副本.测试",
+                    profile="profile",
+                    created_at=created_at,
+                    assets={},
+                )
+            ),
+            "场景.测试": dump_components(
+                DungeonRoomComponent(
+                    name="场景.测试",
+                    dungeon_name="副本.测试",
+                    index=0,
+                    room_type=DungeonRoomType.COMBAT,
+                ),
+                CombatComponent(name="场景.测试", combat=combat),
+            ),
+        }
         save_dir = tmp_path / "snap"
         assert persistence_save.save_world(
             world, _make_player_session(), tmp_path, save_dir
         )
 
-        dungeon_dir = save_dir / "dungeon"
-        assert [p.name for p in dungeon_dir.glob("*.json")] == [".empty.json"]
-
         restored_world, _ = restore_world(save_dir)
-        assert restored_world.dungeon.name == ""
+        raw_dungeon = restored_world.entities["副本.测试"]["DungeonRunComponent"]
+        raw_room = restored_world.entities["场景.测试"]["DungeonRoomComponent"]
+        raw_combat = restored_world.entities["场景.测试"]["CombatComponent"]
+        assert DungeonRunComponent(**raw_dungeon).created_at == created_at
+        assert (
+            DungeonRoomComponent(**raw_room).room_type == DungeonRoomType.COMBAT
+        )
+        assert CombatComponent(**raw_combat).combat.state == CombatState.ONGOING
 
     def test_world_state_json_excludes_split_fields(self, tmp_path: Path) -> None:
         """world_state.json 应排除独立存储的字段。"""
@@ -159,7 +189,7 @@ class TestRoundTrip:
         )
 
         data = json.loads((save_dir / "world_state.json").read_text(encoding="utf-8"))
-        for key in ("agent_memories", "entities", "dungeon", "blueprint"):
+        for key in ("agent_memories", "entities", "blueprint"):
             assert key not in data
 
 
@@ -178,7 +208,7 @@ class TestRestoreErrors:
         save_dir.mkdir()
         (save_dir / "world_state.json").write_text(
             _make_world().model_dump_json(
-                exclude={"agent_memories", "entities", "dungeon", "blueprint"}
+                exclude={"agent_memories", "entities", "blueprint"}
             ),
             encoding="utf-8",
         )
@@ -190,7 +220,7 @@ class TestRestoreErrors:
         save_dir.mkdir()
         (save_dir / "world_state.json").write_text(
             _make_world().model_dump_json(
-                exclude={"agent_memories", "entities", "dungeon", "blueprint"}
+                exclude={"agent_memories", "entities", "blueprint"}
             ),
             encoding="utf-8",
         )
@@ -212,7 +242,7 @@ class TestAtomicSave:
         real_write = persistence_save._write_text
 
         def failing_write(path: Path, text: str) -> None:
-            if path.name == "dungeon_a.json":
+            if path.name == "world_state.json":
                 raise OSError("simulated write failure")
             real_write(path, text)
 
@@ -238,7 +268,7 @@ class TestAtomicSave:
         real_write = persistence_save._write_text
 
         def failing_write(path: Path, text: str) -> None:
-            if path.name == "dungeon_a.json":
+            if path.name == "world_state.json":
                 raise OSError("simulated write failure")
             real_write(path, text)
 

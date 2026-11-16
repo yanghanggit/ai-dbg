@@ -17,7 +17,7 @@ import pytest
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.models import (
     ActorComponent,
@@ -28,6 +28,7 @@ from ai_dbg.models import (
     StageComponent,
     TargetType,
 )
+from dungeon_support import install_combat
 
 
 @pytest.fixture()
@@ -66,7 +67,8 @@ def _make_game(actor: Entity, stage: Entity) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    combat: Any = current_dungeon_combat_room(game).combat
+    install_combat(game, MagicMock())
+    combat: Any = current_dungeon_combat(game)
     combat.is_ongoing = True
     combat.rounds = [SimpleNamespace()]
     combat.latest_round = SimpleNamespace(

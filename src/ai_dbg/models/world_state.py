@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from ..entitas import ContextData
 from .agent_memory import AgentMemory
 from .blueprint import Blueprint
-from .dungeon import Dungeon
 
 
 ###############################################################################################################################################
@@ -14,9 +13,6 @@ from .dungeon import Dungeon
 class WorldState(BaseModel):
     entity_counter: int
     entities: ContextData = {}
-    dungeon: Dungeon = Field(
-        default_factory=lambda: Dungeon(name="", rooms=[], profile="")
-    )
     blueprint: Blueprint = Field(
         default_factory=lambda: Blueprint(
             name="",

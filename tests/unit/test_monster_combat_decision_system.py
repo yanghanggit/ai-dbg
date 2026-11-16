@@ -25,11 +25,9 @@ from ai_dbg.models import (
     CharacterStats,
     CharacterStatsComponent,
     Combat,
-    CombatRoom,
     CombatState,
     DiscardPileComponent,
     DrawPileComponent,
-    Dungeon,
     ExhaustPileComponent,
     HandComponent,
     HumanMessage,
@@ -40,14 +38,13 @@ from ai_dbg.models import (
     PlayCardsAction,
     Round,
     RoundStatsComponent,
-    Stage,
-    StageType,
     TargetType,
     ToolMessage,
 )
 from ai_dbg.systems.card_pile_common import PILE_EXHAUST
 from ai_dbg.systems.combat_decision_common import REASON_MISSING
 from ai_dbg.systems.monster_combat_decision_system import MonsterCombatDecisionSystem
+from dungeon_support import install_combat
 
 _MODULE = "ai_dbg.systems.monster_combat_decision_system"
 _STAGE_NAME = "场景.河湾芦苇丛"
@@ -82,14 +79,7 @@ def _make_entity(game: Any, name: str, *, monster: bool) -> Entity:
 
 
 def _arm_combat(game: Any) -> None:
-    stage = Stage(
-        name=_STAGE_NAME,
-        type=StageType.DUNGEON,
-        profile="",
-        system_message="stage",
-        actors=[],
-    )
-    combat = Combat(name=stage.name)
+    combat = Combat(name=_STAGE_NAME)
     combat.state = CombatState.ONGOING
     combat.rounds = [
         Round(
@@ -98,12 +88,7 @@ def _arm_combat(game: Any) -> None:
             current_actor="怪物.渡口野狗",
         )
     ]
-    game.world.dungeon = Dungeon(
-        name="副本.断桥渡口",
-        rooms=[CombatRoom(stage=stage, combat=combat)],
-        profile="",
-        current_room_index=0,
-    )
+    install_combat(game, combat, room_name=_STAGE_NAME)
 
 
 #######################################################################################################

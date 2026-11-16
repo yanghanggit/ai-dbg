@@ -71,31 +71,13 @@ def _make_actor(game: Any, name: str, *, monster: bool = False) -> Entity:
 
 def _arm_combat(game: Any) -> None:
     """造一个进行中的战斗房间（转移系统以此作为前置）。"""
-    from ai_dbg.models import (
-        Combat,
-        CombatRoom,
-        CombatState,
-        Dungeon,
-        Stage,
-        StageType,
-    )
+    from ai_dbg.models import Combat, CombatState
+    from dungeon_support import install_combat
 
-    stage_model = Stage(
-        name="场景.河湾芦苇丛",
-        type=StageType.DUNGEON,
-        profile="",
-        system_message="stage",
-        actors=[],
-    )
-    combat = Combat(name=stage_model.name)
+    combat = Combat(name="场景.河湾芦苇丛")
     combat.state = CombatState.ONGOING
     combat.rounds = [Round(action_order=[], completed_actors=[])]
-    game.world.dungeon = Dungeon(
-        name="副本.断桥渡口",
-        rooms=[CombatRoom(stage=stage_model, combat=combat)],
-        profile="",
-        current_room_index=0,
-    )
+    install_combat(game, combat, room_name="场景.河湾芦苇丛")
 
 
 #######################################################################################################

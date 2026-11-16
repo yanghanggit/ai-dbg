@@ -8,7 +8,7 @@ from overrides import override
 from ..entitas import ExecuteProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 
@@ -28,7 +28,7 @@ class CombatPostCombatTransitionSystem(ExecuteProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        combat = current_dungeon_combat_room(self._game).combat
+        combat = current_dungeon_combat(self._game)
         if not combat.is_combat_completed:
             # 战斗未结束（或已处于战后阶段），无需转换。
             return

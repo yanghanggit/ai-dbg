@@ -10,7 +10,8 @@ from ai_dbg.game.combat import (
 )
 from ai_dbg.game.context import DBGGame
 from ai_dbg.game.dungeon import (
-    current_dungeon,
+    current_dungeon_name,
+    current_room_index,
     is_player_in_dungeon_stage,
     is_player_in_lobby_stage,
 )
@@ -25,8 +26,6 @@ from ai_dbg.models import (
     Blueprint,
     CharacterStats,
     CharacterStatsComponent,
-    CombatRoom,
-    Dungeon,
     DungeonComponent,
     LobbyComponent,
     NPCComponent,
@@ -62,7 +61,6 @@ def _make_game(
         entity_counter=0,
         entities={},
         agent_memories={},
-        dungeon=Dungeon(name="dungeon_alpha", rooms=[], profile=""),
         blueprint=blueprint,
     )
     session = PlayerSession(name=player_name, actor=actor_name, game="test")
@@ -135,26 +133,15 @@ def _make_stage_model(
     )
 
 
-def _make_dungeon_with_enemy(enemy_name: str, stage_name: str) -> Dungeon:
-    enemy = _make_actor_model(enemy_name, ActorType.MONSTER)
-    stage = _make_stage_model(stage_name, StageType.DUNGEON, actors=[enemy])
-    room = CombatRoom(stage=stage)
-    return Dungeon(name="test_dungeon", rooms=[room], profile="")
-
-
 # ---------------------------------------------------------------------------
 # TestCurrentDungeon
 # ---------------------------------------------------------------------------
 
 
 class TestCurrentDungeon:
-    def test_returns_world_dungeon(self, sample_game: Any) -> None:
-        dungeon = current_dungeon(sample_game)
-        assert dungeon is sample_game.world.dungeon
-
-    def test_dungeon_name_matches(self) -> None:
-        game = _make_game()
-        assert current_dungeon(game).name == "dungeon_alpha"
+    def test_empty_world_has_no_dungeon(self, sample_game: Any) -> None:
+        assert current_dungeon_name(sample_game) == ""
+        assert current_room_index(sample_game) == -1
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +204,6 @@ class TestBuildFromBlueprint:
             entity_counter=0,
             entities={},
             agent_memories={},
-            dungeon=Dungeon(name="", rooms=[], profile=""),
             blueprint=bp,
         )
         session = PlayerSession(name="p1", actor="hero", game="full_test")

@@ -12,7 +12,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.memory import (
@@ -76,9 +76,9 @@ class DeathSystem(ExecuteProcessor):
         """
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             return
-        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
+        latest_round = current_dungeon_combat(self._game).latest_round
         if latest_round is None or latest_round.current_actor != entity.name:
             return
         latest_round.current_actor = get_current_turn_actor(self._game, latest_round)

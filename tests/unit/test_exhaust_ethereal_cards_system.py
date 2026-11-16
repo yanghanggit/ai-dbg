@@ -10,7 +10,7 @@ import pytest
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.models import (
     ActorComponent,
@@ -21,6 +21,7 @@ from ai_dbg.models import (
     TargetType,
 )
 from ai_dbg.systems.exhaust_ethereal_cards_system import ExhaustEtherealCardsSystem
+from dungeon_support import install_combat
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -67,7 +68,8 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
+    install_combat(game, MagicMock())
+    cast(Any, current_dungeon_combat(game)).is_ongoing = True
     return game
 
 
@@ -91,7 +93,7 @@ class TestExhaustEtherealCardsSystemSkip:
         mock_game: Any,
         system: ExhaustEtherealCardsSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         entity = _make_entity(context, "英雄")
         card = _make_card("虚无斩", ethereal=True)
         entity.get(HandComponent).cards.append(card)

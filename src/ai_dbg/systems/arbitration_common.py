@@ -21,7 +21,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ..game.entities import (
     get_actor_entity,
@@ -502,7 +502,7 @@ def apply_arbitration_result(
     assert ctx.narrative is not None, "narrative 不应为 None"
     narrative = ctx.narrative
 
-    current_round_number = len(current_dungeon_combat_room(game).combat.rounds or [])
+    current_round_number = len(current_dungeon_combat(game).rounds or [])
     broadcast_to_stage(
         game,
         entity=stage_entity,
@@ -539,7 +539,7 @@ def apply_arbitration_result(
             ),
         )
 
-    latest_round = current_dungeon_combat_room(game).combat.latest_round
+    latest_round = current_dungeon_combat(game).latest_round
     assert latest_round is not None, "latest_round 不应为 None"
     latest_round.record(_ROUND_ENTRY_KIND[kind], combat_log, narrative)
 
@@ -570,7 +570,7 @@ def record_aborted_loop(
         ),
     )
 
-    latest_round = current_dungeon_combat_room(game).combat.latest_round
+    latest_round = current_dungeon_combat(game).latest_round
     assert latest_round is not None, "latest_round 不应为 None"
     latest_round.record(
         RoundEntryKind.FAILED,

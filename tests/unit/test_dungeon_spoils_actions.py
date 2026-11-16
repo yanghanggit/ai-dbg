@@ -2,7 +2,6 @@ from typing import Any
 
 """dungeon_spoils_actions 单元测试：奖励与非战斗房间语义。"""
 
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -24,6 +23,11 @@ from ai_dbg.models import (
 from ai_dbg.services.dungeon_spoils_actions import (
     activate_generate_spoils,
     remove_spoils,
+)
+from dungeon_support import (
+    install_combat,
+    install_opening_room,
+    make_dungeon_entity,
 )
 
 # ---------------------------------------------------------------------------
@@ -60,10 +64,12 @@ def _mock_game(
     for entity in party:
         entity.replace(ActorComponent, entity.name, stage.name)
     member.add(PlayerComponent, member.name)
-    game.world.dungeon = SimpleNamespace(
-        current_room_index=0,
-        current_room=MagicMock(combat=MagicMock()) if in_combat else SimpleNamespace(),
-    )
+    if in_dungeon:
+        make_dungeon_entity(game)
+        if in_combat:
+            install_combat(game, MagicMock(), room_name=stage.name)
+        else:
+            install_opening_room(game, room_name=stage.name)
     return game
 
 

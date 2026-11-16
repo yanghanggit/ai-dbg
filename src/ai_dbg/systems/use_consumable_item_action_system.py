@@ -13,7 +13,7 @@ from overrides import override
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -74,7 +74,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("UseConsumableItemActionSystem: 战斗未进行中，跳过")
             return
 
@@ -130,7 +130,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
         entity.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
 
         # 记录本回合消耗品使用结果（与装备记录同队列）
-        latest_round = current_dungeon_combat_room(self._game).combat.latest_round
+        latest_round = current_dungeon_combat(self._game).latest_round
         if latest_round is not None:
             latest_round.record(
                 RoundEntryKind.CONSUMABLE,
@@ -139,7 +139,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
             )
 
         # 向场景内其他角色广播消耗品使用通知
-        round_number = len(current_dungeon_combat_room(self._game).combat.rounds)
+        round_number = len(current_dungeon_combat(self._game).rounds)
         stage_entity = resolve_stage_entity(self._game, entity)
         assert (
             stage_entity is not None

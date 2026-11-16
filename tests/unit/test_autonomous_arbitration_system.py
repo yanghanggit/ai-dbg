@@ -16,7 +16,7 @@ from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
@@ -34,6 +34,7 @@ from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.autonomous_arbitration_system import (
     AutonomousArbitrationSystem,
 )
+from dungeon_support import install_combat
 
 
 def _make_card(name: str, *, autonomous: bool = False) -> Card:
@@ -75,7 +76,8 @@ def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
         )
     }
     game.player_session = MagicMock()
-    combat: Any = current_dungeon_combat_room(game).combat
+    install_combat(game, MagicMock())
+    combat: Any = current_dungeon_combat(game)
     combat.is_ongoing = True
     combat.rounds = [MagicMock()]
     stage = context.create_entity()
@@ -156,7 +158,7 @@ class TestAutonomousArbitrationSystem:
     async def test_react_skips_when_not_ongoing(
         self, context: Context, mock_game: Any
     ) -> None:
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         system = AutonomousArbitrationSystem(mock_game)
         holder = _make_actor(context, "英雄")
         holder.add(PassTurnAction, "英雄")
@@ -207,7 +209,7 @@ class TestAutonomousArbitrationSystem:
         assert "本次结算未完成" in notice.content
         assert "未落库" in notice.content
 
-        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest_round: Any = current_dungeon_combat(mock_game).latest_round
         assert latest_round.record.call_args.args[0] == RoundEntryKind.FAILED
 
 
@@ -261,6 +263,6 @@ class TestAutonomousLoopMemoryCompression:
         assert getattr(summary, LOOP_END_ATTR) == getattr(summary, LOOP_ID_ATTR)
 
         # 落库写入独立的 AUTONOMOUS 回合记录
-        latest_round: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest_round: Any = current_dungeon_combat(mock_game).latest_round
         assert latest_round.record.call_count == 1
         assert latest_round.record.call_args.args[0] == RoundEntryKind.AUTONOMOUS

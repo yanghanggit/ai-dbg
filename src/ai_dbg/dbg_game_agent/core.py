@@ -10,9 +10,6 @@ from loguru import logger
 
 from ai_dbg.game.assembly import create_dbg_game
 from ai_dbg.game.context import DBGGame
-from ai_dbg.game.dungeon import (
-    current_dungeon,
-)
 from ai_dbg.game.entities import (
     build_from_blueprint,
     get_actors_by_stage_as_names,
@@ -22,11 +19,8 @@ from ai_dbg.game.lifecycle import (
 )
 from ai_dbg.game.persistence.snapshot import restore_from_snapshot
 from ai_dbg.game.persistence.store import store_game_async
-from ai_dbg.models import Blueprint, Dungeon, PlayerSession, WorldState
-from ai_dbg.paths import (
-    BLUEPRINTS_DIR,
-    DUNGEONS_DIR,
-)
+from ai_dbg.models import Blueprint, PlayerSession, WorldState
+from ai_dbg.paths import BLUEPRINTS_DIR
 from ai_dbg.services.dungeon_enter_action import enter_dungeon
 from ai_dbg.services.dungeon_setup_action import setup_dungeon
 
@@ -35,7 +29,7 @@ from ai_dbg.services.dungeon_setup_action import setup_dungeon
 async def create_and_initialize_game(
     user: str, game: str, dungeon_name: str, save_dir: Path
 ) -> DBGGame:
-    """从蓝图文件和副本文件创建并初始化新游戏实例，完成后归档。副本文件缺失时使用空副本占位。"""
+    """从蓝图文件和副本文件创建并初始化新游戏实例，完成后归档。"""
 
     # 从 JSON 文件加载蓝图
     blueprint_path = BLUEPRINTS_DIR / f"{game}.json"
@@ -45,22 +39,11 @@ async def create_and_initialize_game(
     )
     assert world_blueprint is not None, "world blueprint 反序列化失败"
 
-    # 从 JSON 文件加载副本；名称为空或文件不存在时使用空副本占位
-    dungeon_path = DUNGEONS_DIR / f"{dungeon_name}.json"
-    if dungeon_name and dungeon_path.exists():
-        dungeon = Dungeon.model_validate_json(dungeon_path.read_text(encoding="utf-8"))
-    else:
-        logger.warning(
-            f"副本文件未找到（dungeon_name={dungeon_name!r}），使用空副本占位"
-        )
-        dungeon = Dungeon(name="", rooms=[], profile="")
-
-    # 创建游戏世界数据实例，并将蓝图和副本赋值到其中
+    # 创建游戏世界数据实例
     world_data = WorldState(
         entity_counter=1000,
         entities={},
         agent_memories={},
-        dungeon=dungeon,
         blueprint=world_blueprint,
     )
 
@@ -87,7 +70,7 @@ async def create_and_initialize_game(
     success, error_detail = setup_dungeon(terminal_game, dungeon_name)
     if not success:
         raise RuntimeError(f"副本实体创建失败: {error_detail}")
-    success, error_detail = enter_dungeon(terminal_game, current_dungeon(terminal_game))
+    success, error_detail = enter_dungeon(terminal_game)
     if not success:
         raise RuntimeError(f"进入副本失败: {error_detail}")
 

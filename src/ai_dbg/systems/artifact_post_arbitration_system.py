@@ -16,7 +16,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -236,7 +236,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("ArtifactPostArbitrationSystem: 战斗未进行中，跳过神器仲裁")
             return
 
@@ -283,7 +283,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
             return
 
         current_round_number = len(
-            current_dungeon_combat_room(self._game).combat.rounds or []
+            current_dungeon_combat(self._game).rounds or []
         )
 
         # 场上存活阵营（供 agent 判断「队伍方/怪物方」）

@@ -7,7 +7,7 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import current_dungeon_combat_room
+from ai_dbg.game.dungeon import current_dungeon_combat
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -23,6 +23,7 @@ from ai_dbg.models import (
     StageComponent,
 )
 from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
+from dungeon_support import install_combat
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,10 +67,11 @@ def _make_player_entity(context: Context, name: str, items: List[GearItem]) -> E
 
 
 def _setup_mock_game(mock_game: Any, player: Entity) -> Round:
-    cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
-    cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
+    install_combat(mock_game, MagicMock())
+    cast(Any, current_dungeon_combat(mock_game)).is_ongoing = True
+    cast(Any, current_dungeon_combat(mock_game)).rounds = [MagicMock()]
     latest_round = Round()
-    cast(Any, current_dungeon_combat_room(mock_game)).combat.latest_round = latest_round
+    cast(Any, current_dungeon_combat(mock_game)).latest_round = latest_round
     return latest_round
 
 
@@ -90,6 +92,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
+    install_combat(game, MagicMock())
     return game
 
 
@@ -111,7 +114,7 @@ class TestReact:
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         gear = _make_gear("装备.测试")
         actor = _make_actor_entity(context, "角色.测试", gear)
 

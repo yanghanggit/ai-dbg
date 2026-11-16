@@ -2,78 +2,48 @@
 Unit tests for src/ai_dbg/services/dungeon_advance_action.py
 and src/ai_dbg/services/dungeon_exit_action.py
 
-覆盖本次收紧后的状态守卫：
-  - current_room_index 无效（-1 尚未进入 / 越界）时拒绝推进与退出
-    （回归：防止 `dungeon.rooms[current_room_index]` 在 -1 时回绕到最后一个房间）
-  - 非战斗房间（OpeningRoom）可直接推进 / 退出，无需初始化状态位
+覆盖 ECS 化后的状态守卫：
+  - 没有当前房间时拒绝推进 / 退出
+  - 没有下一房间时拒绝推进
+  - 非战斗房间（opening）可直接推进 / 退出，无需初始化状态位
 """
 
-from typing import Any, List
+from typing import Any
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.entities import (
-    create_entity,
-)
+from ai_dbg.game.entities import create_entity
 from ai_dbg.models import (
     ActorComponent,
-    AnyDungeonRoom,
     CharacterStats,
     CharacterStatsComponent,
-    Dungeon,
-    DungeonComponent,
+    DungeonRoomType,
     LobbyComponent,
-    OpeningRoom,
     PartyMemberComponent,
     SpoilsComponent,
-    Stage,
     StageComponent,
-    StageType,
 )
 from ai_dbg.services.dungeon_advance_action import advance_dungeon
 from ai_dbg.services.dungeon_exit_action import exit_dungeon
+from dungeon_support import (
+    make_dungeon_entity,
+    make_room_entity,
+    set_current_room,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_stage_model(name: str) -> Stage:
-    """构造一个合法的 Stage 模型（副本房间场景）。"""
-    return Stage(
-        name=name,
-        type=StageType.DUNGEON,
-        profile="profile",
-        system_message="system",
-        actors=[],
-    )
-
-
-def _make_dungeon(rooms: List[AnyDungeonRoom], index: int) -> Dungeon:
-    """构造一个副本，并显式设置 current_room_index（可为 -1 / 越界）。"""
-    dungeon = Dungeon(name="test_dungeon", rooms=rooms, profile="profile")
-    dungeon.current_room_index = index
-    return dungeon
-
-
-def _make_stage_entity(game: Any, name: str) -> Entity:
-    """创建带 StageComponent + DungeonComponent 的场景实体。"""
-    entity: Entity = create_entity(game, name)
-    entity.add(StageComponent, name)
-    entity.add(DungeonComponent, name)
-    return entity
-
-
 def _make_lobby_entity(game: Any, name: str) -> Entity:
-    """创建带 StageComponent + LobbyComponent 的大厅场景实体。"""
-    entity: Entity = create_entity(game, name)
+    entity = create_entity(game, name)
     entity.add(StageComponent, name)
     entity.add(LobbyComponent, name)
     return entity
 
 
 def _make_party_member(game: Any, name: str, stage_name: str) -> Entity:
-    """创建带 ActorComponent + CharacterStatsComponent + PartyMemberComponent 的队伍成员。"""
-    entity: Entity = create_entity(game, name)
+    entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
     entity.add(
         CharacterStatsComponent,
@@ -84,77 +54,71 @@ def _make_party_member(game: Any, name: str, stage_name: str) -> Entity:
     return entity
 
 
+def _make_opening_room(game: Any, name: str, index: int) -> Entity:
+    return make_room_entity(
+        game,
+        name=name,
+        index=index,
+        room_type=DungeonRoomType.OPENING,
+    )
+
+
 # ---------------------------------------------------------------------------
 # advance_dungeon
 # ---------------------------------------------------------------------------
 
 
 class TestAdvanceDungeonGuards:
-    async def test_rejects_when_current_room_index_is_negative(
-        self, sample_game: Any
-    ) -> None:
-        """current_room_index == -1（尚未进入）时拒绝推进，不回绕到 rooms[-1]。"""
-        dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], -1)
-        sample_game.world.dungeon = dungeon
+    async def test_rejects_when_no_current_room(self, sample_game: Any) -> None:
+        """没有当前房间标记时拒绝推进。"""
+        make_dungeon_entity(sample_game)
+        _make_opening_room(sample_game, "room0", 0)
 
-        ok, msg = await advance_dungeon(sample_game, dungeon)
+        ok, msg = await advance_dungeon(sample_game)
 
         assert ok is False
         assert "尚未进入" in msg
-        # 未推进：索引保持 -1
-        assert dungeon.current_room_index == -1
 
-    async def test_rejects_when_current_room_index_is_out_of_range(
-        self, sample_game: Any
-    ) -> None:
-        """current_room_index 越界（脏存档）时拒绝推进，而不是 IndexError。"""
-        dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], 5)
-        sample_game.world.dungeon = dungeon
+    async def test_rejects_when_no_next_room(self, sample_game: Any) -> None:
+        """没有下一房间时拒绝推进。"""
+        make_dungeon_entity(sample_game)
+        room0 = _make_opening_room(sample_game, "room0", 0)
+        set_current_room(sample_game, room0)
+        member = _make_party_member(sample_game, "hero", "room0")
 
-        ok, msg = await advance_dungeon(sample_game, dungeon)
+        ok, msg = await advance_dungeon(sample_game)
 
         assert ok is False
-        assert "尚未进入" in msg
+        assert "通关" in msg
+        assert member.get(ActorComponent).current_stage == "room0"
 
     async def test_advances_opening_room_without_initialization_flag(
         self, sample_game: Any
     ) -> None:
         """非战斗房间无需初始化状态位即可推进到下一关。"""
-        room0 = OpeningRoom(stage=_make_stage_model("room0"))
-        room1 = OpeningRoom(stage=_make_stage_model("room1"))
-        dungeon = _make_dungeon([room0, room1], 0)
-        sample_game.world.dungeon = dungeon
-
-        _make_stage_entity(
-            sample_game, "room0"
-        )  # 当前场景实体（stage_transition 需要）
-        _make_stage_entity(sample_game, "room1")  # 下一关场景实体
+        make_dungeon_entity(sample_game)
+        room0 = _make_opening_room(sample_game, "room0", 0)
+        _make_opening_room(sample_game, "room1", 1)
+        set_current_room(sample_game, room0)
         member = _make_party_member(sample_game, "hero", "room0")
 
-        ok, msg = await advance_dungeon(sample_game, dungeon)
+        ok, _ = await advance_dungeon(sample_game)
 
         assert ok is True
-        assert dungeon.current_room_index == 1
-        # 队伍成员已被传送到下一关场景
-        actor_comp = member.get(ActorComponent)
-        assert actor_comp is not None
-        assert actor_comp.current_stage == "room1"
+        assert member.get(ActorComponent).current_stage == "room1"
 
     async def test_advancing_into_non_combat_room_clears_stale_spoils(
         self, sample_game: Any
     ) -> None:
         """进入非战斗房间时自动清理上一轮残留的奖励状态。"""
-        room0 = OpeningRoom(stage=_make_stage_model("room0"))
-        room1 = OpeningRoom(stage=_make_stage_model("room1"))
-        dungeon = _make_dungeon([room0, room1], 0)
-        sample_game.world.dungeon = dungeon
-
-        _make_stage_entity(sample_game, "room0")
-        _make_stage_entity(sample_game, "room1")
+        make_dungeon_entity(sample_game)
+        room0 = _make_opening_room(sample_game, "room0", 0)
+        _make_opening_room(sample_game, "room1", 1)
+        set_current_room(sample_game, room0)
         member = _make_party_member(sample_game, "hero", "room0")
         member.add(SpoilsComponent, "hero", [], [])
 
-        ok, _ = await advance_dungeon(sample_game, dungeon)
+        ok, _ = await advance_dungeon(sample_game)
 
         assert ok is True
         assert not member.has(SpoilsComponent)
@@ -166,26 +130,12 @@ class TestAdvanceDungeonGuards:
 
 
 class TestExitDungeonGuards:
-    def test_rejects_when_current_room_index_is_negative(
-        self, sample_game: Any
-    ) -> None:
-        """current_room_index == -1（尚未进入）时拒绝退出，不回绕到 rooms[-1]。"""
-        dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], -1)
-        sample_game.world.dungeon = dungeon
+    def test_rejects_when_no_current_room(self, sample_game: Any) -> None:
+        """没有当前房间标记时拒绝退出。"""
+        make_dungeon_entity(sample_game)
+        _make_opening_room(sample_game, "room0", 0)
 
-        ok, msg = exit_dungeon(sample_game, dungeon)
-
-        assert ok is False
-        assert "尚未进入" in msg
-
-    def test_rejects_when_current_room_index_is_out_of_range(
-        self, sample_game: Any
-    ) -> None:
-        """current_room_index 越界（脏存档）时拒绝退出，而不是 IndexError。"""
-        dungeon = _make_dungeon([OpeningRoom(stage=_make_stage_model("room0"))], 5)
-        sample_game.world.dungeon = dungeon
-
-        ok, msg = exit_dungeon(sample_game, dungeon)
+        ok, msg = exit_dungeon(sample_game)
 
         assert ok is False
         assert "尚未进入" in msg
@@ -194,17 +144,13 @@ class TestExitDungeonGuards:
         self, sample_game: Any
     ) -> None:
         """非战斗房间无需初始化状态位即可退出并恢复队伍成员到大厅。"""
-        room0 = OpeningRoom(stage=_make_stage_model("room0"))
-        dungeon = _make_dungeon([room0], 0)
-        sample_game.world.dungeon = dungeon
-
-        _make_stage_entity(
-            sample_game, "room0"
-        )  # 当前场景实体（stage_transition 需要）
-        _make_lobby_entity(sample_game, "lobby")  # 大厅目标场景
+        make_dungeon_entity(sample_game)
+        room0 = _make_opening_room(sample_game, "room0", 0)
+        set_current_room(sample_game, room0)
+        _make_lobby_entity(sample_game, "lobby")
         member = _make_party_member(sample_game, "hero", "room0")
 
-        ok, msg = exit_dungeon(sample_game, dungeon)
+        ok, _ = exit_dungeon(sample_game)
 
         assert ok is True
         # 队伍标记被移除

@@ -11,7 +11,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -65,7 +65,7 @@ class CombatInitStageSystem(ExecuteProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_initializing:
+        if not current_dungeon_combat(self._game).is_initializing:
             logger.debug("当前战斗状态非 initializing，跳过战斗初始化（场景侧）")
             return
 
@@ -106,10 +106,10 @@ class CombatInitStageSystem(ExecuteProcessor):
         )
 
         # 设置战斗为进行中（第一回合将由 DrawCardsAction 触发的 CombatRoundStartSystem 创建）
-        current_dungeon_combat_room(self._game).combat.transition_to_ongoing()
-        assert current_dungeon_combat_room(
+        current_dungeon_combat(self._game).transition_to_ongoing()
+        assert current_dungeon_combat(
             self._game
-        ).combat.is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"
+        ).is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"
 
 
 ###################################################################################################################################################################

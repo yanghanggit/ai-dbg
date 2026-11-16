@@ -14,8 +14,12 @@ from ..game.combat import (
     set_character_hp,
 )
 from ..game.context import DBGGame
-from ..game.entities import (
-    get_stage_entity,
+from ..game.dungeon import (
+    current_dungeon_combat,
+    current_dungeon_name,
+    current_dungeon_room,
+    get_dungeon_entity,
+    get_dungeon_room_by_index,
 )
 from ..game.memory import (
     add_human_message,
@@ -23,11 +27,13 @@ from ..game.memory import (
 from ..game.stage.transition import stage_transition
 from ..models import (
     Combat,
-    CombatRoom,
+    CombatComponent,
     CombatState,
+    CurrentDungeonRoomComponent,
     DeathComponent,
-    Dungeon,
     DungeonComponent,
+    DungeonRoomComponent,
+    DungeonRoomType,
     HumanMessage,
     PartyMemberComponent,
 )
@@ -43,7 +49,7 @@ def _build_dungeon_advance_message(dungeon_name: str, next_stage_name: str) -> s
 
 
 ###################################################################################################################################################################
-async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
+async def advance_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
     """
     推进到副本的下一个关卡。
 
@@ -56,31 +62,33 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
     # 阶段 1：检查（零状态变更，允许 return）
     # =========================================================================
 
-    # 当前房间必须有效（current_room_index 合法：既不能为 -1「尚未进入」，也不能越界）
-    current_room = dungeon.current_room
+    dungeon_entity = get_dungeon_entity(dbg_game)
+    if dungeon_entity is None:
+        logger.error("副本前进失败，当前没有副本实体")
+        return False, "当前没有副本"
+    dungeon_name = current_dungeon_name(dbg_game)
+
+    # 当前房间必须有效
+    current_room = current_dungeon_room(dbg_game)
     if current_room is None:
-        logger.error(
-            f"副本前进失败，current_room_index={dungeon.current_room_index} 无效，尚未进入任何房间"
-        )
+        logger.error("副本前进失败，尚未进入任何房间")
         return False, "尚未进入副本房间，无法推进"
 
-    next_room_index = dungeon.current_room_index + 1
+    current_room_component = current_room.get(DungeonRoomComponent)
+    assert current_room_component is not None, "当前房间缺少 DungeonRoomComponent"
+    next_room_index = current_room_component.index + 1
 
     # 下一房间必须存在
-    if next_room_index >= len(dungeon.rooms):
+    next_room = get_dungeon_room_by_index(dbg_game, next_room_index)
+    if next_room is None:
         logger.error("副本前进失败，没有更多房间")
         return False, "副本已全部通关"
 
-    next_room = dungeon.rooms[next_room_index]
-
-    # 下一房间的关卡实体必须存在
-    next_stage_entity = get_stage_entity(dbg_game, next_room.stage.name)
-    assert (
-        next_stage_entity is not None
-    ), f"{next_room.stage.name} 没有对应的 stage 实体！"
-    assert next_stage_entity.has(
+    next_room_component = next_room.get(DungeonRoomComponent)
+    assert next_room_component is not None, "下一房间缺少 DungeonRoomComponent"
+    assert next_room.has(
         DungeonComponent
-    ), f"{next_room.stage.name} 没有 DungeonComponent 组件！"
+    ), f"{next_room.name} 没有 DungeonComponent 组件！"
 
     # 确保存在队伍成员
     party_member_entities = dbg_game.ecs.get_group(
@@ -89,36 +97,36 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
     assert len(party_member_entities) > 0, "没有找到队伍成员"
 
     # 当前房间若是战斗房间，必须处于战斗后且已胜利
-    if isinstance(current_room, CombatRoom):
-        if not current_room.combat.is_post_combat:
+    leaving_combat = current_room_component.room_type == DungeonRoomType.COMBAT
+    if leaving_combat:
+        combat = current_dungeon_combat(dbg_game)
+        if not combat.is_post_combat:
             logger.error("当前不处于战斗后状态，无法推进副本关卡")
             return False, "战斗未结束，无法推进"
 
-        if current_room.combat.is_lost:
+        if combat.is_lost:
             logger.info("英雄失败，应该返回营地")
             return False, "战斗失败，无法推进"
 
-        assert current_room.combat.is_won, "不可能出现的情况！"
+        assert combat.is_won, "不可能出现的情况！"
 
     # =========================================================================
     # 阶段 2：执行（不可中断，不回退）
     # =========================================================================
-    # 当前房间已结束：向副本导演追加该房间的事实记忆
 
-    # 调试探针：让副本导演基于刚累积的记忆推理一次，人工核对记忆管理是否符合预期
-
-    # 推进索引
-    dungeon.current_room_index = next_room_index
+    # 切换当前房间标记
+    current_room.remove(CurrentDungeonRoomComponent)
+    next_room.replace(CurrentDungeonRoomComponent, next_room.name)
 
     # 生成并发送传送提示消息
-    trans_message = _build_dungeon_advance_message(dungeon.name, next_stage_entity.name)
+    trans_message = _build_dungeon_advance_message(dungeon_name, next_room.name)
     for party_member in party_member_entities:
         add_human_message(
             dbg_game,
             party_member,
             HumanMessage(
                 content=trans_message,
-                dungeon_lifecycle_stage_advance=f"{dungeon.name}:{next_stage_entity.name}",
+                dungeon_lifecycle_stage_advance=f"{dungeon_name}:{next_room.name}",
             ),
         )
 
@@ -132,25 +140,26 @@ async def advance_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, st
             )
 
     # 执行场景传送
-    stage_transition(dbg_game, party_member_entities, next_stage_entity)
+    stage_transition(dbg_game, party_member_entities, next_room)
 
     # 离开战斗房间：保底断言 pipeline 已清理完毕，不应存在残留战斗临时组件
-    if isinstance(current_room, CombatRoom):
+    if leaving_combat:
         assert_no_residual_combat_state(dbg_game)
 
     # 进入战斗房间时创建战斗实例并初始化
-    if isinstance(next_room, CombatRoom):
-        assert (
-            next_room.combat.state == CombatState.NONE
-        ), f"{next_room.stage.name} 战斗已初始化，同一战斗房间不可重开"
-        combat = Combat(name=next_stage_entity.name)
+    if next_room_component.room_type == DungeonRoomType.COMBAT:
+        if next_room.has(CombatComponent):
+            assert (
+                next_room.get(CombatComponent).combat.state == CombatState.NONE
+            ), f"{next_room.name} 战斗已初始化，同一战斗房间不可重开"
+        combat = Combat(name=next_room.name)
         combat.state = CombatState.INITIALIZATION
-        next_room.combat = combat
+        next_room.replace(CombatComponent, next_room.name, combat)
     else:
         # 进入非战斗房间时，清理上一轮残留的奖励状态（奖励与房间生命周期绑定）
         cleared = clear_party_spoils(dbg_game)
         if cleared:
             logger.info(f"advance_dungeon: 已清理残留奖励状态: {cleared}")
 
-    logger.info(f"advance_dungeon 完成: {dungeon.name}，进入第 {next_room_index} 关")
+    logger.info(f"advance_dungeon 完成: {dungeon_name}，进入第 {next_room_index} 关")
     return True, f"已前进到第 {next_room_index} 关"

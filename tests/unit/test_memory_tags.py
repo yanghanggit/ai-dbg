@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Set, cast
 
 from ai_dbg.models.memory_tags import MEMORY_TAGS
+from dungeon_support import install_combat
 
 _SRC_ROOT = Path(__file__).resolve().parents[2] / "src"
 
@@ -174,7 +175,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
     from unittest.mock import MagicMock
 
     from ai_dbg.entitas.context import Context
-    from ai_dbg.game.dungeon import current_dungeon_combat_room
+    from ai_dbg.game.dungeon import current_dungeon_combat
     from ai_dbg.models import (
         ActorComponent,
         CharacterStats,
@@ -206,8 +207,9 @@ def test_stats_update_tag_records_hp_transition() -> None:
     game.entity_index = {entity.name: entity}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    cast(Any, current_dungeon_combat_room(game)).combat.rounds = [MagicMock()]
-    cast(Any, current_dungeon_combat_room(game)).combat.latest_round = MagicMock()
+    install_combat(game, MagicMock())
+    cast(Any, current_dungeon_combat(game)).rounds = [MagicMock()]
+    cast(Any, current_dungeon_combat(game)).latest_round = MagicMock()
     assert issubclass(CombatArbitrationEvent, object)
 
     ctx = ArbitrationContext(hp_changes={"角色.无名": 7}, narrative="被撞了一下")

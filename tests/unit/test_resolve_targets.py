@@ -1,14 +1,14 @@
 """针对 `resolve_targets`（ALL/SPREAD 阵营锚点展开逻辑）的单元测试。"""
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 from unittest.mock import MagicMock
 
 import ai_dbg.game.combat.targeting as combat_processor
+from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.assembly import create_dbg_game
 from ai_dbg.game.combat import resolve_targets
 from ai_dbg.game.context import DBGGame
-from ai_dbg.game.dungeon import current_dungeon_combat_room
 from ai_dbg.game.entities import (
     create_entity,
 )
@@ -17,7 +17,6 @@ from ai_dbg.models import (
     Blueprint,
     Card,
     DeathComponent,
-    Dungeon,
     DungeonComponent,
     HandComponent,
     MonsterComponent,
@@ -29,6 +28,7 @@ from ai_dbg.models import (
     WorldState,
 )
 from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from dungeon_support import install_combat
 
 
 def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame:
@@ -44,7 +44,6 @@ def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame
         entity_counter=0,
         entities={},
         agent_memories={},
-        dungeon=Dungeon(name="dungeon_alpha", rooms=[], profile=""),
         blueprint=blueprint,
     )
     session = PlayerSession(name=player_name, actor=actor_name, game="test")
@@ -289,9 +288,12 @@ class TestSpreadHitListFeedsTransfer:
 
 def _make_transfer_game(actors: Dict[str, Entity]) -> Any:
     """只提供转移系统所需接口的 game stub。"""
+
     mock_game = MagicMock()
-    cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
+    mock_game.ecs = Context()
+    mock_game.world.agent_memories = {}
     mock_game.entity_index = actors
+    install_combat(mock_game, MagicMock(is_ongoing=True))
     for entity in actors.values():
         if not entity.has(HandComponent):
             entity.add(HandComponent, entity.name, [])

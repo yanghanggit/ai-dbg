@@ -8,7 +8,7 @@ from loguru import logger
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..models import (
@@ -172,16 +172,16 @@ class DrawCardsActionSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("当前战斗状态非 ONGOING，DrawCardsActionSystem 不执行")
             return
 
         # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
-        last_round = current_dungeon_combat_room(self._game).combat.latest_round
+        last_round = current_dungeon_combat(self._game).latest_round
         assert last_round is not None, "DrawCardsActionSystem: 无法获取当前回合信息！"
         if last_round.draw_completed:
             logger.debug(
-                f"DrawCardsActionSystem: 第 {len(current_dungeon_combat_room(self._game).combat.rounds)} 回合已抽牌，跳过重复抽牌"
+                f"DrawCardsActionSystem: 第 {len(current_dungeon_combat(self._game).rounds)} 回合已抽牌，跳过重复抽牌"
             )
             return
 
@@ -221,7 +221,7 @@ class DrawCardsActionSystem(ReactiveProcessor):
 
             self._record_draw(
                 entity,
-                round_number=len(current_dungeon_combat_room(self._game).combat.rounds),
+                round_number=len(current_dungeon_combat(self._game).rounds),
                 retained=retained,
                 drawn=drawn,
                 reshuffled=reshuffled,

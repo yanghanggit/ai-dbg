@@ -8,7 +8,7 @@ from ..entitas import Component, Entity, ExecuteProcessor
 from ..game.combat import clear_round_state
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -60,7 +60,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("当前不在战斗阶段，无需判定战斗胜负")
             return  # 不是本阶段就直接返回
 
@@ -74,7 +74,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
         logger.info(f"战斗结束，结果: {combat_result}")
 
         # 推进战斗状态机（ONGOING -> COMPLETE），后续 pipeline 系统据此判断是否进入战后阶段
-        current_dungeon_combat_room(self._game).combat.complete_combat(combat_result)
+        current_dungeon_combat(self._game).complete_combat(combat_result)
 
         # 根据判定结果清理回合状态并广播战斗结果
         record_round_end_discard(self._game, clear_round_state(self._game))

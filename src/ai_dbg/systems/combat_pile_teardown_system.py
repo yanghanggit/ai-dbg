@@ -7,7 +7,7 @@ from loguru import logger
 from ..entitas import ExecuteProcessor, Matcher
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -76,7 +76,7 @@ class CombatPileTeardownSystem(ExecuteProcessor):
             return
         logger.debug("CombatPileTeardownSystem: 执行战斗堆拆除系统")
 
-        if not current_dungeon_combat_room(self._game).combat.is_post_combat:
+        if not current_dungeon_combat(self._game).is_post_combat:
             logger.debug("CombatPileTeardownSystem: 当前非战斗后阶段，跳过")
             return
 

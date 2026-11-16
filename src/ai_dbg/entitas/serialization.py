@@ -58,7 +58,7 @@ def dump_entity(
     for comp_type, comp in entity.iter_component_items():
         if component_filter is not None and not component_filter(comp_type):
             continue
-        data[comp_type.__name__] = comp.model_dump()
+        data[comp_type.__name__] = comp.model_dump(mode="json")
     return data
 
 
@@ -71,7 +71,7 @@ def dump_components(*components: Component) -> EntityData:
     :param components: Component instances to dump
     :return: Component type name -> component data
     """
-    return {type(comp).__name__: comp.model_dump() for comp in components}
+    return {type(comp).__name__: comp.model_dump(mode="json") for comp in components}
 
 
 def dump_entities(

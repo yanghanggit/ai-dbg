@@ -5,7 +5,7 @@ from loguru import logger
 
 from ..game.assembly import create_dbg_game
 from ..game.dungeon import (
-    current_dungeon,
+    dungeon_state_view,
 )
 from ..game.entities import (
     build_from_blueprint,
@@ -17,7 +17,6 @@ from ..game.persistence.store import store_game_async
 from ..models import (
     Blueprint,
     BlueprintListResponse,
-    Dungeon,
     NewGameRequest,
     NewGameResponse,
     PlayerSession,
@@ -86,7 +85,6 @@ async def new_game(
         entity_counter=1000,
         entities={},
         agent_memories={},
-        dungeon=Dungeon(name="", rooms=[], profile=""),
         blueprint=blueprint_data,
     )
 
@@ -124,7 +122,7 @@ async def new_game(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"副本实体创建失败: {error_detail}",
             )
-        success, error_detail = enter_dungeon(game, current_dungeon(game))
+        success, error_detail = enter_dungeon(game)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -138,5 +136,5 @@ async def new_game(
     return NewGameResponse(
         blueprint=blueprint_data,
         player_session=player_session,
-        dungeon=current_dungeon(game),
+        dungeon=dungeon_state_view(game),
     )

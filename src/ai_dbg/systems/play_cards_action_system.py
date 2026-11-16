@@ -12,7 +12,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -80,7 +80,7 @@ class PlayCardsActionSystem(ReactiveProcessor):
         """处理出牌动作。"""
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             # 必须是 进行中的阶段！
             logger.debug("PlayCardsActionSystem: 战斗未进行中，跳过出牌处理")
             return
@@ -91,12 +91,12 @@ class PlayCardsActionSystem(ReactiveProcessor):
         )
 
         # 获取当前回合数
-        current_rounds = current_dungeon_combat_room(self._game).combat.rounds
+        current_rounds = current_dungeon_combat(self._game).rounds
         assert (
             current_rounds is not None
         ), "PlayCardsActionSystem: current_rounds is None"
 
-        last_round = current_dungeon_combat_room(self._game).combat.latest_round
+        last_round = current_dungeon_combat(self._game).latest_round
         assert last_round is not None, "PlayCardsActionSystem: latest_round is None"
 
         logger.debug(

@@ -42,12 +42,12 @@ async def execute_exit_dungeon_task(
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
             # 退出副本并返回大厅（同步，内部自带状态守卫）
-            success, msg = exit_dungeon(rpg_game, rpg_game.world.dungeon)
+            success, msg = exit_dungeon(rpg_game)
             if not success:
                 raise ValueError(f"退出副本失败: {msg}")
 
             # 销毁副本实体并重置副本数据（同步）
-            teardown_dungeon(rpg_game, rpg_game.world.dungeon)
+            teardown_dungeon(rpg_game)
 
             # 存储退出后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

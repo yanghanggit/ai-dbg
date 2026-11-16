@@ -163,6 +163,6 @@ LLM 只做三件事：为每条效果选定 **base**、判定**系数取值**、
 
 ## 跨系统关系
 
-- 预置副本文件提供 `CombatRoom`（stage + actors + 预置卡牌），战斗管道消费它 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
+- 预置副本文件提供房间定义（stage + actors + 预置卡牌）；运行时房间落到对应场景实体上，战斗管道消费其战斗组件 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
 - 装备系统将装备物化为临时手牌参与出牌，与普通卡牌共用出牌仲裁 → 参见：[装备系统](gear-item.md)
 - 消耗品系统将内置卡牌物化为手牌，与普通卡牌共用出牌仲裁 → 参见：[消耗品系统](consumable-item.md)

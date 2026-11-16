@@ -14,7 +14,7 @@ import pytest
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
 )
 from ai_dbg.models import (
     ActorComponent,
@@ -26,6 +26,7 @@ from ai_dbg.models import (
 from ai_dbg.systems.transfer_cards_action_system import (
     TransferCardsActionSystem,
 )
+from dungeon_support import install_combat
 
 
 def _make_card(*, transferable: bool = True) -> Card:
@@ -65,7 +66,8 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    cast(Any, current_dungeon_combat_room(game)).combat.is_ongoing = True
+    install_combat(game, MagicMock())
+    cast(Any, current_dungeon_combat(game)).is_ongoing = True
     return game
 
 
@@ -299,7 +301,7 @@ class TestTransferCardsActionSystem:
     async def test_skips_when_not_ongoing(
         self, context: Context, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         source = _make_actor(context, "角色.无名")
         target = _make_actor(context, "怪物.甲")
         _stub_actor_lookup(mock_game, {"怪物.甲": target})
@@ -424,7 +426,7 @@ class TestTransferCardsActionSystem:
         self, context: Context, mock_game: Any, system: TransferCardsActionSystem
     ) -> None:
         """战斗未进行中时不写记忆（本系统整体跳过）。"""
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         source = _make_actor(context, "角色.无名")
         target = _make_actor(context, "怪物.甲")
         _stub_actor_lookup(mock_game, {"怪物.甲": target})

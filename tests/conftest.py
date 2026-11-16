@@ -9,7 +9,6 @@ from ai_dbg.models import (
     ActorType,
     Blueprint,
     CharacterStats,
-    Dungeon,
     PlayerSession,
     WorldState,
 )
@@ -27,12 +26,10 @@ def sample_game() -> DBGGame:
         stages=[],
         world_entities=[],
     )
-    dungeon = Dungeon(name="", rooms=[], profile="")
     world = WorldState(
         entity_counter=1000,
         entities={},
         agent_memories={},
-        dungeon=dungeon,
         blueprint=blueprint,
     )
     player = PlayerSession(

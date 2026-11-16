@@ -14,6 +14,7 @@ from ai_dbg.models import (
     StageComponent,
 )
 from ai_dbg.services.dungeon_combat_actions import activate_equip_gear
+from dungeon_support import install_combat
 
 
 def _make_game() -> tuple[MagicMock, Context, Entity]:
@@ -32,15 +33,14 @@ def _make_game() -> tuple[MagicMock, Context, Entity]:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    game.world.dungeon = SimpleNamespace(
-        current_room_index=0,
-        current_room=MagicMock(
-            combat=SimpleNamespace(
-                is_ongoing=True,
-                latest_round=SimpleNamespace(draw_completed=True),
-                rounds=[object()],
-            )
+    install_combat(
+        game,
+        SimpleNamespace(
+            is_ongoing=True,
+            latest_round=SimpleNamespace(draw_completed=True),
+            rounds=[object()],
         ),
+        room_name=stage.name,
     )
     return game, context, player
 

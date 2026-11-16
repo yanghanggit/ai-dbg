@@ -12,7 +12,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
 )
@@ -107,7 +107,7 @@ class CombatInitActorSystem(ExecuteProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_initializing:
+        if not current_dungeon_combat(self._game).is_initializing:
             logger.debug("当前战斗状态非 initializing，跳过战斗初始化（角色侧）")
             return
 
@@ -119,7 +119,7 @@ class CombatInitActorSystem(ExecuteProcessor):
             self._game
         ), "战斗初始化阶段玩家必须在场景中！"
         assert (
-            len(current_dungeon_combat_room(self._game).combat.rounds or []) == 0
+            len(current_dungeon_combat(self._game).rounds or []) == 0
         ), "战斗触发阶段不允许有回合数！"
 
         # 获取玩家实体，player 所在场景即战斗场景

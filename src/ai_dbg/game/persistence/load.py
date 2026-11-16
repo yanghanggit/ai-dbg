@@ -13,7 +13,6 @@ from ...models import (
     AgentMemory,
     Blueprint,
     ChatMessage,
-    Dungeon,
     PlayerSession,
     SessionMessage,
     WorldState,
@@ -56,7 +55,6 @@ def restore_world(save_dir: Path) -> Tuple[WorldState, PlayerSession]:
 
     memory_files = _files("memories", "*.jsonl")
     entity_files = _files("entities", "*.json")
-    dungeon_files = _files("dungeon", "*.json")
     blueprint_files = _files("blueprint", "*.json")
 
     def _read(path: Path) -> str:
@@ -69,10 +67,9 @@ def restore_world(save_dir: Path) -> Tuple[WorldState, PlayerSession]:
         world_future = executor.submit(_read, world_path)
         session_future = executor.submit(_read, session_path)
 
-        # 并行读取 memories、entities、dungeon 和 blueprint 文件
+        # 并行读取 memories、entities 和 blueprint 文件
         memory_raws = list(executor.map(_read, memory_files))
         entity_raws = list(executor.map(_read, entity_files))
-        dungeon_raws = list(executor.map(_read, dungeon_files))
         blueprint_raws = list(executor.map(_read, blueprint_files))
 
         # 等待读取 world 和 session 文件的结果
@@ -108,10 +105,6 @@ def restore_world(save_dir: Path) -> Tuple[WorldState, PlayerSession]:
         path.stem: _load_entity_data(raw)
         for raw, path in zip(entity_raws, entity_files)
     }
-
-    # 从 dungeon/ 目录重建 dungeon
-    if dungeon_raws:
-        world.dungeon = Dungeon.model_validate_json(dungeon_raws[0])
 
     # 从 blueprint/ 目录重建 blueprint
     if blueprint_raws:

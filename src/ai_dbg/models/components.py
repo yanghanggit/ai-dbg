@@ -1,13 +1,17 @@
 """ECS 组件定义。添加到实体后由对应系统读取处理。"""
 
-from typing import List, final
+from datetime import datetime
+from typing import Dict, List, final
 
 from pydantic import Field
 
 from ..entitas.components import Component
 from .artifact import Artifact
+from .assets_meta import AssetKey
 from .card import Card
 from .character_stats import CharacterStats
+from .combat import Combat
+from .dungeon_room import DungeonRoomType
 from .items import AnyItem, GearItem
 from .registry import register_component_type
 
@@ -106,6 +110,49 @@ class DungeonComponent(Component):
     """标记场景为副本类型。"""
 
     name: str
+
+
+############################################################################################################
+@final
+@register_component_type
+class DungeonRunComponent(Component):
+    """一次副本运行的元数据，挂在副本实体上。"""
+
+    name: str
+    profile: str
+    created_at: datetime
+    assets: Dict[AssetKey, str] = Field(default_factory=dict)
+
+
+############################################################################################################
+@final
+@register_component_type
+class DungeonRoomComponent(Component):
+    """副本房间元数据；当前与房间对应的 Stage 实体一一对应。"""
+
+    name: str
+    dungeon_name: str
+    index: int
+    room_type: DungeonRoomType
+
+
+############################################################################################################
+@final
+@register_component_type
+class CurrentDungeonRoomComponent(Component):
+    """标记当前所在副本房间；同一时刻最多存在一个。"""
+
+    name: str
+
+
+############################################################################################################
+@final
+@register_component_type
+class CombatComponent(Component):
+    """战斗房间的战斗实例。"""
+
+    name: str
+    combat: Combat
 
 
 ############################################################################################################

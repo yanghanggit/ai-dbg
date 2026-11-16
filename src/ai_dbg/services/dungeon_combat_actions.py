@@ -16,7 +16,7 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
 )
@@ -57,7 +57,7 @@ def _validate_play_turn(
         return None, "当前副本房间不是战斗房间"
 
     # 获取当前回合信息，检查是否存在进行中的回合，以及当前角色是否在行动快照中。
-    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
+    latest_round = current_dungeon_combat(dbg_game).latest_round
     if latest_round is None:
         return None, "当前没有进行中的回合"
 
@@ -119,13 +119,13 @@ def activate_all_card_draws(
         return False, error_msg
 
     # 检查当前副本是否处于进行中的战斗状态
-    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
+    if not current_dungeon_combat(dbg_game).is_ongoing:
         error_msg = "只能在战斗中使用is_ongoing"
         logger.error(error_msg)
         return False, error_msg
 
     # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
-    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
+    latest_round = current_dungeon_combat(dbg_game).latest_round
     if (
         latest_round is not None
         and not latest_round.is_completed
@@ -299,7 +299,7 @@ def activate_retreat(
         return False, error_msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法激活撤退动作。
-    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
+    if not current_dungeon_combat(dbg_game).is_ongoing:
         error_msg = "激活撤退动作失败: 只能在战斗进行中使用"
         logger.error(error_msg)
         return False, error_msg
@@ -351,13 +351,13 @@ def activate_use_consumable(
         return False, msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法使用消耗品。
-    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
+    if not current_dungeon_combat(dbg_game).is_ongoing:
         msg = "使用消耗品失败：战斗未在进行中"
         logger.error(msg)
         return False, msg
 
     # 获取当前副本的最新回合，如果没有进行中的回合，则无法使用消耗品。
-    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
+    latest_round = current_dungeon_combat(dbg_game).latest_round
     if latest_round is None:
         msg = "使用消耗品失败：当前没有进行中的回合"
         logger.error(msg)
@@ -447,13 +447,13 @@ def activate_equip_gear(
         return False, msg
 
     # 检查当前副本是否处于进行中状态，如果不是则无法使用装备。
-    if not current_dungeon_combat_room(dbg_game).combat.is_ongoing:
+    if not current_dungeon_combat(dbg_game).is_ongoing:
         msg = "使用装备失败：战斗未在进行中"
         logger.error(msg)
         return False, msg
 
     # 获取当前副本的最新回合，如果没有进行中的回合，则无法使用装备。
-    latest_round = current_dungeon_combat_room(dbg_game).combat.latest_round
+    latest_round = current_dungeon_combat(dbg_game).latest_round
     if latest_round is None:
         msg = "使用装备失败：当前没有进行中的回合"
         logger.error(msg)

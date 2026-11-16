@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..models import (
@@ -85,7 +85,7 @@ async def dungeon_combat_retreat(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 撤退失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -143,7 +143,7 @@ async def dungeon_combat_init(
         )
 
     # 校验战斗处于初始化阶段
-    if not current_dungeon_combat_room(rpg_game).combat.is_initializing:
+    if not current_dungeon_combat(rpg_game).is_initializing:
         logger.error(f"玩家 {payload.user_name} 战斗初始化失败: 战斗未处于开始阶段")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -258,7 +258,7 @@ async def dungeon_combat_draw_cards(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 全员抽卡失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -315,7 +315,7 @@ async def dungeon_combat_play_cards(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 出牌失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -323,7 +323,7 @@ async def dungeon_combat_play_cards(
         )
 
     # 验证当前回合是否存在且未完成
-    last_round = current_dungeon_combat_room(rpg_game).combat.latest_round
+    last_round = current_dungeon_combat(rpg_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error(f"玩家 {payload.user_name} 出牌失败: 当前没有未完成的回合")
         raise HTTPException(
@@ -386,7 +386,7 @@ async def dungeon_combat_pass_turn(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 过牌失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -394,7 +394,7 @@ async def dungeon_combat_pass_turn(
         )
 
     # 验证当前回合是否存在且未完成
-    last_round = current_dungeon_combat_room(rpg_game).combat.latest_round
+    last_round = current_dungeon_combat(rpg_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error(f"玩家 {payload.user_name} 过牌失败: 当前没有未完成的回合")
         raise HTTPException(
@@ -459,7 +459,7 @@ async def dungeon_combat_use_consumable(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 使用消耗品失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -467,7 +467,7 @@ async def dungeon_combat_use_consumable(
         )
 
     # 验证当前回合是否存在且未完成
-    last_round = current_dungeon_combat_room(rpg_game).combat.latest_round
+    last_round = current_dungeon_combat(rpg_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error(f"玩家 {payload.user_name} 使用消耗品失败: 当前没有未完成的回合")
         raise HTTPException(
@@ -530,7 +530,7 @@ async def dungeon_combat_equip_gear(
         )
 
     # 验证战斗是否在进行中
-    if not current_dungeon_combat_room(rpg_game).combat.is_ongoing:
+    if not current_dungeon_combat(rpg_game).is_ongoing:
         logger.error(f"玩家 {payload.user_name} 使用装备失败: 战斗未在进行中")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -538,7 +538,7 @@ async def dungeon_combat_equip_gear(
         )
 
     # 验证当前回合是否存在且未完成
-    last_round = current_dungeon_combat_room(rpg_game).combat.latest_round
+    last_round = current_dungeon_combat(rpg_game).latest_round
     if last_round is None or last_round.is_completed or not last_round.draw_completed:
         logger.error(f"玩家 {payload.user_name} 使用装备失败: 当前没有未完成的回合")
         raise HTTPException(

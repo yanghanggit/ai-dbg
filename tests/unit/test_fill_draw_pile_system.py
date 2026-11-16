@@ -22,6 +22,7 @@ from ai_dbg.models import (
     TargetType,
 )
 from ai_dbg.systems.fill_draw_pile_system import FillDrawPileSystem
+from dungeon_support import install_combat
 
 
 def _make_card(name: str) -> Card:
@@ -53,8 +54,12 @@ def context() -> Context:
 
 
 @pytest.fixture()
-def game() -> Any:
-    return MagicMock()
+def game(context: Context) -> Any:
+    game = MagicMock()
+    game.ecs = context
+    game.entity_index = {}
+    install_combat(game, MagicMock())
+    return game
 
 
 async def test_fills_draw_pile_with_deck_copies(context: Context, game: Any) -> None:

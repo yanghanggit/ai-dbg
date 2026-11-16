@@ -9,8 +9,10 @@ from loguru import logger
 
 from ai_dbg.game.context import DBGGame
 from ai_dbg.game.dungeon import (
-    current_dungeon,
-    current_dungeon_combat_room,
+    current_dungeon_combat,
+    current_dungeon_room,
+    current_room_index,
+    get_dungeon_room_by_index,
     is_current_room_dungeon_combat,
     is_current_room_dungeon_opening,
     is_player_in_dungeon_stage,
@@ -54,29 +56,29 @@ async def next_dungeon_game(
 
     # 若当前为战斗房间，需确认战斗已结束且胜利
     if is_current_room_dungeon_combat(terminal_game):
-        if not current_dungeon_combat_room(terminal_game).combat.is_post_combat:
+        if not current_dungeon_combat(terminal_game).is_post_combat:
             logger.error("next-dungeon 只能在战斗结束后使用")
             return terminal_game
 
-        if current_dungeon_combat_room(terminal_game).combat.is_lost:
+        if current_dungeon_combat(terminal_game).is_lost:
             logger.info("英雄失败，应该返回营地")
             return terminal_game
 
-        if not current_dungeon_combat_room(terminal_game).combat.is_won:
+        if not current_dungeon_combat(terminal_game).is_won:
             assert False, "不可能出现的情况！"
 
     elif is_current_room_dungeon_opening(terminal_game):
         logger.info("当前为非战斗房间，直接进入下一关")
 
     # 获取下一房间索引和房间实例，确保存在下一房间，否则无法推进副本
-    next_room_index = current_dungeon(terminal_game).current_room_index + 1
-    next_room = current_dungeon(terminal_game).get_room(next_room_index)
+    next_room_index = current_room_index(terminal_game) + 1
+    next_room = get_dungeon_room_by_index(terminal_game, next_room_index)
     if next_room is None:
         logger.error("副本前进失败，没有更多房间")
         return terminal_game
 
     # 推进副本到下一房间，更新当前房间索引和状态
-    success, msg = await advance_dungeon(terminal_game, current_dungeon(terminal_game))
+    success, msg = await advance_dungeon(terminal_game)
     if not success:
         logger.error(f"advance_dungeon 失败: {msg}")
         return terminal_game
@@ -88,9 +90,9 @@ async def next_dungeon_game(
     elif is_current_room_dungeon_opening(terminal_game):
         logger.info("已进入开场房间，下一步请使用 opening-init 初始化开场房间")
     else:
-        current_room = current_dungeon(terminal_game).current_room
-        assert current_room is not None, f"当前房间为 {current_room!r}，无法处理"
-        logger.error(f"未知房间类型 {current_room.type!r}，无法处理")
+        current_room = current_dungeon_room(terminal_game)
+        assert current_room is not None, "当前房间不存在，无法处理"
+        logger.error(f"未知房间类型 {current_room.name!r}，无法处理")
         return terminal_game
 
     # 最后归档
@@ -119,7 +121,7 @@ async def enter_dungeon_game(
         return terminal_game
 
     # 进入副本第一关
-    success, error_detail = enter_dungeon(terminal_game, current_dungeon(terminal_game))
+    success, error_detail = enter_dungeon(terminal_game)
     if not success:
         logger.error(f"进入副本第一关失败: {error_detail}")
         return terminal_game
@@ -131,9 +133,9 @@ async def enter_dungeon_game(
     elif is_current_room_dungeon_opening(terminal_game):
         logger.info("已进入开场房间，下一步请使用 opening-init 初始化开场房间")
     else:
-        current_room = current_dungeon(terminal_game).current_room
-        assert current_room is not None, f"当前房间为 {current_room!r}，无法处理"
-        logger.error(f"未知房间类型 {current_room.type!r}，无法处理")
+        current_room = current_dungeon_room(terminal_game)
+        assert current_room is not None, "当前房间不存在，无法处理"
+        logger.error(f"未知房间类型 {current_room.name!r}，无法处理")
         return terminal_game
 
     # 最后归档
@@ -161,7 +163,7 @@ async def exit_dungeon_game(
 
     # 若当前为战斗房间，状态守卫：只能在战斗结束后使用
     if is_current_room_dungeon_combat(terminal_game):
-        if not current_dungeon_combat_room(terminal_game).combat.is_post_combat:
+        if not current_dungeon_combat(terminal_game).is_post_combat:
             logger.error("exit-dungeon 只能在战斗结束后使用")
             return terminal_game
 
@@ -169,13 +171,13 @@ async def exit_dungeon_game(
         logger.info("当前为非战斗房间，直接退出副本")
 
     # 执行退出副本流程，返回大厅
-    success, msg = exit_dungeon(terminal_game, terminal_game.world.dungeon)
+    success, msg = exit_dungeon(terminal_game)
     if not success:
         logger.error(f"exit_dungeon 失败: {msg}")
         return terminal_game
 
     # 销毁副本实体并重置副本数据
-    teardown_dungeon(terminal_game, terminal_game.world.dungeon)
+    teardown_dungeon(terminal_game)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

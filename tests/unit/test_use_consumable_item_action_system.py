@@ -12,7 +12,7 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import current_dungeon_combat_room
+from ai_dbg.game.dungeon import current_dungeon_combat
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -28,6 +28,7 @@ from ai_dbg.models import (
 from ai_dbg.systems.use_consumable_item_action_system import (
     UseConsumableItemActionSystem,
 )
+from dungeon_support import install_combat
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -85,7 +86,8 @@ def _make_player_entity(
 
 def _setup_mock_dungeon(mock_game: Any, *, round_count: int = 1) -> Round:
     """为 mock_game 配置进行中的战斗状态与最新回合。"""
-    combat: Any = current_dungeon_combat_room(mock_game).combat
+    install_combat(mock_game, MagicMock())
+    combat: Any = current_dungeon_combat(mock_game)
     combat.is_ongoing = True
     combat.rounds = [MagicMock()] * round_count
     latest = Round()
@@ -110,6 +112,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
+    install_combat(game, MagicMock())
     return game
 
 
@@ -153,7 +156,7 @@ class TestReact:
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         item = _make_consumable("灼血药剂", count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
 
@@ -280,7 +283,7 @@ class TestReact:
 
         await system.react([actor])
 
-        latest: Any = current_dungeon_combat_room(mock_game).combat.latest_round
+        latest: Any = current_dungeon_combat(mock_game).latest_round
         consumable_entries = [
             entry for entry in latest.entries if entry.kind == RoundEntryKind.CONSUMABLE
         ]

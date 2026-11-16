@@ -11,9 +11,6 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat_room,
-)
 from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
@@ -22,6 +19,7 @@ from ai_dbg.models import (
     Round,
 )
 from ai_dbg.systems.death_system import DeathSystem
+from dungeon_support import install_combat
 
 
 def _make_actor(context: Context, name: str, hp: int, max_hp: int = 10) -> Entity:
@@ -50,7 +48,7 @@ def _make_game(
         action_order=action_order, completed_actors=[], current_actor=current_actor
     )
     combat.latest_round = rnd
-    current_dungeon_combat_room(game).combat = combat
+    install_combat(game, combat)
 
     return game, rnd
 

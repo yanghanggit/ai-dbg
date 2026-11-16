@@ -49,7 +49,7 @@
 # async def test_execute_skips_when_not_ongoing(
 #     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = False
+#     cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
 #     await system.execute()
 #     #game.clear_round_state.assert_not_called()
 
@@ -58,8 +58,8 @@
 # async def test_execute_skips_when_no_rounds(
 #     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = []
+#     cast(Any, current_dungeon_combat(mock_game)).is_ongoing = True
+#     cast(Any, current_dungeon_combat(mock_game)).rounds = []
 #     await system.execute()
 #     game.clear_round_state.assert_not_called()
 
@@ -68,9 +68,9 @@
 # async def test_execute_skips_when_round_not_completed(
 #     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
-#     current_dungeon_combat_room(mock_game).combat.latest_round.is_completed = False
+#     cast(Any, current_dungeon_combat(mock_game)).is_ongoing = True
+#     cast(Any, current_dungeon_combat(mock_game)).rounds = [MagicMock()]
+#     current_dungeon_combat(mock_game).latest_round.is_completed = False
 #     await system.execute()
 #     game.clear_round_state.assert_not_called()
 
@@ -79,8 +79,8 @@
 # async def test_execute_clears_state_when_completed(
 #     game: Any, system: CombatRoundCleanupSystem
 # ) -> None:
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.is_ongoing = True
-#     cast(Any, current_dungeon_combat_room(mock_game)).combat.rounds = [MagicMock()]
-#     current_dungeon_combat_room(mock_game).combat.latest_round.is_completed = True
+#     cast(Any, current_dungeon_combat(mock_game)).is_ongoing = True
+#     cast(Any, current_dungeon_combat(mock_game)).rounds = [MagicMock()]
+#     current_dungeon_combat(mock_game).latest_round.is_completed = True
 #     await system.execute()
 #     game.clear_round_state.assert_called_once()

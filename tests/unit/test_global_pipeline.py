@@ -11,32 +11,17 @@ from ai_dbg.models import (
     CharacterStats,
     CharacterStatsComponent,
     DrawPileComponent,
-    Dungeon,
-    DungeonComponent,
     EnvironmentComponent,
-    OpeningRoom,
     PartyMemberComponent,
     PlayerComponent,
     PlayerSession,
-    Stage,
-    StageComponent,
-    StageType,
     WorldState,
 )
+from dungeon_support import install_opening_room, make_dungeon_entity
 
 
 def _make_opening_game() -> Any:
     stage_name = "场景.开场"
-    stage = Stage(
-        name=stage_name,
-        type=StageType.DUNGEON,
-        profile="",
-        system_message="",
-        actors=[],
-    )
-    dungeon = Dungeon(name="副本.测试", rooms=[OpeningRoom(stage=stage)], profile="")
-    dungeon.current_room_index = 0
-
     blueprint = Blueprint(
         name="test",
         player_actor="角色.玩家",
@@ -49,20 +34,16 @@ def _make_opening_game() -> Any:
         entity_counter=0,
         entities={},
         agent_memories={},
-        dungeon=dungeon,
         blueprint=blueprint,
     )
     game = create_dbg_game(
         name="test",
-        player_session=PlayerSession(
-            name="player", actor="角色.玩家", game="test"
-        ),
+        player_session=PlayerSession(name="player", actor="角色.玩家", game="test"),
         world=world,
     )
 
-    stage_entity = create_entity(game, stage_name)
-    stage_entity.add(StageComponent, stage_name)
-    stage_entity.add(DungeonComponent, stage_name)
+    make_dungeon_entity(game, name="副本.测试", profile="")
+    stage_entity = install_opening_room(game, room_name=stage_name)
     stage_entity.add(EnvironmentComponent, stage_name, "一片安静的开场空地。")
 
     player_entity = create_entity(game, "角色.玩家")

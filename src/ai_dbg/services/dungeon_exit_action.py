@@ -15,14 +15,19 @@ from ..game.combat import (
     set_character_hp,
 )
 from ..game.context import DBGGame
+from ..game.dungeon import (
+    current_dungeon_combat,
+    current_dungeon_name,
+    current_dungeon_room,
+    get_dungeon_entity,
+    is_current_room_dungeon_combat,
+)
 from ..game.memory import (
     add_human_message,
 )
 from ..game.stage.transition import stage_transition
 from ..models import (
-    CombatRoom,
     DeathComponent,
-    Dungeon,
     HumanMessage,
     LobbyComponent,
     PartyMemberComponent,
@@ -39,7 +44,7 @@ def _build_dungeon_exit_message(dungeon_name: str, lobby_stage_name: str) -> str
 
 
 ###################################################################################################################################################################
-def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
+def exit_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
     """
     退出副本并将角色传送回大厅。
 
@@ -52,17 +57,21 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # 阶段 1：检查（零状态变更，允许 return）
     # =========================================================================
 
-    # 当前房间必须有效（current_room_index 合法：既不能为 -1「尚未进入」，也不能越界）
-    current_room = dungeon.current_room
+    dungeon_entity = get_dungeon_entity(dbg_game)
+    if dungeon_entity is None:
+        logger.error("退出副本失败，当前没有副本实体")
+        return False, "当前没有副本"
+
+    # 当前房间必须有效
+    current_room = current_dungeon_room(dbg_game)
     if current_room is None:
-        logger.error(
-            f"退出副本失败，current_room_index={dungeon.current_room_index} 无效，尚未进入任何房间"
-        )
+        logger.error("退出副本失败，尚未进入任何房间")
         return False, "尚未进入副本房间，无法退出"
 
     # 战斗房间必须处于战斗后状态才能退出（无论胜负）
-    if isinstance(current_room, CombatRoom):
-        if not current_room.combat.is_post_combat:
+    if is_current_room_dungeon_combat(dbg_game):
+        combat = current_dungeon_combat(dbg_game)
+        if not combat.is_post_combat:
             logger.error("当前不处于战斗后状态，无法退出副本！必须先完成战斗。")
             return False, "战斗未结束，无法退出"
 
@@ -82,14 +91,16 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
     # =========================================================================
     # 阶段 2：执行（不可中断，不回退）
     # =========================================================================
+    dungeon_name = current_dungeon_name(dbg_game)
+
     # 传送队伍成员回大厅
     for party_member_entity in party_member_entities:
         add_human_message(
             dbg_game,
             party_member_entity,
             HumanMessage(
-                content=_build_dungeon_exit_message(dungeon.name, dest_stage.name),
-                dungeon_lifecycle_completion=dungeon.name,
+                content=_build_dungeon_exit_message(dungeon_name, dest_stage.name),
+                dungeon_lifecycle_completion=dungeon_name,
             ),
         )
         stage_transition(dbg_game, {party_member_entity}, dest_stage)
@@ -116,8 +127,8 @@ def exit_dungeon(dbg_game: DBGGame, dungeon: Dungeon) -> Tuple[bool, str]:
             logger.info(f"清理副本奖励状态（Spoils）: {party_member_entity.name}")
 
     # 离开战斗房间：保底断言 pipeline 已清理完毕，不应存在残留战斗临时组件
-    if isinstance(current_room, CombatRoom):
+    if is_current_room_dungeon_combat(dbg_game):
         assert_no_residual_combat_state(dbg_game)
 
-    logger.info(f"exit_dungeon 完成: {dungeon.name}")
+    logger.info(f"exit_dungeon 完成: {dungeon_name}")
     return True, "成功退出副本"

@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Dict, List, final
+from typing import Dict, List, Optional, final
 
 from pydantic import BaseModel, Field
 
 from ..entitas import ContextData
+from .assets_meta import AssetKey
 from .blueprint import Blueprint
+from .combat import Combat
 from .dungeon import Dungeon
-from .dungeon_room import AnyDungeonRoom
+from .dungeon_room import DungeonRoomType
 from .player_session import PlayerSession
 from .session_message import SessionMessage
 from .task import TaskSnapshot
@@ -52,10 +54,43 @@ class NewGameRequest(BaseModel):
 
 
 @final
+class DungeonRoomView(BaseModel):
+    """运行时副本房间视图（由 ECS 投影，不持有静态 Stage 定义）。"""
+
+    name: str
+    index: int
+    type: DungeonRoomType
+    combat: Optional[Combat] = None
+
+
+@final
+class DungeonStateView(BaseModel):
+    """运行时副本状态视图。"""
+
+    name: str
+    profile: str
+    created_at: Optional[datetime] = None
+    assets: Dict[AssetKey, str] = Field(default_factory=dict)
+    current_room_index: int
+    rooms: List[DungeonRoomView] = Field(default_factory=list)
+
+    @property
+    def room_count(self) -> int:
+        return len(self.rooms)
+
+    @property
+    def current_room(self) -> Optional[DungeonRoomView]:
+        for room in self.rooms:
+            if room.index == self.current_room_index:
+                return room
+        return None
+
+
+@final
 class NewGameResponse(BaseModel):
     blueprint: Blueprint
     player_session: PlayerSession
-    dungeon: Dungeon
+    dungeon: DungeonStateView
 
 
 ################################################################################################################
@@ -344,7 +379,7 @@ class DungeonCombatDrawCardsResponse(BaseModel):
 
 @final
 class DungeonStateResponse(BaseModel):
-    dungeon: Dungeon
+    dungeon: DungeonStateView
 
 
 ################################################################################################################
@@ -354,7 +389,7 @@ class DungeonStateResponse(BaseModel):
 
 @final
 class DungeonRoomResponse(BaseModel):
-    room: AnyDungeonRoom
+    room: DungeonRoomView
 
 
 ################################################################################################################

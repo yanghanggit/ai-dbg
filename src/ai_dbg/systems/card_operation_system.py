@@ -17,7 +17,7 @@ from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.memory import (
@@ -538,7 +538,7 @@ class CardOperationSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("CardOperationSystem: 战斗未进行中，跳过运转结算")
             return
 
@@ -555,7 +555,7 @@ class CardOperationSystem(ReactiveProcessor):
         for pile in PILES:
             _pile_cards(entity, pile)  # 缺组件在这里断言，不做降级
 
-        round_number = len(current_dungeon_combat_room(self._game).combat.rounds or [])
+        round_number = len(current_dungeon_combat(self._game).rounds or [])
         before = {pile: len(_pile_cards(entity, pile)) for pile in PILES}
 
         memory = get_agent_memory(self._game, entity)

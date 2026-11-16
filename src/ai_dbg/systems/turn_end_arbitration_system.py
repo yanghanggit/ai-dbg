@@ -10,7 +10,7 @@ from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_dungeon_combat_room,
+    current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
@@ -215,7 +215,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
 
         if not is_current_room_dungeon_combat(self._game):
             return
-        if not current_dungeon_combat_room(self._game).combat.is_ongoing:
+        if not current_dungeon_combat(self._game).is_ongoing:
             logger.debug("TurnEndArbitrationSystem: 战斗未进行中，跳过回合结束仲裁")
             return
 
@@ -234,7 +234,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
         ), f"TurnEndArbitrationSystem: 无法找到 {pass_turn_entity.name} 所在的场景实体"
 
         current_round_number = len(
-            current_dungeon_combat_room(self._game).combat.rounds or []
+            current_dungeon_combat(self._game).rounds or []
         )
 
         turn_end_cards = self._collect_hand_turn_end_cards(pass_turn_entity)
