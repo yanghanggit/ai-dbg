@@ -246,9 +246,7 @@ class AutonomousArbitrationSystem(ReactiveProcessor):
             stage_entity is not None
         ), f"AutonomousArbitrationSystem: 无法找到 {pass_turn_entity.name} 所在的场景实体"
 
-        current_round_number = len(
-            current_dungeon_combat(self._game).rounds or []
-        )
+        current_round_number = len(current_dungeon_combat(self._game).rounds or [])
 
         autonomous_cards = self._collect_hand_autonomous_cards(pass_turn_entity)
         if not autonomous_cards:

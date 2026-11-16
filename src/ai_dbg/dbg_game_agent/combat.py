@@ -140,10 +140,7 @@ async def play_cards_specified_game(
     # 指定手牌成功处理后，继续执行战斗房间的处理流水线。
     await terminal_game.pipeline.process()
 
-    if (
-        current_dungeon_combat(terminal_game).state
-        == CombatState.POST_COMBAT
-    ):
+    if current_dungeon_combat(terminal_game).state == CombatState.POST_COMBAT:
         logger.debug("在本次处理中战斗已结束，进入后处理阶段")
 
     # 将游戏状态存储到指定目录，确保本轮操作的结果被归档。

@@ -25,9 +25,7 @@ from .entities import (
 ###############################################################################################################################################
 def get_dungeon_entity(dbg_game: DBGGame) -> Optional[Entity]:
     """返回当前副本实体；同一世界最多一个。"""
-    entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[DungeonRunComponent])
-    ).entities
+    entities = dbg_game.ecs.get_group(Matcher(all_of=[DungeonRunComponent])).entities
     assert len(entities) <= 1, "同一世界最多只能有一个副本实体"
     return next(iter(entities), None)
 
@@ -52,9 +50,7 @@ def dungeon_rooms(dbg_game: DBGGame) -> List[Entity]:
 
 
 ###############################################################################################################################################
-def get_dungeon_room_by_index(
-    dbg_game: DBGGame, index: int
-) -> Optional[Entity]:
+def get_dungeon_room_by_index(dbg_game: DBGGame, index: int) -> Optional[Entity]:
     """按 room index 获取房间实体。"""
     for room_entity in dungeon_rooms(dbg_game):
         if _require_room_component(room_entity).index == index:
@@ -140,9 +136,7 @@ def is_current_room_dungeon_combat(dbg_game: DBGGame) -> bool:
     room_entity = current_dungeon_room(dbg_game)
     if room_entity is None:
         return False
-    return (
-        _require_room_component(room_entity).room_type == DungeonRoomType.COMBAT
-    )
+    return _require_room_component(room_entity).room_type == DungeonRoomType.COMBAT
 
 
 ###############################################################################################################################################
@@ -150,9 +144,7 @@ def is_current_room_dungeon_opening(dbg_game: DBGGame) -> bool:
     room_entity = current_dungeon_room(dbg_game)
     if room_entity is None:
         return False
-    return (
-        _require_room_component(room_entity).room_type == DungeonRoomType.OPENING
-    )
+    return _require_room_component(room_entity).room_type == DungeonRoomType.OPENING
 
 
 ###############################################################################################################################################
@@ -190,7 +182,9 @@ def dungeon_state_view(dbg_game: DBGGame) -> DungeonStateView:
         created_at=dungeon_run.created_at,
         assets=dungeon_run.assets,
         current_room_index=current_room_index(dbg_game),
-        rooms=[dungeon_room_view(room_entity) for room_entity in dungeon_rooms(dbg_game)],
+        rooms=[
+            dungeon_room_view(room_entity) for room_entity in dungeon_rooms(dbg_game)
+        ],
     )
 
 

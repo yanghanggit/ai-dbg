@@ -174,9 +174,7 @@ class TestRoundTrip:
         raw_room = restored_world.entities["场景.测试"]["DungeonRoomComponent"]
         raw_combat = restored_world.entities["场景.测试"]["CombatComponent"]
         assert DungeonRunComponent(**raw_dungeon).created_at == created_at
-        assert (
-            DungeonRoomComponent(**raw_room).room_type == DungeonRoomType.COMBAT
-        )
+        assert DungeonRoomComponent(**raw_room).room_type == DungeonRoomType.COMBAT
         assert CombatComponent(**raw_combat).combat.state == CombatState.ONGOING
 
     def test_world_state_json_excludes_split_fields(self, tmp_path: Path) -> None:

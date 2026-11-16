@@ -67,9 +67,7 @@ def setup_dungeon(dbg_game: DBGGame, dungeon_name: str) -> Tuple[bool, str]:
     existing_dungeon = get_dungeon_entity(dbg_game)
     if existing_dungeon is not None:
         if current_dungeon_room(dbg_game) is not None:
-            error_msg = (
-                f"setup_dungeon 失败: 当前副本 {existing_dungeon.name!r} 正在进行中，请先退出"
-            )
+            error_msg = f"setup_dungeon 失败: 当前副本 {existing_dungeon.name!r} 正在进行中，请先退出"
             logger.error(error_msg)
             return False, error_msg
         if existing_dungeon.name != dungeon.name:

@@ -59,9 +59,7 @@ def save_world(
     files.append(
         (
             "world_state.json",
-            world.model_dump_json(
-                exclude={"agent_memories", "entities", "blueprint"}
-            ),
+            world.model_dump_json(exclude={"agent_memories", "entities", "blueprint"}),
         )
     )
 

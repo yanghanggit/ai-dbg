@@ -290,9 +290,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
         ), f"出牌实体 {actor_entity.name} 缺少 RoundStatsComponent！"
 
         # 获取当前回合数，用于仲裁提示生成
-        current_round_number = len(
-            current_dungeon_combat(self._game).rounds or []
-        )
+        current_round_number = len(current_dungeon_combat(self._game).rounds or [])
 
         # 获取最新回合的行动信息，供仲裁提示词扩展使用
         latest_round = current_dungeon_combat(self._game).latest_round

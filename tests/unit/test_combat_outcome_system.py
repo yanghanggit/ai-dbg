@@ -366,9 +366,7 @@ class TestExecute:
         """战斗非 ONGOING 时，complete_combat / clear_round_state 均不应调用。"""
         cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_not_called()
+        cast(Any, current_dungeon_combat(mock_game)).complete_combat.assert_not_called()
         # mock_game.clear_round_state.assert_not_called()
         mock_game.add_human_message.assert_not_called()
 
@@ -382,9 +380,7 @@ class TestExecute:
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {ally, monster})
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_not_called()
+        cast(Any, current_dungeon_combat(mock_game)).complete_combat.assert_not_called()
         # mock_game.clear_round_state.assert_not_called()
 
     @pytest.mark.asyncio

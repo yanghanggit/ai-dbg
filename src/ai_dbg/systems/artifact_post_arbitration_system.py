@@ -282,9 +282,7 @@ class ArtifactPostArbitrationSystem(ReactiveProcessor):
             )
             return
 
-        current_round_number = len(
-            current_dungeon_combat(self._game).rounds or []
-        )
+        current_round_number = len(current_dungeon_combat(self._game).rounds or [])
 
         # 场上存活阵营（供 agent 判断「队伍方/怪物方」）
         party_members = get_alive_party_members_in_stage(stage_entity, self._game)
