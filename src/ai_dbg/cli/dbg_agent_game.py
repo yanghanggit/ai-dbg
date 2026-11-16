@@ -402,7 +402,7 @@ def play_cards_specified(
 def pass_turn(snapshot: str, actor: str) -> None:
     """指定当前行动者过牌（交出行动权）并归档。需战斗进行中。
 
-    适用于任意当前行动者（我方与怪物同等）：把该角色记入本回合已完成列表、清空其剩余能量
+    适用于任意当前行动者（我方与怪物同等）：把当前行动槽标记为已完成、清空其剩余能量
     并推进 current_actor。所有存活角色都过牌后本回合结束，需再 draw-cards 开启下一回合。
     """
 

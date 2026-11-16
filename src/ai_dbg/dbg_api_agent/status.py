@@ -25,7 +25,6 @@ from ..models import (
     MonsterComponent,
     NPCComponent,
     PlayerComponent,
-    RoundStatsComponent,
     SpoilsComponent,
     compute_effective_stats,
     compute_hand_block,
@@ -98,7 +97,7 @@ class EntitySummary(TypedDict):
 
     `name` / `role` / `dead` / `block` / `hand` 所有实体都有；
     `hp` / `max_hp` / `attack` / `defense` / `speed` 仅在 `CharacterStatsComponent` 存在时出现，
-    `energy` 仅在 `RoundStatsComponent` 存在时出现，`appearance` 仅在 `AppearanceComponent` 存在时出现。
+    `energy` 仅在战斗中有当前行动槽时出现，`appearance` 仅在 `AppearanceComponent` 存在时出现。
     """
 
     name: str
@@ -145,10 +144,6 @@ def _entity_summary(name: str, components: EntityData) -> EntitySummary:
         summary["defense"] = stats.defense
         summary["speed"] = stats.speed
 
-    round_stats_data = component_data(components, RoundStatsComponent.__name__)
-    if round_stats_data is not None:
-        summary["energy"] = RoundStatsComponent(**round_stats_data).energy
-
     appearance = component_data(components, AppearanceComponent.__name__)
     if appearance is not None:
         summary["appearance"] = AppearanceComponent(**appearance).appearance
@@ -168,6 +163,7 @@ def _round_summary(combat: CombatView) -> Optional[Dict[str, Any]]:
         "current_actor": latest.current_actor,
         "action_order": list(latest.action_order),
         "completed_actors": list(latest.completed_actors),
+        "turns": [turn.model_dump() for turn in latest.turns],
         "entries": [entry.model_dump() for entry in latest.entries],
     }
 
@@ -301,6 +297,15 @@ async def build_status(
 
     if room is not None and room.combat is not None:
         status["combat"] = _combat_info(room.combat)
+        latest_round = room.combat.latest_round
+        if latest_round is not None:
+            energy_by_actor = {
+                turn.actor_name: turn.energy for turn in latest_round.turns
+            }
+            for summary in status["entities"]:
+                energy = energy_by_actor.get(summary["name"])
+                if energy is not None:
+                    summary["energy"] = energy
     elif room is not None and room.type == DungeonRoomType.OPENING:
         status["dungeon"]["spoils"] = _spoils_info(party_entities)
 

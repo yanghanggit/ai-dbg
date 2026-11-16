@@ -11,7 +11,6 @@ from ai_dbg.models import (
     EquippedGearComponent,
     GearItem,
     IdentityComponent,
-    RoundStatsComponent,
 )
 from ai_dbg.systems.combat_round_start_system import (
     ActionOrderStrategy,
@@ -25,14 +24,12 @@ def _make_actor(
     *,
     speed: int = 0,
     creation_order: int = 0,
-    energy: int = 2,
 ) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "")
     entity.add(IdentityComponent, name, creation_order, f"id-{name}")
     entity.add(CharacterStatsComponent, name, CharacterStats(speed=speed))
-    entity.add(RoundStatsComponent, name, energy)
     return entity
 
 
@@ -59,16 +56,6 @@ def test_speed_tie_breaks_by_creation_order() -> None:
     ordered = _system()._sorted_actors_by_speed({later, earlier})
 
     assert [e.name for e in ordered] == ["earlier", "later"]
-
-
-def test_zero_energy_actors_are_excluded() -> None:
-    context = Context()
-    active = _make_actor(context, "active", speed=1, energy=2)
-    exhausted = _make_actor(context, "exhausted", speed=99, energy=0)
-
-    ordered = _system()._sorted_actors_by_speed({active, exhausted})
-
-    assert [e.name for e in ordered] == ["active"]
 
 
 def test_equipped_gear_speed_changes_order() -> None:

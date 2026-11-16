@@ -7,38 +7,21 @@ from loguru import logger
 from ...entitas import Entity, Matcher
 from ...models import (
     Card,
-    CombatRoundComponent,
     CombatRoundView,
-    DeathComponent,
     DiscardPileComponent,
     DrawPileComponent,
     ExhaustPileComponent,
     HandComponent,
-    RoundStatsComponent,
 )
 from ..context import DBGGame
-from ..entities import get_actor_entity
 
 
 def get_current_turn_actor(
     game: DBGGame,
-    round: CombatRoundView | CombatRoundComponent,
+    round: CombatRoundView,
 ) -> Optional[str]:
-    """从回合快照中找出第一个尚未 pass turn 的角色名。"""
-    if not round.action_order:
-        return None
-
-    completed = set(round.completed_actors)
-    for actor_name in round.action_order:
-        if actor_name in completed:
-            continue
-        actor_entity = get_actor_entity(game, actor_name)
-        assert actor_entity is not None, f"无法找到角色实体: {actor_name}"
-        if actor_entity.has(DeathComponent):
-            continue
-        return actor_name
-
-    return None
+    """返回当前行动槽对应的角色名；没有当前行动槽时返回 None。"""
+    return round.current_actor
 
 
 def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card]]]:
@@ -99,11 +82,6 @@ def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card
         # 无论是否有手牌，回合末统一移除 HandComponent
         entity.remove(HandComponent)
 
-    # 清除所有角色实体的回合动态属性组件
-    for entity in game.ecs.get_group(Matcher(RoundStatsComponent)).entities.copy():
-        logger.debug(f"clear round stats: {entity.name}")
-        entity.remove(RoundStatsComponent)
-
     return settlements
 
 
@@ -114,7 +92,6 @@ def assert_no_residual_combat_state(dbg_game: DBGGame) -> None:
         Matcher(
             any_of=[
                 HandComponent,
-                RoundStatsComponent,
                 DrawPileComponent,
                 DiscardPileComponent,
                 ExhaustPileComponent,

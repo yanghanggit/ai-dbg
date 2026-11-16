@@ -1,13 +1,13 @@
 """战斗相关模型定义。
 
-`Combat` / `Round` 的运行时状态已经迁移到 ECS：战斗是实体，回合也是实体。
-本模块只保留枚举、值对象与只读视图，供系统、API 与测试消费。
+战斗、回合、回合行动槽与回合记录都已迁移到 ECS：它们都是实体，运行时状态由
+实体上的组件持有。本模块只保留枚举、值对象与只读视图，供系统、API 与测试消费。
 """
 
 from enum import IntEnum, StrEnum, unique
 from typing import List, Optional, final
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 ###############################################################################################################################################
@@ -35,6 +35,17 @@ class CombatResult(IntEnum):
 ###############################################################################################################################################
 @final
 @unique
+class CombatTurnStatus(StrEnum):
+    """回合行动槽的生命周期状态。"""
+
+    PENDING = "pending"  # 尚未行动
+    COMPLETED = "completed"  # 已过牌 / 已交出行动权
+    DEAD = "dead"  # 行动者已死亡，跳过该槽
+
+
+###############################################################################################################################################
+@final
+@unique
 class RoundEntryKind(StrEnum):
     """回合内一条记录的种类标记。"""
 
@@ -48,29 +59,69 @@ class RoundEntryKind(StrEnum):
 
 ###############################################################################################################################################
 @final
-class RoundEntry(BaseModel):
-    """回合内的一条操作记录。
+class CombatTurnView(BaseModel):
+    """回合行动槽的只读投影；运行时数据由行动槽实体持有。"""
 
-    把原先分散的 log / narrative 合并为同一条目，使跨种类的操作先后顺序可被表达。
-    """
+    name: str
+    combat_name: str
+    round_name: str
+    actor_name: str
+    order_index: int
+    status: CombatTurnStatus = CombatTurnStatus.PENDING
+    energy: int = 2
+    is_current: bool = False
 
-    kind: RoundEntryKind  # 种类标记
-    log: str  # 战斗数据日志
-    narrative: str  # 叙事文本
+
+###############################################################################################################################################
+@final
+class CombatRoundEntryView(BaseModel):
+    """回合记录的只读投影；运行时数据由回合记录实体持有。"""
+
+    name: str
+    combat_name: str
+    round_name: str
+    turn_name: Optional[str] = None
+    index: int
+    kind: RoundEntryKind
+    log: str
+    narrative: str
 
 
 ###############################################################################################################################################
 @final
 class CombatRoundView(BaseModel):
-    """回合的只读投影；运行时数据由回合实体上的组件持有。"""
+    """回合的只读投影；运行时数据由回合/行动槽/记录实体持有。"""
 
     index: int
-    completed_actors: List[str] = Field(default_factory=list)
-    action_order: List[str] = Field(default_factory=list)
-    current_actor: Optional[str] = None
     is_completed: bool = False
     draw_completed: bool = False
-    entries: List[RoundEntry] = Field(default_factory=list)
+    turns: List[CombatTurnView] = Field(default_factory=list)
+    entries: List[CombatRoundEntryView] = Field(default_factory=list)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def action_order(self) -> List[str]:
+        """按行动槽顺序返回角色名。"""
+        return [turn.actor_name for turn in self.turns]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def completed_actors(self) -> List[str]:
+        """按行动槽顺序返回已交出行动权的角色名。"""
+        return [
+            turn.actor_name
+            for turn in self.turns
+            if turn.status == CombatTurnStatus.COMPLETED
+        ]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def current_actor(self) -> Optional[str]:
+        """返回当前行动槽对应的角色名；没有当前行动槽时返回 None。"""
+        for turn in self.turns:
+            if turn.is_current and turn.status == CombatTurnStatus.PENDING:
+                return turn.actor_name
+        return None
 
 
 ###############################################################################################################################################

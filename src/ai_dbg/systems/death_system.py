@@ -7,13 +7,13 @@ from loguru import logger
 from ..entitas import Entity, ExecuteProcessor, Matcher
 from ..game.combat import (
     compute_character_stats,
-    get_current_turn_actor,
     mark_dead,
 )
-from ..game.combat.state import set_round_current_actor
+from ..game.combat.state import advance_current_turn, mark_turn_dead
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -22,7 +22,7 @@ from ..game.memory import (
 )
 from ..models import (
     CharacterStatsComponent,
-    CombatRoundComponent,
+    CombatTurnComponent,
     DeathComponent,
     HumanMessage,
 )
@@ -82,13 +82,19 @@ class DeathSystem(ExecuteProcessor):
         if not current_dungeon_combat(self._game).is_ongoing:
             return
         latest_round_entity = current_combat_round_entity(self._game)
-        if latest_round_entity is None:
+        current_turn_entity = current_combat_turn_entity(self._game)
+        if latest_round_entity is None or current_turn_entity is None:
             return
-        latest_round = latest_round_entity.get(CombatRoundComponent)
-        if latest_round.current_actor != entity.name:
+        if current_turn_entity.get(CombatTurnComponent).actor_name != entity.name:
             return
-        next_actor = get_current_turn_actor(self._game, latest_round)
-        set_round_current_actor(latest_round_entity, next_actor)
+
+        mark_turn_dead(current_turn_entity)
+        next_turn_entity = advance_current_turn(self._game, latest_round_entity)
+        next_actor = (
+            next_turn_entity.get(CombatTurnComponent).actor_name
+            if next_turn_entity is not None
+            else None
+        )
         logger.info(
             f"DeathSystem: 当前行动者 {entity.name} 死亡，回合指针推进为 {next_actor}"
         )

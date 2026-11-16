@@ -7,10 +7,10 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.models import (
     ActorComponent,
     Card,
-    CombatRoundComponent,
     CombatState,
     EquipGearItemAction,
     EquippedGearComponent,
@@ -147,7 +147,7 @@ class TestReact:
         # 本回合装备使用结果被记入记录队列
         gear_entries = [
             entry
-            for entry in latest_round_entity.get(CombatRoundComponent).entries
+            for entry in combat_round_view(mock_game, latest_round_entity).entries
             if entry.kind == RoundEntryKind.GEAR
         ]
         assert len(gear_entries) == 1

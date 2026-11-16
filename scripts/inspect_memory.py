@@ -96,10 +96,6 @@ def _format_piles(entity: Dict[str, Any]) -> List[str]:
             continue
         names = _card_names(entity, component, field)
         lines.append(f"{component}.{field} ({len(names)}): {names}")
-
-    round_stats = entity.get("RoundStatsComponent")
-    if isinstance(round_stats, dict) and "energy" in round_stats:
-        lines.append(f"energy={round_stats['energy']}")
     return lines
 
 

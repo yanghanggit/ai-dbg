@@ -10,7 +10,7 @@ from .artifact import Artifact
 from .assets_meta import AssetKey
 from .card import Card
 from .character_stats import CharacterStats
-from .combat import CombatResult, CombatState, RoundEntry
+from .combat import CombatResult, CombatState, CombatTurnStatus, RoundEntryKind
 from .dungeon_room import DungeonRoomType
 from .items import AnyItem, GearItem
 from .registry import register_component_type
@@ -172,17 +172,53 @@ class CombatStateComponent(Component):
 @final
 @register_component_type
 class CombatRoundComponent(Component):
-    """战斗回合实体上的回合快照与操作记录。"""
+    """战斗回合实体上的回合生命周期状态。"""
 
     name: str
     combat_name: str
     index: int
     is_completed: bool = False
     draw_completed: bool = False
-    action_order: List[str] = Field(default_factory=list)
-    completed_actors: List[str] = Field(default_factory=list)
-    current_actor: Optional[str] = None
-    entries: List[RoundEntry] = Field(default_factory=list)
+
+
+############################################################################################################
+@final
+@register_component_type
+class CombatTurnComponent(Component):
+    """回合内一个角色的行动槽；行动权、完成与死亡都落到单个槽上。"""
+
+    name: str
+    combat_name: str
+    round_name: str
+    actor_name: str
+    order_index: int
+    status: CombatTurnStatus = CombatTurnStatus.PENDING
+    energy: int = 2
+
+
+############################################################################################################
+@final
+@register_component_type
+class CurrentCombatTurnComponent(Component):
+    """标记战斗当前行动槽；同一战斗最多一个，回合结束时移除。"""
+
+    name: str
+
+
+############################################################################################################
+@final
+@register_component_type
+class CombatRoundEntryComponent(Component):
+    """回合内的一条操作记录；记录本身是独立实体，可被单独引用与查询。"""
+
+    name: str
+    combat_name: str
+    round_name: str
+    turn_name: Optional[str] = None
+    index: int
+    kind: RoundEntryKind
+    log: str
+    narrative: str
 
 
 ############################################################################################################
@@ -231,16 +267,6 @@ class HandComponent(Component):
 
     name: str
     cards: List[Card]
-
-
-############################################################################################################
-@final
-@register_component_type
-class RoundStatsComponent(Component):
-    """本回合动态战斗属性；每回合开始由 CharacterStats 初始化，回合结束清除。"""
-
-    name: str
-    energy: int  # 本回合有效行动次数（可被状态效果修改）
 
 
 ############################################################################################################

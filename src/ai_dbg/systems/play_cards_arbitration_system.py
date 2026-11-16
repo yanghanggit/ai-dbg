@@ -25,7 +25,6 @@ from ..llm import ToolDefinition
 from ..models import (
     Card,
     PlayCardsAction,
-    RoundStatsComponent,
     TargetType,
     render_labeled_str_list,
 )
@@ -255,7 +254,7 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
     #######################################################################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        return entity.has(PlayCardsAction) and entity.has(RoundStatsComponent)
+        return entity.has(PlayCardsAction)
 
     #######################################################################################################################################
     @override
@@ -284,10 +283,6 @@ class PlayCardsArbitrationSystem(ReactiveProcessor):
             PlayCardsAction
         ), f"实体 {actor_entity.name} 缺少 PlayCardsAction 组件！"
         play_cards_action = actor_entity.get(PlayCardsAction)
-
-        assert actor_entity.has(
-            RoundStatsComponent
-        ), f"出牌实体 {actor_entity.name} 缺少 RoundStatsComponent！"
 
         # 获取当前回合数，用于仲裁提示生成
         current_round_number = len(current_dungeon_combat(self._game).rounds or [])

@@ -90,7 +90,7 @@ async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
 
     with (
         patch(f"{_PLAY_MODULE}.get_current_turn_actor", return_value=actor.name),
-        patch(f"{_PLAY_MODULE}.consume_energy"),
+        patch(f"{_PLAY_MODULE}.consume_turn_energy"),
         patch(f"{_PLAY_MODULE}.broadcast_to_stage") as mock_broadcast,
     ):
         await PlayCardsActionSystem(game).react([actor])
@@ -104,20 +104,19 @@ async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
 
 async def test_pass_turn_broadcast_keeps_actor(context: Context) -> None:
     """过牌是观察类广播：过牌者没有其他记录，必须保留他本人。"""
-    from ai_dbg.models import PassTurnAction, RoundStatsComponent
+    from ai_dbg.models import PassTurnAction
     from ai_dbg.systems import pass_turn_action_system as pass_module
 
     card = _make_card()
     actor = _make_actor(context, "角色.无名", card)
     actor.add(PassTurnAction, actor.name)
-    actor.add(RoundStatsComponent, actor.name, 2)
     stage = _make_stage(context)
     game = _make_game(actor, stage)
 
     with (
         patch(f"{_PASS_MODULE}.get_current_turn_actor", return_value=actor.name),
-        patch(f"{_PASS_MODULE}.get_energy", return_value=2),
-        patch(f"{_PASS_MODULE}.consume_energy"),
+        patch(f"{_PASS_MODULE}.get_turn_energy", return_value=2),
+        patch(f"{_PASS_MODULE}.consume_turn_energy"),
         patch(f"{_PASS_MODULE}.broadcast_to_stage") as mock_broadcast,
     ):
         await pass_module.PassTurnActionSystem(game).react([actor])

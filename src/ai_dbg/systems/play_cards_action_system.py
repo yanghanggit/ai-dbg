@@ -7,11 +7,12 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
-    consume_energy,
+    consume_turn_energy,
     get_current_turn_actor,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -139,10 +140,14 @@ class PlayCardsActionSystem(ReactiveProcessor):
                 self._game, last_round
             ), f"PlayCardsActionSystem: 出牌角色 {entity.name} 不是当前 turn 的行动者！ current_turn_actor={get_current_turn_actor(self._game, last_round)}"
 
-            # 每出一张牌消耗卡牌费用对应的 energy 点数（出牌本身不视为"完成行动"，
-            # 仅 pass turn 才会写入 completed_actors 并真正交出行动权，见 PassTurnActionSystem；
-            # 因此这里不调用 advance_turn ——是否轮到下一角色完全由 completed_actors 决定）
-            consume_energy(entity, play_cards_action.card.cost)
+            # 每出一张牌消耗当前行动槽的 energy 点数（出牌本身不视为"完成行动"，
+            # 仅 pass turn 才会把行动槽标记为 completed 并真正交出行动权，
+            # 见 PassTurnActionSystem；因此这里不推进当前行动槽。）
+            current_turn_entity = current_combat_turn_entity(self._game)
+            assert (
+                current_turn_entity is not None
+            ), "PlayCardsActionSystem: 当前行动槽不存在"
+            consume_turn_energy(current_turn_entity, play_cards_action.card.cost)
 
             logger.debug(
                 f"  completed_actors: {last_round.completed_actors} / current_turn_actor_name={last_round.current_actor}"

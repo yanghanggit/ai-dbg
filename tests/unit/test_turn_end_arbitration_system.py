@@ -9,12 +9,12 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
-    CombatRoundComponent,
     CombatState,
     HandComponent,
     HumanMessage,
@@ -202,7 +202,7 @@ class TestTurnEndArbitrationSystem:
         assert "本次结算未完成" in notice.content
         assert "未落库" in notice.content
 
-        entries = current_round_entity(mock_game).get(CombatRoundComponent).entries
+        entries = combat_round_view(mock_game, current_round_entity(mock_game)).entries
         assert entries[0].kind == RoundEntryKind.FAILED
 
 

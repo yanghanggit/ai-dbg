@@ -496,6 +496,7 @@ def apply_arbitration_result(
     kind: RoundKind,
     title_label: str,
     combat_log: str,
+    turn_name: Optional[str] = None,
 ) -> None:
     """落库一次仲裁结果：全场景广播 + HP + 生命值通知 + 回合记录。
 
@@ -544,7 +545,12 @@ def apply_arbitration_result(
     round_entity = current_combat_round_entity(game)
     assert round_entity is not None, "current_combat_round_entity 不应为 None"
     record_round_entry(
-        round_entity, _ROUND_ENTRY_KIND[kind], combat_log, narrative
+        game,
+        round_entity,
+        _ROUND_ENTRY_KIND[kind],
+        combat_log,
+        narrative,
+        turn_name=turn_name,
     )
 
 
@@ -555,6 +561,7 @@ def record_aborted_loop(
     kind: RoundKind,
     loop_id: str,
     reason: str,
+    turn_name: Optional[str] = None,
 ) -> None:
     """把未完成的 loop 记进记忆与回合日志：过程原样保留，只补系统说明。
 
@@ -577,10 +584,12 @@ def record_aborted_loop(
     round_entity = current_combat_round_entity(game)
     assert round_entity is not None, "current_combat_round_entity 不应为 None"
     record_round_entry(
+        game,
         round_entity,
         RoundEntryKind.FAILED,
         f"[{kind}] {loop_id} 结算未完成：{reason}",
         "（结算未完成，本回合无变化）",
+        turn_name=turn_name,
     )
 
 

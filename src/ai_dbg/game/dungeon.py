@@ -17,6 +17,7 @@ from ..models import (
 from .combat.state import (
     combat_view,
     current_combat_round,
+    current_combat_turn,
     get_combat_entity_for_room,
 )
 from .context import DBGGame
@@ -108,6 +109,12 @@ def current_combat_entity(dbg_game: DBGGame) -> Entity:
 def current_combat_round_entity(dbg_game: DBGGame) -> Optional[Entity]:
     """返回当前战斗的当前回合实体。"""
     return current_combat_round(dbg_game, current_combat_entity(dbg_game))
+
+
+###############################################################################################################################################
+def current_combat_turn_entity(dbg_game: DBGGame) -> Optional[Entity]:
+    """返回当前战斗的当前行动槽实体。"""
+    return current_combat_turn(dbg_game, current_combat_entity(dbg_game))
 
 
 ###############################################################################################################################################

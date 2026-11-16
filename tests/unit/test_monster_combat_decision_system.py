@@ -34,7 +34,6 @@ from ai_dbg.models import (
     PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
-    RoundStatsComponent,
     TargetType,
     ToolMessage,
 )
@@ -68,7 +67,6 @@ def _make_entity(game: Any, name: str, *, monster: bool) -> Entity:
     entity.add(HandComponent, name, [])
     if monster:
         entity.add(MonsterComponent, name)
-        entity.add(RoundStatsComponent, name, 2)
         entity.add(MonsterTurnAction, name)
     else:
         entity.add(PartyMemberComponent, name)
@@ -154,7 +152,7 @@ async def _run(
     game, monster, opponent = scene
     outputs: List[str] = []
 
-    mp.setattr(f"{_MODULE}.get_energy", lambda entity: energy)
+    mp.setattr(f"{_MODULE}.get_turn_energy", lambda turn: energy)
     mp.setattr(
         f"{_MODULE}.get_alive_party_members_in_stage",
         lambda entity, game: {opponent},

@@ -5,10 +5,10 @@ from ...models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
+    CombatTurnComponent,
     DeathComponent,
     EquippedGearComponent,
     HandComponent,
-    RoundStatsComponent,
     compute_effective_stats,
     compute_hand_block,
 )
@@ -68,20 +68,25 @@ def mark_dead(entity: Entity) -> CharacterStats:
     return compute_character_stats(entity)
 
 
-def get_energy(entity: Entity) -> int:
-    """获取角色实体的当前回合剩余行动次数（RoundStatsComponent.energy）。"""
-    round_stats = entity.get(RoundStatsComponent)
-    return round_stats.energy if round_stats is not None else 0
+def get_turn_energy(turn_entity: Entity) -> int:
+    """获取行动槽实体当前剩余行动力。"""
+    turn_comp = turn_entity.get(CombatTurnComponent)
+    return turn_comp.energy
 
 
-def consume_energy(entity: Entity, amount: int = 1) -> None:
-    """消耗角色实体指定点数的 energy。"""
-    assert entity.has(RoundStatsComponent), f"{entity.name} 缺少 RoundStatsComponent"
+def consume_turn_energy(turn_entity: Entity, amount: int = 1) -> None:
+    """消耗行动槽实体指定点数的 energy。"""
+    turn_comp = turn_entity.get(CombatTurnComponent)
     assert (
-        get_energy(entity) > 0
-    ), f"{entity.name} 能量不足！当前 energy={get_energy(entity)}"
-    entity.replace(
-        RoundStatsComponent,
-        entity.name,
-        max(0, get_energy(entity) - amount),
+        turn_comp.energy > 0
+    ), f"{turn_entity.name} 能量不足！当前 energy={turn_comp.energy}"
+    turn_entity.replace(
+        CombatTurnComponent,
+        turn_comp.name,
+        turn_comp.combat_name,
+        turn_comp.round_name,
+        turn_comp.actor_name,
+        turn_comp.order_index,
+        turn_comp.status,
+        max(0, turn_comp.energy - amount),
     )

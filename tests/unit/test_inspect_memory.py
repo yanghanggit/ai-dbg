@@ -189,13 +189,6 @@ class TestFormatPiles:
         assert "DrawPileComponent.cards (0)" in "\n".join(lines)
         assert "DrawPileComponent.retained_cards (0)" in "\n".join(lines)
 
-    def test_energy_is_rendered(self) -> None:
-        from scripts.inspect_memory import _format_piles
-
-        lines = _format_piles({"RoundStatsComponent": {"energy": 2}})
-
-        assert "energy=2" in "\n".join(lines)
-
     def test_filter_skips_agents_without_match(self, tmp_path: Path) -> None:
         """过滤模式下没有命中的 agent 完全不打印（不留空标题）。"""
         _write_memory(

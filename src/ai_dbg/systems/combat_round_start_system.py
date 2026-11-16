@@ -10,7 +10,6 @@ from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
     compute_character_stats,
     get_alive_actors_in_stage,
-    get_energy,
 )
 from ..game.combat.state import (
     combat_rounds,
@@ -30,12 +29,9 @@ from ..game.entities import (
 from ..models import (
     CharacterStatsComponent,
     CombatRoundComponent,
-    DeathComponent,
-    # DEFAULT_ROUND_ENERGY,
     DrawCardsAction,
     DungeonComponent,
     IdentityComponent,
-    RoundStatsComponent,
 )
 
 
@@ -99,9 +95,10 @@ class CombatRoundStartSystem(ReactiveProcessor):
         # 状态守卫②：已有进行中的回合（未完成）→ 不重复创建
         combat_entity = current_combat_entity(self._game)
         latest_round = latest_combat_round(self._game, combat_entity)
-        if latest_round is not None and not latest_round.get(
-            CombatRoundComponent
-        ).is_completed:
+        if (
+            latest_round is not None
+            and not latest_round.get(CombatRoundComponent).is_completed
+        ):
             logger.debug("当前已有未完成回合，跳过回合创建")
             return
 
@@ -128,9 +125,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
         assert stage_entity.has(DungeonComponent), "stage_entity 没有 DungeonComponent"
 
         round_number = len(combat_rounds(self._game, combat_entity)) + 1
-        self._reset_round_stats(actors_in_stage)
 
-        # 快照必须在重置 RoundStatsComponent 之后构建，确保本回合行动力已生效
         match self._strategy:
             case ActionOrderStrategy.RANDOM:
                 snapshot_entities = self._shuffled_actors_by_round(actors_in_stage)
@@ -154,44 +149,23 @@ class CombatRoundStartSystem(ReactiveProcessor):
         logger.info(f"创建第 {round_number} 回合，行动顺序: {action_order}")
 
     ############################################################################################################
-    def _reset_round_stats(self, actors: set[Entity]) -> None:
-        """重置所有参战角色的 RoundStatsComponent，准备开启新回合。"""
-        assert current_dungeon_combat(
-            self._game
-        ).is_ongoing, "当前战斗未进行中，无法开始新回合"
-
-        combat_entity = current_combat_entity(self._game)
-        last_round = latest_combat_round(self._game, combat_entity)
-        if last_round is not None:
-            assert last_round.get(
-                CombatRoundComponent
-            ).is_completed, "上一回合尚未完成，无法创建新回合"
-
-        for actor in actors:
-            assert not actor.has(
-                RoundStatsComponent
-            ), f"{actor.name} 已存在 RoundStatsComponent"
-            assert not actor.has(DeathComponent), f"{actor.name} 已死亡，不应参与新回合"
-            actor.replace(RoundStatsComponent, actor.name, 2)
-
-    ############################################################################################################
     def _shuffled_actors_by_round(self, actors: Set[Entity]) -> List[Entity]:
-        """从给定的角色集合中，筛选本回合仍有行动力的角色并随机打乱顺序。"""
-        eligible: List[Entity] = [entity for entity in actors if get_energy(entity) > 0]
+        """把本回合参战角色随机打乱顺序。"""
+        eligible: List[Entity] = list(actors)
         random.shuffle(eligible)
         return eligible
 
     ############################################################################################################
     def _sorted_actors_by_creation_order(self, actors: Set[Entity]) -> List[Entity]:
-        """从给定的角色集合中，筛选本回合仍有行动力的角色并按创建顺序升序排列。"""
-        eligible: List[Entity] = [entity for entity in actors if get_energy(entity) > 0]
+        """把本回合参战角色按创建顺序升序排列。"""
+        eligible: List[Entity] = list(actors)
         eligible.sort(key=lambda entity: entity.get(IdentityComponent).creation_order)
         return eligible
 
     ############################################################################################################
     def _sorted_actors_by_speed(self, actors: Set[Entity]) -> List[Entity]:
-        """筛选本回合仍有行动力的角色，按有效速度降序排列；速度相同按创建顺序升序（先创建先出手）。"""
-        eligible: List[Entity] = [entity for entity in actors if get_energy(entity) > 0]
+        """把本回合参战角色按有效速度降序排列；速度相同按创建顺序升序（先创建先出手）。"""
+        eligible: List[Entity] = list(actors)
         eligible.sort(
             key=lambda entity: (
                 -compute_character_stats(entity).speed,

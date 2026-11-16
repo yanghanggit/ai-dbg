@@ -7,17 +7,18 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
-    consume_energy,
+    consume_turn_energy,
     get_current_turn_actor,
-    get_energy,
+    get_turn_energy,
 )
 from ..game.combat.state import (
-    append_round_completed_actor,
-    set_round_current_actor,
+    advance_current_turn,
+    mark_turn_completed,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -29,11 +30,10 @@ from ..game.messaging import (
 )
 from ..models import (
     ActorComponent,
-    CombatRoundComponent,
+    CombatTurnComponent,
     HandComponent,
     NoneEvent,
     PassTurnAction,
-    RoundStatsComponent,
 )
 from ..utils import prompt_builder
 
@@ -66,7 +66,6 @@ class PassTurnActionSystem(ReactiveProcessor):
             entity.has(PassTurnAction)
             and entity.has(HandComponent)
             and entity.has(ActorComponent)
-            and entity.has(RoundStatsComponent)
         )
 
     ####################################################################################################################################
@@ -90,10 +89,15 @@ class PassTurnActionSystem(ReactiveProcessor):
         ), "PassTurnActionSystem: current_rounds is None"
 
         last_round_entity = current_combat_round_entity(self._game)
+        current_turn_entity = current_combat_turn_entity(self._game)
         assert (
             last_round_entity is not None
         ), "PassTurnActionSystem: latest_round_entity is None"
-        last_round = last_round_entity.get(CombatRoundComponent)
+        assert (
+            current_turn_entity is not None
+        ), "PassTurnActionSystem: current_turn_entity is None"
+        last_round = current_dungeon_combat(self._game).latest_round
+        assert last_round is not None, "PassTurnActionSystem: latest_round is None"
 
         pass_turn_action = entity.get(PassTurnAction)
         logger.debug(f"  [{pass_turn_action.name}] 选择过牌（跳过出牌机会）")
@@ -102,21 +106,24 @@ class PassTurnActionSystem(ReactiveProcessor):
             self._game, last_round
         ), f"PassTurnActionSystem: 过牌角色 {entity.name} 不是当前 turn 的行动者！ current_turn_actor={get_current_turn_actor(self._game, last_round)}"
 
-        # 消耗过牌角色的剩余全部行动能量（若有）；completed_actors 仅按 pass turn 决策次数追加一次，
-        # 与 energy 是否耗尽无关——是否轮到下一角色完全由 completed_actors 决定（见 get_current_turn_actor）
-        cur_energy = get_energy(entity)
+        # 消耗过牌角色的剩余全部行动能量（若有）；是否轮到下一角色完全由行动槽状态决定。
+        cur_energy = get_turn_energy(current_turn_entity)
         logger.debug(f"  {entity.name} 当前剩余行动能量: {cur_energy}，消耗后变为 0")
         if cur_energy > 0:
-            consume_energy(entity, cur_energy)
+            consume_turn_energy(current_turn_entity, cur_energy)
 
-        # 将过牌角色加入本回合已完成行动的角色列表，确保下一角色的回合判定正确
-        append_round_completed_actor(last_round_entity, pass_turn_action.name)
-        last_round = last_round_entity.get(CombatRoundComponent)
-
-        # 结束当前角色的回合，进入下一角色的回合
-        next_actor = get_current_turn_actor(self._game, last_round)
-        set_round_current_actor(last_round_entity, next_actor)
-        last_round = last_round_entity.get(CombatRoundComponent)
+        # 标记当前行动槽完成，并把行动权推进到下一个可用槽。
+        mark_turn_completed(current_turn_entity)
+        next_turn_entity = advance_current_turn(self._game, last_round_entity)
+        next_actor = (
+            next_turn_entity.get(CombatTurnComponent).actor_name
+            if next_turn_entity is not None
+            else None
+        )
+        last_round = current_dungeon_combat(self._game).latest_round
+        assert (
+            last_round is not None
+        ), "PassTurnActionSystem: 刷新后 latest_round is None"
         logger.debug(f"advance_turn: current_turn_actor_name updated to {next_actor}")
 
         # 输出当前回合状态日志

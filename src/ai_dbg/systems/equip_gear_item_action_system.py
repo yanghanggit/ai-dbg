@@ -138,6 +138,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
         round_entity = current_combat_round_entity(self._game)
         if round_entity is not None:
             record_round_entry(
+                self._game,
                 round_entity,
                 RoundEntryKind.GEAR,
                 f"[{entity.name} 装备 {item.name}] 生成手牌「{'、'.join(card_names)}」",

@@ -11,11 +11,12 @@ from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
     get_current_turn_actor,
-    get_energy,
+    get_turn_energy,
     resolve_targets,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
     is_player_in_dungeon_stage,
@@ -205,8 +206,11 @@ async def activate_play_cards_specified(
     if not selected_card.playable:
         return False, "该卡牌不可出牌"
 
-    # 检查角色当前 energy 是否足以支付卡牌费用，不足则禁止出牌。
-    current_energy = get_energy(entity)
+    # 检查当前行动槽 energy 是否足以支付卡牌费用，不足则禁止出牌。
+    current_turn_entity = current_combat_turn_entity(dbg_game)
+    if current_turn_entity is None:
+        return False, "当前没有行动槽，无法出牌"
+    current_energy = get_turn_energy(current_turn_entity)
     if current_energy < selected_card.cost:
         return (
             False,

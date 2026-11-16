@@ -8,8 +8,10 @@ from overrides import override
 
 from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ..game.combat.state import turn_name_for_actor
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -234,6 +236,12 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
         ), f"TurnEndArbitrationSystem: 无法找到 {pass_turn_entity.name} 所在的场景实体"
 
         current_round_number = len(current_dungeon_combat(self._game).rounds or [])
+        current_round_entity = current_combat_round_entity(self._game)
+        turn_name = (
+            turn_name_for_actor(self._game, current_round_entity, pass_turn_entity.name)
+            if current_round_entity is not None
+            else None
+        )
 
         turn_end_cards = self._collect_hand_turn_end_cards(pass_turn_entity)
         if not turn_end_cards:
@@ -308,6 +316,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
                 kind=RoundKind.TURN_END,
                 loop_id=loop_id,
                 reason=f"agent_loop 异常：{e}",
+                turn_name=turn_name,
             )
             return
 
@@ -321,6 +330,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
                 kind=RoundKind.TURN_END,
                 loop_id=loop_id,
                 reason="模型未在轮次上限内提交结算结果（未调用 submit_arbitration）",
+                turn_name=turn_name,
             )
             return
 
@@ -341,6 +351,7 @@ class TurnEndArbitrationSystem(ReactiveProcessor):
             kind=RoundKind.TURN_END,
             title_label=f"{pass_turn_entity.name} 回合结束仲裁",
             combat_log=combat_log,
+            turn_name=turn_name,
         )
 
         compress_loop_to_summary(

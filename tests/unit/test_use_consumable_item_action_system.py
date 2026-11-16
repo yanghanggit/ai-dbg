@@ -12,12 +12,15 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import combat_rounds, create_combat_round
+from ai_dbg.game.combat.state import (
+    combat_round_view,
+    combat_rounds,
+    create_combat_round,
+)
 from ai_dbg.game.dungeon import current_combat_entity
 from ai_dbg.models import (
     ActorComponent,
     Card,
-    CombatRoundComponent,
     CombatState,
     ConsumableItem,
     HandComponent,
@@ -296,7 +299,7 @@ class TestReact:
         round_entity = current_round_entity(mock_game)
         consumable_entries = [
             entry
-            for entry in round_entity.get(CombatRoundComponent).entries
+            for entry in combat_round_view(mock_game, round_entity).entries
             if entry.kind == RoundEntryKind.CONSUMABLE
         ]
         assert len(consumable_entries) == 1

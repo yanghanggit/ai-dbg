@@ -5,9 +5,12 @@ from typing import Any, List, Optional
 
 from ai_dbg.entitas import Entity
 from ai_dbg.game.combat.state import (
+    combat_round_entries,
     combat_rounds,
+    combat_turns,
     create_combat,
     create_combat_round,
+    current_combat_turn,
     mark_round_completed,
     mark_round_draw_completed,
 )
@@ -186,3 +189,20 @@ def current_round_entity(game: Any) -> Entity:
     round_entity = current_combat_round_entity(game)
     assert round_entity is not None, "当前战斗没有回合"
     return round_entity
+
+
+def current_turn_entity(game: Any) -> Entity:
+    """测试辅助：返回当前行动槽实体。"""
+    turn_entity = current_combat_turn(game, current_combat_entity(game))
+    assert turn_entity is not None, "当前战斗没有当前行动槽"
+    return turn_entity
+
+
+def current_round_turns(game: Any) -> List[Entity]:
+    """测试辅助：返回当前回合的全部行动槽实体。"""
+    return combat_turns(game, current_round_entity(game))
+
+
+def current_round_entries(game: Any) -> List[Entity]:
+    """测试辅助：返回当前回合的全部记录实体。"""
+    return combat_round_entries(game, current_round_entity(game))

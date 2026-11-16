@@ -13,6 +13,7 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
@@ -23,11 +24,9 @@ from ai_dbg.models import (
     Card,
     CharacterStats,
     CharacterStatsComponent,
-    CombatRoundComponent,
     HumanMessage,
     PlayCardsAction,
     RoundEntryKind,
-    RoundStatsComponent,
     StageComponent,
     SystemMessage,
     TargetType,
@@ -52,7 +51,6 @@ def _make_actor(context: Context, name: str, card: Card, targets: List[str]) -> 
     entity._name = name
     entity.add(ActorComponent, name, "场景.测试密室")
     entity.add(PlayCardsAction, name, card, targets)
-    entity.add(RoundStatsComponent, name, 2)
     entity.add(
         CharacterStatsComponent,
         name,
@@ -211,7 +209,7 @@ class TestLoopMemoryCompression:
         assert getattr(summary, LOOP_END_ATTR) == loop_id
 
         # 落库先于压缩：HP 落库与回合记录均已发生
-        entries = current_round_entity(mock_game).get(CombatRoundComponent).entries
+        entries = combat_round_view(mock_game, current_round_entity(mock_game)).entries
         assert len(entries) == 1
 
     @pytest.mark.asyncio
@@ -248,7 +246,7 @@ class TestLoopMemoryCompression:
         assert getattr(notice, LOOP_ID_ATTR) == getattr(notice, LOOP_END_ATTR)
 
         # 回合日志留下失败痕迹（kind=failed，中性可展示文案）
-        entries = current_round_entity(mock_game).get(CombatRoundComponent).entries
+        entries = combat_round_view(mock_game, current_round_entity(mock_game)).entries
         assert len(entries) == 1
         assert entries[0].kind == RoundEntryKind.FAILED
         assert "play_cards:1:角色.无名:斩击#" in entries[0].log

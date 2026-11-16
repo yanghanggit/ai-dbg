@@ -16,11 +16,12 @@ from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
     compute_character_stats,
     get_alive_party_members_in_stage,
-    get_energy,
+    get_turn_energy,
     resolve_targets,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -410,7 +411,9 @@ def _handle_submit_decision(
         ctx.blocked_card, ctx.blocked_cause = selected_card, blocked_cause
         return f"错误：「{selected_card.name}」{blocked_cause}（playable=False），只能留在手牌中。请换一张，或提交 pass_turn=true。"
 
-    energy = get_energy(entity)
+    current_turn_entity = current_combat_turn_entity(game)
+    assert current_turn_entity is not None, "当前怪物行动槽不存在"
+    energy = get_turn_energy(current_turn_entity)
     if energy < selected_card.cost:
         ctx.blocked_card = selected_card
         ctx.blocked_cause = (
@@ -551,10 +554,12 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             latest_round.completed_actors if latest_round else []
         )
 
+        current_turn_entity = current_combat_turn_entity(self._game)
+        assert current_turn_entity is not None, "当前怪物行动槽不存在"
         return _build_monster_decision_prompt(
             monster_name=entity.name,
             monster_stats=compute_character_stats(entity),
-            energy=get_energy(entity),
+            energy=get_turn_energy(current_turn_entity),
             hand_cards=hand_comp.cards,
             opponents=opponents,
             action_order=action_order,

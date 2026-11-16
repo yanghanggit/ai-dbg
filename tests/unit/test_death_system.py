@@ -11,11 +11,11 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
-    CombatRoundComponent,
     DeathComponent,
 )
 from ai_dbg.systems.death_system import DeathSystem
@@ -66,8 +66,7 @@ async def test_current_actor_death_advances_pointer() -> None:
 
     assert dying.has(DeathComponent)
     assert (
-        current_round_entity(game).get(CombatRoundComponent).current_actor
-        == "角色.无名"
+        combat_round_view(game, current_round_entity(game)).current_actor == "角色.无名"
     )
     # 死亡通知带结构化标记
     death_message = game.world.agent_memories["角色.坏运气"].messages[-1]
@@ -89,7 +88,7 @@ async def test_non_current_actor_death_keeps_pointer() -> None:
 
     assert dying.has(DeathComponent)
     assert (
-        current_round_entity(game).get(CombatRoundComponent).current_actor
+        combat_round_view(game, current_round_entity(game)).current_actor
         == "角色.坏运气"
     )
 
@@ -107,4 +106,4 @@ async def test_pointer_becomes_none_when_no_alive_actor_left() -> None:
 
     await DeathSystem(game).execute()
 
-    assert current_round_entity(game).get(CombatRoundComponent).current_actor is None
+    assert combat_round_view(game, current_round_entity(game)).current_actor is None
