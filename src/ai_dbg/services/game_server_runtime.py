@@ -1,7 +1,7 @@
 """进程级 GameServer 的运行时访问。
 
 HTTP 路径用 ``game_server_dependencies.CurrentGameServer``（Request 上下文）；
-无 Request 的运行时上下文（当前为后台任务）用 ``get_runtime_game_server``。
+无 Request 的运行时上下文（当前为后台 job）用 ``get_runtime_game_server``。
 实例由应用启动时的 ``lifespan`` 显式绑定。
 """
 

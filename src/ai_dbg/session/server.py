@@ -9,7 +9,7 @@
   是单事件循环下的原子只读操作。
 * 房间**内部状态**的一致性由 ``PlayerRoom`` 自己的锁负责，统一通过
   ``async with game_server.acquire(user_name) as room:`` 进入。
-* 移除房间时 ``remove_room`` 会等待该房间进行中的事务结束再关闭，避免后台任务
+* 移除房间时 ``remove_room`` 会等待该房间进行中的事务结束再关闭，避免后台 job
   与登出并发写坏状态。
 
 注意：注册表是进程内内存态，因此本服务不支持多 worker / 多进程部署。
@@ -21,6 +21,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, List, Optional
 
+from ..job_context import get_current_job
 from .room import PlayerRoom
 
 
@@ -93,7 +94,7 @@ class GameServer:
         """移除并关闭指定玩家的房间。
 
         先从注册表摘除（后续 ``get_room`` 立即不可见），再等待该房间进行中的事务
-        结束后关闭它，确保不会在任务运行时清空状态。房间不存在时返回 ``None``。
+        结束后关闭它，确保不会在 job 运行时清空状态。房间不存在时返回 ``None``。
         """
 
         async with self._lock:
@@ -138,7 +139,7 @@ class GameServer:
     async def acquire(self, user_name: str) -> AsyncGenerator[PlayerRoom, None]:
         """获取房间并在其事务锁内执行；房间不存在时抛 ``RoomNotFoundError``。
 
-        这是进入房间临界区的**统一入口**，后台任务应优先使用它，避免重复
+        这是进入房间临界区的**统一入口**，后台 job 应优先使用它，避免重复
         ``get_room`` + 手动取锁。
         """
         room = self.get_room(user_name)
@@ -148,6 +149,9 @@ class GameServer:
 
         # 获取到房间实例，准备进入事务锁临界区
         async with room.transaction():
+            job = get_current_job()
+            if job is not None:
+                job.bind_room(room)
             yield room
 
     ###############################################################################################################################################

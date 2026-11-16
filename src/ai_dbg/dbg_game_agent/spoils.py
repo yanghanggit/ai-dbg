@@ -56,7 +56,7 @@ async def generate_spoils_game(
         return terminal_game
 
     # 推动房间管道处理，让 GenerateSpoilsActionSystem 响应并生成奖励
-    await terminal_game.pipeline.process()
+    await terminal_game.pipeline.process(None)
 
     # 零产出：设计会话出错时不会写入 SpoilsComponent（出错就没有结果），可重试
     if not party_has_any_spoils(terminal_game):
@@ -94,7 +94,7 @@ async def pick_spoils_card_game(
         return terminal_game
 
     # 推动房间管道处理，让 PickSpoilsActionSystem 响应并把选中卡加入牌库
-    await terminal_game.pipeline.process()
+    await terminal_game.pipeline.process(None)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

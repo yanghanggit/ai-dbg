@@ -30,18 +30,18 @@ from ..models import (
 from .dungeon_combat_actions import (
     collect_loot,
 )
-from .dungeon_combat_tasks import (
-    execute_draw_cards_task,
-    execute_equip_gear_task,
-    execute_init_combat_task,
-    execute_pass_turn_task,
-    execute_play_cards_task,
-    execute_retreat_task,
-    execute_use_consumable_task,
+from .dungeon_combat_jobs import (
+    execute_draw_cards_job,
+    execute_equip_gear_job,
+    execute_init_combat_job,
+    execute_pass_turn_job,
+    execute_play_cards_job,
+    execute_retreat_job,
+    execute_use_consumable_job,
 )
 from .dungeon_lifecycle_api import _validate_dungeon_prerequisites
 from .game_server_dependencies import CurrentGameServer
-from .task_dispatch import defer_room_task
+from .job_dispatch import defer_room_job
 
 ###################################################################################################################################################################
 dungeon_combat_api_router = APIRouter()
@@ -92,14 +92,14 @@ async def dungeon_combat_retreat(
             detail="只能在战斗进行中撤退",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(execute_retreat_task, user_name=payload.user_name)
-    logger.info(f"📝 创建撤退任务: job_id={job_id}, user={payload.user_name}")
+    # 派发 job
+    job_id = await defer_room_job(execute_retreat_job, user_name=payload.user_name)
+    logger.info(f"📝 创建 撤退 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回撤退任务启动成功的响应
+    # 返回撤退 job 启动成功的响应
     return DungeonCombatRetreatResponse(
         job_id=job_id,
-        message="撤退任务已启动，请通过会话消息查询结果",
+        message="撤退 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -150,16 +150,14 @@ async def dungeon_combat_init(
             detail="战斗未处于开始阶段",
         )
 
-    # 派发战斗初始化任务
-    job_id = await defer_room_task(
-        execute_init_combat_task, user_name=payload.user_name
-    )
-    logger.info(f"📝 创建战斗初始化任务: job_id={job_id}, user={payload.user_name}")
+    # 派发战斗初始化 job
+    job_id = await defer_room_job(execute_init_combat_job, user_name=payload.user_name)
+    logger.info(f"📝 创建 战斗初始化 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回战斗初始化任务启动成功的响应
+    # 返回战斗初始化 job 启动成功的响应
     return DungeonCombatInitResponse(
         job_id=job_id,
-        message="战斗初始化任务已启动，请通过会话消息查询结果",
+        message="战斗初始化 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -265,14 +263,14 @@ async def dungeon_combat_draw_cards(
             detail="战斗未在进行中",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(execute_draw_cards_task, user_name=payload.user_name)
-    logger.info(f"📝 创建全员抽卡任务: job_id={job_id}, user={payload.user_name}")
+    # 派发 job
+    job_id = await defer_room_job(execute_draw_cards_job, user_name=payload.user_name)
+    logger.info(f"📝 创建 全员抽卡 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回全员抽卡任务启动成功的响应
+    # 返回全员抽卡 job 启动成功的响应
     return DungeonCombatDrawCardsResponse(
         job_id=job_id,
-        message="全员抽卡任务已启动，请通过会话消息查询结果",
+        message="全员抽卡 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -331,21 +329,21 @@ async def dungeon_combat_play_cards(
             detail="当前没有未完成的回合可供打牌",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(
-        execute_play_cards_task,
+    # 派发 job
+    job_id = await defer_room_job(
+        execute_play_cards_job,
         user_name=payload.user_name,
         actor_name=payload.actor_name,
         card_name=payload.card_name,
         targets=payload.targets,
     )
 
-    logger.info(f"📝 创建出牌任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 出牌 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回出牌任务启动成功的响应
+    # 返回出牌 job 启动成功的响应
     return DungeonCombatPlayCardsResponse(
         job_id=job_id,
-        message="出牌任务已启动，请通过会话消息查询结果",
+        message="出牌 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -402,19 +400,19 @@ async def dungeon_combat_pass_turn(
             detail="当前没有未完成的回合可供过牌",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(
-        execute_pass_turn_task,
+    # 派发 job
+    job_id = await defer_room_job(
+        execute_pass_turn_job,
         user_name=payload.user_name,
         actor_name=payload.actor_name,
     )
 
-    logger.info(f"📝 创建过牌任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 过牌 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回过牌任务启动成功的响应
+    # 返回过牌 job 启动成功的响应
     return DungeonCombatPassTurnResponse(
         job_id=job_id,
-        message="过牌任务已启动，请通过会话消息查询结果",
+        message="过牌 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -475,19 +473,19 @@ async def dungeon_combat_use_consumable(
             detail="当前没有未完成的回合",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(
-        execute_use_consumable_task,
+    # 派发 job
+    job_id = await defer_room_job(
+        execute_use_consumable_job,
         user_name=payload.user_name,
         item_name=payload.item_name,
     )
 
-    logger.info(f"📝 创建使用消耗品任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 使用消耗品 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回使用消耗品任务启动成功的响应
+    # 返回使用消耗品 job 启动成功的响应
     return DungeonCombatUseConsumableItemResponse(
         job_id=job_id,
-        message="使用消耗品任务已启动，请通过会话消息查询结果",
+        message="使用消耗品 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -501,7 +499,7 @@ async def dungeon_combat_equip_gear(
     game_server: CurrentGameServer,
 ) -> DungeonCombatEquipGearItemResponse:
     """副本战斗使用装备接口。
-    触发玩家在战斗中使用背包内装备的任务，立即返回任务ID。
+    触发玩家在战斗中使用背包内装备的 job，立即返回 job id。
     """
 
     logger.info(
@@ -546,19 +544,19 @@ async def dungeon_combat_equip_gear(
             detail="当前没有未完成的回合",
         )
 
-    # 派发任务
-    job_id = await defer_room_task(
-        execute_equip_gear_task,
+    # 派发 job
+    job_id = await defer_room_job(
+        execute_equip_gear_job,
         user_name=payload.user_name,
         item_name=payload.item_name,
     )
 
-    logger.info(f"📝 创建使用装备任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 使用装备 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回使用装备任务启动成功的响应
+    # 返回使用装备 job 启动成功的响应
     return DungeonCombatEquipGearItemResponse(
         job_id=job_id,
-        message="使用装备任务已启动，请通过会话消息查询结果",
+        message="使用装备 job 已启动，请通过会话消息查询结果",
     )
 
 

@@ -9,9 +9,9 @@ from .blueprint import Blueprint
 from .combat import CombatView
 from .dungeon import Dungeon
 from .dungeon_room import DungeonRoomType
+from .job import JobEvent, JobSnapshot
 from .player_session import PlayerSessionInfo
 from .session_message import SessionMessage
-from .task import TaskSnapshot
 
 
 @final
@@ -430,8 +430,14 @@ class SessionMessageResponse(BaseModel):
 
 
 @final
-class TaskStatusListResponse(BaseModel):
-    tasks: List[TaskSnapshot]
+class JobStatusListResponse(BaseModel):
+    jobs: List[JobSnapshot]
+
+
+@final
+class JobEventsResponse(BaseModel):
+    job_id: int
+    events: List[JobEvent]
 
 
 @final

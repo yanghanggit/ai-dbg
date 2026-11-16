@@ -16,7 +16,8 @@
   → 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 - 新局只替换游戏实例，沿用同一会话；登出、房间回收与游戏回滚都不清理会话历史。
 - 增量查询以用户级事件序号为游标；历史持续增长时的分页、归档与查询能力属于存储层职责，不改变事件语义。
-- 未来的 job 执行日志与会话历史是两种日志：前者记录一次执行的技术过程，后者记录玩家可见的领域历史；两者通过 job 标识关联，不合并。
+- job 执行日志与会话历史是两种日志：前者记录一次执行的技术过程，后者记录玩家可见的领域历史；两者通过 job 标识关联，不合并。
+  → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 
 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
 → 参见：[DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](run-agent-api.md)

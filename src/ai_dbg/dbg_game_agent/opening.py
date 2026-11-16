@@ -31,7 +31,7 @@ async def init_opening_game(
         return terminal_game
 
     # 推动全局 pipeline（各 system 自守卫；开场初始化按消息标记幂等）
-    await terminal_game.pipeline.process()
+    await terminal_game.pipeline.process(None)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

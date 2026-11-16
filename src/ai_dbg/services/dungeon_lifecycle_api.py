@@ -29,14 +29,14 @@ from .dungeon_advance_action import (
 from .dungeon_enter_action import (
     enter_dungeon,
 )
-from .dungeon_lifecycle_tasks import (
-    execute_exit_dungeon_task,
+from .dungeon_lifecycle_jobs import (
+    execute_exit_dungeon_job,
 )
 from .dungeon_setup_action import (
     setup_dungeon,
 )
 from .game_server_dependencies import CurrentGameServer
-from .task_dispatch import defer_room_task
+from .job_dispatch import defer_room_job
 
 ###################################################################################################################################################################
 dungeon_lifecycle_api_router = APIRouter()
@@ -241,16 +241,14 @@ async def dungeon_exit(
                 detail="只能在战斗结束后回家",
             )
 
-    # 派发退出副本任务
-    job_id = await defer_room_task(
-        execute_exit_dungeon_task, user_name=payload.user_name
-    )
-    logger.info(f"📝 创建退出副本任务: job_id={job_id}, user={payload.user_name}")
+    # 派发退出副本 job
+    job_id = await defer_room_job(execute_exit_dungeon_job, user_name=payload.user_name)
+    logger.info(f"📝 创建 退出副本 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回退出副本任务启动成功的响应
+    # 返回退出副本 job 启动成功的响应
     return DungeonExitResponse(
         job_id=job_id,
-        message="退出副本任务已启动，请通过会话消息查询结果",
+        message="退出副本 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -284,13 +282,13 @@ async def dungeon_start(
             game_server=game_server,
         )
 
-        # 第一步：从文件加载副本并创建实体（幂等）
+        # 第一步：从文件加载副本并创建 实体（幂等）
         success, error_detail = setup_dungeon(rpg_game, payload.dungeon_name)
         if not success:
-            logger.error(f"玩家 {payload.user_name} 副本实体创建失败: {error_detail}")
+            logger.error(f"玩家 {payload.user_name} 副本实体创建 失败: {error_detail}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="副本实体创建失败",
+                detail="副本实体创建 失败",
             )
 
         # 第二步：组建队伍并进入第一关

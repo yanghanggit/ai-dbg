@@ -8,7 +8,7 @@
 from loguru import logger
 
 from .card_prototype import CardPrototypeDB
-from .task_error import TaskErrorDB
+from .job_event import JobEventDB
 from .vector_document import VectorDocumentDB
 
 # 导入所有数据库模型以确保它们被注册到Base.metadata中
@@ -16,7 +16,7 @@ from .vector_document import VectorDocumentDB
 __all__ = [
     "VectorDocumentDB",
     "CardPrototypeDB",
-    "TaskErrorDB",
+    "JobEventDB",
     "register_all_models",
 ]
 
@@ -29,4 +29,4 @@ def register_all_models() -> None:
     """
 
     logger.debug("数据库模型注册完成")
-    logger.debug(f"已注册模型: VectorDocumentDB, CardPrototypeDB, TaskErrorDB")
+    logger.debug(f"已注册模型: VectorDocumentDB, CardPrototypeDB, JobEventDB")

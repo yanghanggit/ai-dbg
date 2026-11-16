@@ -1,5 +1,5 @@
 """
-副本战斗任务模块
+副本战斗 job 模块
 """
 
 from typing import List
@@ -16,8 +16,9 @@ from ..game.entities import (
     get_actor_entity,
 )
 from ..game.persistence.store import store_game_async
+from ..job_context import get_current_job
 from ..models import MonsterComponent
-from ..pgsql import procrastinate_app, save_task_error
+from ..pgsql import procrastinate_app
 from .dungeon_combat_actions import (
     activate_all_card_draws,
     activate_equip_gear,
@@ -28,22 +29,24 @@ from .dungeon_combat_actions import (
     activate_use_consumable,
 )
 from .game_server_runtime import get_runtime_game_server
+from .job_runtime import job_task
 
 
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_init_combat_task(
+@job_task(action="init_combat")
+async def execute_init_combat_job(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行战斗初始化任务"""
+    """执行战斗初始化 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 战斗初始化任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 战斗初始化 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -65,18 +68,17 @@ async def execute_init_combat_task(
                 raise ValueError("战斗未处于开始阶段")
 
             # 推进战斗流程处理战斗初始化
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储战斗初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 战斗初始化任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 战斗初始化 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
         logger.error(
-            f"❌ 战斗初始化任务失败: job_id={job_id}, user={user_name}, error={e}"
+            f"❌ 战斗初始化 job 失败: job_id={job_id}, user={user_name}, error={e}"
         )
-        save_task_error(job_id, str(e))
         raise
 
 
@@ -84,16 +86,17 @@ async def execute_init_combat_task(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_retreat_task(
+@job_task(action="retreat")
+async def execute_retreat_job(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行撤退任务"""
+    """执行撤退 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 撤退任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 撤退 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -116,7 +119,7 @@ async def execute_retreat_task(
                 raise ValueError(message)
 
             # 执行战斗流程让 CombatOutcomeSystem 检测到角色死亡并判定失败
-            await rpg_game.pipeline.execute()
+            await rpg_game.pipeline.execute(get_current_job())
 
             # 确认已进入 post_combat 状态
             if not current_dungeon_combat(rpg_game).is_post_combat:
@@ -128,12 +131,11 @@ async def execute_retreat_task(
             await store_game_async(rpg_game)
 
         logger.info(
-            f"✅ 撤退任务完成: job_id={job_id}, user={user_name}, 战斗已标记为失败。请调用 /api/dungeon/exit/v1/ 返回大厅。"
+            f"✅ 撤退 job 完成: job_id={job_id}, user={user_name}, 战斗已标记为失败。请调用 /api/dungeon/exit/v1/ 返回大厅。"
         )
 
     except Exception as e:
-        logger.error(f"❌ 撤退任务失败: job_id={job_id}, user={user_name}, error={e}")
-        save_task_error(job_id, str(e))
+        logger.error(f"❌ 撤退 job 失败: job_id={job_id}, user={user_name}, error={e}")
         raise
 
 
@@ -141,16 +143,17 @@ async def execute_retreat_task(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_draw_cards_task(
+@job_task(action="draw_cards")
+async def execute_draw_cards_job(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行抽卡任务"""
+    """执行抽卡 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 抽卡任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 抽卡 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -177,16 +180,15 @@ async def execute_draw_cards_task(
                 raise ValueError(message)
 
             # 推进战斗流程处理抽牌
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储抽牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 抽卡任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 抽卡 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
-        logger.error(f"❌ 抽卡任务失败: job_id={job_id}, user={user_name}, error={e}")
-        save_task_error(job_id, str(e))
+        logger.error(f"❌ 抽卡 job 失败: job_id={job_id}, user={user_name}, error={e}")
         raise
 
 
@@ -194,18 +196,19 @@ async def execute_draw_cards_task(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_play_cards_task(
+@job_task(action="play_cards")
+async def execute_play_cards_job(
     context: JobContext,
     user_name: str,
     actor_name: str,
     card_name: str,
     targets: List[str],
 ) -> None:
-    """执行出牌任务"""
+    """执行出牌 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
-        logger.info(f"🚀 出牌任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 出牌 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -238,16 +241,15 @@ async def execute_play_cards_task(
                 raise ValueError(message)
 
             # 推进战斗流程处理出牌
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储出牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 出牌任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 出牌 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
-        logger.error(f"❌ 出牌任务失败: job_id={job_id}, user={user_name}, error={e}")
-        save_task_error(job_id, str(e))
+        logger.error(f"❌ 出牌 job 失败: job_id={job_id}, user={user_name}, error={e}")
         raise
 
 
@@ -255,16 +257,17 @@ async def execute_play_cards_task(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_pass_turn_task(
+@job_task(action="pass_turn")
+async def execute_pass_turn_job(
     context: JobContext,
     user_name: str,
     actor_name: str,
 ) -> None:
-    """执行过牌任务"""
+    """执行过牌 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
-        logger.info(f"🚀 过牌任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 过牌 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -291,16 +294,15 @@ async def execute_pass_turn_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储过牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 过牌任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 过牌 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
-        logger.error(f"❌ 过牌任务失败: job_id={job_id}, user={user_name}, error={e}")
-        save_task_error(job_id, str(e))
+        logger.error(f"❌ 过牌 job 失败: job_id={job_id}, user={user_name}, error={e}")
         raise
 
 
@@ -308,17 +310,18 @@ async def execute_pass_turn_task(
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_use_consumable_task(
+@job_task(action="use_consumable")
+async def execute_use_consumable_job(
     context: JobContext,
     user_name: str,
     item_name: str,
 ) -> None:
-    """执行使用消耗品任务"""
+    """执行使用消耗品 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 使用消耗品任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 使用消耗品 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -345,35 +348,35 @@ async def execute_use_consumable_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储使用消耗品后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 使用消耗品任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 使用消耗品 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
         logger.error(
-            f"❌ 使用消耗品任务失败: job_id={job_id}, user={user_name}, error={e}"
+            f"❌ 使用消耗品 job 失败: job_id={job_id}, user={user_name}, error={e}"
         )
-        save_task_error(job_id, str(e))
         raise
 
 
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_equip_gear_task(
+@job_task(action="equip_gear")
+async def execute_equip_gear_job(
     context: JobContext,
     user_name: str,
     item_name: str,
 ) -> None:
-    """执行使用装备任务"""
+    """执行使用装备 job"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 使用装备任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 使用装备 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -400,18 +403,17 @@ async def execute_equip_gear_task(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储使用装备后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 使用装备任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 使用装备 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
         logger.error(
-            f"❌ 使用装备任务失败: job_id={job_id}, user={user_name}, error={e}"
+            f"❌ 使用装备 job 失败: job_id={job_id}, user={user_name}, error={e}"
         )
-        save_task_error(job_id, str(e))
         raise
 
 

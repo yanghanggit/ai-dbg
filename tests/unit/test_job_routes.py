@@ -14,16 +14,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from ai_dbg.services.tasks_api import tasks_api_router
+from ai_dbg.services.jobs_api import jobs_api_router
 
-STATUS_PATH = "/api/tasks/v1/status"
-WATCH_PATH = "/api/tasks/v1/watch/{job_id}"
+STATUS_PATH = "/api/jobs/v1/status"
+DETAIL_PATH = "/api/jobs/v1/{job_id}"
+EVENTS_PATH = "/api/jobs/v1/{job_id}/events"
+WATCH_PATH = "/api/jobs/v1/watch/{job_id}"
 
 
 def _build_app() -> FastAPI:
     """只挂载任务路由的最小 app，避免引入 DB / 队列依赖。"""
     app = FastAPI()
-    app.include_router(tasks_api_router)
+    app.include_router(jobs_api_router)
     return app
 
 
@@ -66,7 +68,7 @@ def test_status_requires_job_ids(client: TestClient) -> None:
 
 def test_watch_rejects_non_numeric_job_id(client: TestClient) -> None:
     """路径参数同样按整数校验，非整数 → 422"""
-    response = client.get("/api/tasks/v1/watch/abc")
+    response = client.get("/api/jobs/v1/watch/abc")
     assert response.status_code == 422
 
 
@@ -77,5 +79,6 @@ def test_openapi_declares_job_id_as_integer() -> None:
     query = _get_parameter(spec, STATUS_PATH, "job_ids")
     assert query["schema"]["items"]["type"] == "integer"
 
-    path_parameter = _get_parameter(spec, WATCH_PATH, "job_id")
-    assert path_parameter["schema"]["type"] == "integer"
+    for path in (DETAIL_PATH, EVENTS_PATH, WATCH_PATH):
+        path_parameter = _get_parameter(spec, path, "job_id")
+        assert path_parameter["schema"]["type"] == "integer"

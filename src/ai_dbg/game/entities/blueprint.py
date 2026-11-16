@@ -71,9 +71,7 @@ def build_from_blueprint(dbg_game: DBGGame) -> None:
     ), f"找不到玩家角色实体: {dbg_game.player_actor}"
     assert not player_actor_entity.has(PlayerComponent)
     player_actor_entity.replace(PlayerComponent, dbg_game.player_name)
-    logger.info(
-        f"玩家: {dbg_game.player_name} 选择控制: {dbg_game.player_actor}"
-    )
+    logger.info(f"玩家: {dbg_game.player_name} 选择控制: {dbg_game.player_actor}")
     assert player_actor_entity.has(
         InventoryComponent
     ), "玩家角色实体必须有 InventoryComponent"

@@ -1,6 +1,6 @@
 """dbg_agent_api 的 SSE 任务等待回归测试。
 
-重点覆盖历史 bug：TaskSnapshot 即使是**成功**也会序列化出 ``"error": null``，
+重点覆盖历史 bug：JobSnapshot 即使是**成功**也会序列化出 ``"error": null``，
 因此不能以 ``"error" in data`` 判定失败——只有不带 ``status`` 字段的才是错误封套。
 """
 
@@ -12,8 +12,8 @@ from procrastinate.jobs import Status as ProcrastinateJobStatus
 
 from ai_dbg.dbg_api_agent.config import server_config
 from ai_dbg.dbg_api_agent.server_client import (
-    TaskFailedError,
-    watch_task_until_done,
+    JobFailedError,
+    watch_job_until_done,
 )
 
 
@@ -80,12 +80,12 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, lines: List[str]) -> None:
 async def test_success_snapshot_with_null_error_is_not_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """成功快照带 "error": null，必须正常返回而非抛 TaskFailedError。"""
+    """成功快照带 "error": null，必须正常返回而非抛 JobFailedError。"""
     _patch_client(
         monkeypatch,
         ['data: {"job_id": 1, "status": "succeeded", "error": null}', ""],
     )
-    record = await watch_task_until_done(1, timeout_seconds=5)
+    record = await watch_job_until_done(1, timeout_seconds=5)
     assert record.job_id == 1
     assert record.status == ProcrastinateJobStatus.SUCCEEDED
 
@@ -97,17 +97,17 @@ async def test_failed_snapshot_raises_with_error_text(
         monkeypatch,
         ['data: {"job_id": 2, "status": "failed", "error": "boom"}', ""],
     )
-    with pytest.raises(TaskFailedError) as exc:
-        await watch_task_until_done(2, timeout_seconds=5)
+    with pytest.raises(JobFailedError) as exc:
+        await watch_job_until_done(2, timeout_seconds=5)
     assert "boom" in str(exc.value)
 
 
-async def test_error_envelope_task_not_found(
+async def test_error_envelope_job_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _patch_client(monkeypatch, ['data: {"error": "task_not_found", "job_id": 3}', ""])
-    with pytest.raises(TaskFailedError):
-        await watch_task_until_done(3, timeout_seconds=5)
+    _patch_client(monkeypatch, ['data: {"error": "job_not_found", "job_id": 3}', ""])
+    with pytest.raises(JobFailedError):
+        await watch_job_until_done(3, timeout_seconds=5)
 
 
 async def test_error_envelope_timeout(
@@ -115,4 +115,4 @@ async def test_error_envelope_timeout(
 ) -> None:
     _patch_client(monkeypatch, ['data: {"error": "timeout", "job_id": 4}', ""])
     with pytest.raises(TimeoutError):
-        await watch_task_until_done(4, timeout_seconds=5)
+        await watch_job_until_done(4, timeout_seconds=5)

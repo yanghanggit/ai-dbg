@@ -1,6 +1,6 @@
 """游戏服务器依赖注入模块。
 
-HTTP 请求从 ``app.state`` 获取进程级 GameServer；后台任务见 ``game_server_runtime``。
+HTTP 请求从 ``app.state`` 获取进程级 GameServer；后台 job 见 ``game_server_runtime``。
 """
 
 from typing import Annotated

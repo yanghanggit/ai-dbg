@@ -94,7 +94,7 @@ async def logout(
     pre_room = game_server.get_room(payload.user_name)
     assert pre_room is not None, "logout: room instance is None"
 
-    # 在房间事务锁内退出游戏，避免与后台任务并发写坏状态
+    # 在房间事务锁内退出游戏，避免与后台 job 并发写坏状态
     async with pre_room.transaction():
 
         # 只判断dbg_game是否存在

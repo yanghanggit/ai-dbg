@@ -1,5 +1,5 @@
 """
-副本开场房间任务模块：开场初始化（叙事 + 环境初始化，无战斗）。
+副本开场房间 job 模块：开场初始化（叙事 + 环境初始化，无战斗）。
 """
 
 from loguru import logger
@@ -10,24 +10,27 @@ from ..game.dungeon import (
     is_current_room_dungeon_opening,
 )
 from ..game.persistence.store import store_game_async
-from ..pgsql import procrastinate_app, save_task_error
+from ..job_context import get_current_job
+from ..pgsql import procrastinate_app
 from .game_server_runtime import get_runtime_game_server
+from .job_runtime import job_task
 
 
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 ###################################################################################################################################################################
 @procrastinate_app.task(queue="game", pass_context=True)
-async def execute_opening_room_init_task(
+@job_task(action="opening_room_init")
+async def execute_opening_room_init_job(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行副本开场房间初始化任务（叙事 + 环境初始化，无战斗）"""
+    """执行副本开场房间初始化 job（叙事 + 环境初始化，无战斗）"""
     job_id = context.job.id
-    assert job_id is not None, "运行中的任务必然有 job id"
+    assert job_id is not None, "运行中的 job 必然有 job id"
     try:
 
-        logger.info(f"🚀 开场房间初始化任务开始: job_id={job_id}, user={user_name}")
+        logger.info(f"🚀 开场房间初始化 job 开始: job_id={job_id}, user={user_name}")
 
         game_server = get_runtime_game_server()
 
@@ -45,18 +48,17 @@ async def execute_opening_room_init_task(
                 raise ValueError("当前副本房间不是开场房间")
 
             # 推进开场房间流程（叙事 + 牌库初始化，无战斗）
-            await rpg_game.pipeline.process()
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储开场房间初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
 
-        logger.info(f"✅ 开场房间初始化任务完成: job_id={job_id}, user={user_name}")
+        logger.info(f"✅ 开场房间初始化 job 完成: job_id={job_id}, user={user_name}")
 
     except Exception as e:
         logger.error(
-            f"❌ 开场房间初始化任务失败: job_id={job_id}, user={user_name}, error={e}"
+            f"❌ 开场房间初始化 job 失败: job_id={job_id}, user={user_name}, error={e}"
         )
-        save_task_error(job_id, str(e))
         raise
 
 

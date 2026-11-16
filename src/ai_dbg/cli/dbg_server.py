@@ -37,12 +37,12 @@ from ai_dbg.services.entity_details import (
 )
 from ai_dbg.services.game_server_runtime import bind_runtime_game_server
 from ai_dbg.services.gameplay_scheduler import run_gameplay_scheduler
+from ai_dbg.services.jobs_api import jobs_api_router
 from ai_dbg.services.login import login_api_router
 from ai_dbg.services.new_game import new_game_api_router
 from ai_dbg.services.player_session import player_session_api_router
 from ai_dbg.services.room_error_handlers import register_room_error_handlers
 from ai_dbg.services.stages_state import stages_state_api_router
-from ai_dbg.services.tasks_api import tasks_api_router
 from ai_dbg.session.server import GameServer
 
 load_dotenv()
@@ -183,7 +183,7 @@ app.include_router(router=components_api_router)
 app.include_router(router=entity_details_api_router)
 app.include_router(router=stages_state_api_router)
 app.include_router(router=dungeon_state_api_router)
-app.include_router(router=tasks_api_router)
+app.include_router(router=jobs_api_router)
 app.include_router(router=login_api_router)
 app.include_router(router=new_game_api_router)
 app.include_router(router=compact_api_router)

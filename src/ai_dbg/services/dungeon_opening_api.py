@@ -16,9 +16,9 @@ from ..models import (
     DungeonOpeningInitResponse,
 )
 from .dungeon_lifecycle_api import _validate_dungeon_prerequisites
-from .dungeon_opening_tasks import execute_opening_room_init_task
+from .dungeon_opening_jobs import execute_opening_room_init_job
 from .game_server_dependencies import CurrentGameServer
-from .task_dispatch import defer_room_task
+from .job_dispatch import defer_room_job
 
 ###################################################################################################################################################################
 dungeon_opening_api_router = APIRouter()
@@ -64,14 +64,16 @@ async def dungeon_opening_init(
         )
 
     # 开场初始化管道内部按消息标记幂等，可安全重复调用，无需额外状态位守护。
-    # 派发开场房间初始化任务
-    job_id = await defer_room_task(
-        execute_opening_room_init_task, user_name=payload.user_name
+    # 派发开场房间初始化 job
+    job_id = await defer_room_job(
+        execute_opening_room_init_job, user_name=payload.user_name
     )
-    logger.info(f"📝 创建开场房间初始化任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(
+        f"📝 创建 开场房间初始化 job: job_id={job_id}, user={payload.user_name}"
+    )
 
-    # 返回开场房间初始化任务启动成功的响应
+    # 返回开场房间初始化 job 启动成功的响应
     return DungeonOpeningInitResponse(
         job_id=job_id,
-        message="开场房间初始化任务已启动，请通过会话消息查询结果",
+        message="开场房间初始化 job 已启动，请通过会话消息查询结果",
     )

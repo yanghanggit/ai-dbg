@@ -40,6 +40,7 @@
 | [DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
 | [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |
 | [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件，不随世界快照回滚；与 job 日志的分工 |
+| [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与回滚 |
 | [战斗管道（Combat Pipeline）](wiki/combat-pipeline.md) | ECS 处理器链的架构设计：管道心跳驱动、牌库预置与抽牌堆确定性填充、仲裁的三方归属、回合行动序列与生命周期阶段 |
 | [神器（Artifact）](wiki/artifact.md) | 第一公民实体：内容作者写修正规则，由 `ReliquaryComponent` 声明归属，运行点由标记组件表达，出牌仲裁后由神器自身实体作为临时 agent 自行判定并执行，机制与内容分离 |
 | [卡牌数据模型（Card）](wiki/card.md) | Card 字段的三层结构（确定性骨架 / 语义词缀 / 生命周期流转）、来源引用（source）与「确定性骨架 + LLM 语义」的设计取舍 |

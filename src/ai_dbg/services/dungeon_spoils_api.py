@@ -21,12 +21,12 @@ from ..models import (
 )
 from .dungeon_lifecycle_api import _validate_dungeon_prerequisites
 from .dungeon_spoils_actions import remove_spoils
-from .dungeon_spoils_tasks import (
-    execute_generate_spoils_task,
-    execute_pick_spoils_card_task,
+from .dungeon_spoils_jobs import (
+    execute_generate_spoils_job,
+    execute_pick_spoils_card_job,
 )
 from .game_server_dependencies import CurrentGameServer
-from .task_dispatch import defer_room_task
+from .job_dispatch import defer_room_job
 
 ###################################################################################################################################################################
 dungeon_spoils_api_router = APIRouter()
@@ -70,16 +70,16 @@ async def dungeon_spoils_generate(
             detail="当前副本房间是战斗房间",
         )
 
-    # 派发奖励生成任务
-    job_id = await defer_room_task(
-        execute_generate_spoils_task, user_name=payload.user_name
+    # 派发奖励生成 job
+    job_id = await defer_room_job(
+        execute_generate_spoils_job, user_name=payload.user_name
     )
-    logger.info(f"📝 创建奖励生成任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 奖励生成 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回奖励生成任务启动成功的响应
+    # 返回奖励生成 job 启动成功的响应
     return DungeonSpoilsGenerateResponse(
         job_id=job_id,
-        message="奖励生成任务已启动，请通过会话消息查询结果",
+        message="奖励生成 job 已启动，请通过会话消息查询结果",
     )
 
 
@@ -123,19 +123,19 @@ async def dungeon_spoils_pick_card(
             detail="当前副本房间是战斗房间",
         )
 
-    # 派发领卡任务
-    job_id = await defer_room_task(
-        execute_pick_spoils_card_task,
+    # 派发领卡 job
+    job_id = await defer_room_job(
+        execute_pick_spoils_card_job,
         user_name=payload.user_name,
         actor_name=payload.actor_name,
         card_name=payload.card_name,
     )
-    logger.info(f"📝 创建领卡任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 领卡 job: job_id={job_id}, user={payload.user_name}")
 
-    # 返回领卡任务启动成功的响应
+    # 返回领卡 job 启动成功的响应
     return DungeonSpoilsPickCardResponse(
         job_id=job_id,
-        message="领卡任务已启动，请通过会话消息查询结果",
+        message="领卡 job 已启动，请通过会话消息查询结果",
     )
 
 

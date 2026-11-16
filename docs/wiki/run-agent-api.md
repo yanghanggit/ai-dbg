@@ -11,15 +11,16 @@
 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
 → 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
+→ 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 
 ## 交互契约
 
 - **单一 JSON 封套**：成功返回动作结果；失败返回错误详情并以非零退出码结束。服务端 HTTP 4xx/5xx 的 `detail` 原样透出，代理据此自我纠错。
-- **异步任务自动等待**：服务端返回任务 ID 的动作，CLI 通过 SSE 等到终态再输出，代理无需轮询。
+- **异步 job 自动等待**：服务端返回 job id 的动作，CLI 通过 SSE 等到终态再输出；长任务可用 `job` 命令按增量游标查看过程事件。
 - **stdout 只放 JSON**：运行日志写 stderr 与文件，控制台级别由 `AI_DBG_API_LOG_LEVEL` 控制，避免污染代理输出。
 - **身份无状态**：只按 `--user/--game` 寻址，不落盘对局状态；同一身份可在多条命令间复用服务端内存中的房间。
 
-命令面按动作域分组：顶层 `login` / `logout` / `new-game` / `status` / `blueprint-list` / `dungeon-list` / `compact`，以及 `dungeon`、`opening`、`spoils`、`combat`。命令是服务端 API 的薄映射，参数与校验以服务端为准。
+命令面按动作域分组：顶层 `login` / `logout` / `new-game` / `status` / `blueprint-list` / `dungeon-list` / `compact` / `job`，以及 `dungeon`、`opening`、`spoils`、`combat`。命令是服务端 API 的薄映射，参数与校验以服务端为准；`job` 用于单独查看某次执行的状态与增量事件。
 
 ## 启动与状态
 

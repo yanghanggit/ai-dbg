@@ -23,5 +23,10 @@ def _store_game(dbg_game: DBGGame, save_dir: Optional[Path] = None) -> bool:
 
 
 async def store_game_async(dbg_game: DBGGame, save_dir: Optional[Path] = None) -> bool:
-    """持久化存档的异步入口：把阻塞 I/O 移出事件循环线程。"""
-    return await asyncio.to_thread(_store_game, dbg_game, save_dir)
+    """持久化存档的异步入口：写盘失败即抛异常，避免 job 假装成功。"""
+    saved = await asyncio.to_thread(_store_game, dbg_game, save_dir)
+    if not saved:
+        raise RuntimeError(
+            f"世界存档失败: user={dbg_game.player_name}, game={dbg_game.name}"
+        )
+    return True

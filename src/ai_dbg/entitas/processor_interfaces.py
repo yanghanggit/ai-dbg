@@ -7,6 +7,7 @@ that runs them in order.
 """
 
 from abc import ABC, abstractmethod
+from typing import Protocol
 
 
 class InitializeProcessor(ABC):
@@ -23,6 +24,21 @@ class InitializeProcessor(ABC):
 
         This method is called once when the processing pipeline starts.
         """
+
+
+class ProcessorObserver(Protocol):
+    """可选观测器：由 pipeline 在 system 边界调用。"""
+
+    def on_processor_started(self, system: str) -> None:
+        """开始执行某个 system。"""
+
+    def on_processor_finished(self, system: str, duration_ms: float) -> None:
+        """某个 system 正常结束。"""
+
+    def on_processor_failed(
+        self, system: str, error: BaseException, duration_ms: float
+    ) -> None:
+        """某个 system 抛异常。"""
 
 
 class ExecuteProcessor(ABC):

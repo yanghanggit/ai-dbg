@@ -1,11 +1,13 @@
 """The processor pipeline: a concrete container that runs processors in order."""
 
-from typing import List, Union, override
+import time
+from typing import List, Optional, Union, override
 
 from .processor_interfaces import (
     CleanupProcessor,
     ExecuteProcessor,
     InitializeProcessor,
+    ProcessorObserver,
     TearDownProcessor,
 )
 from .reactive_processor import ReactiveProcessor
@@ -60,10 +62,26 @@ class ProcessorPipeline(
             await processor.initialize()
 
     @override
-    async def execute(self) -> None:
+    async def execute(self, observer: Optional[ProcessorObserver] = None) -> None:
         """Executes all execute processors in the order they were added."""
         for processor in self._execute_processors:
-            await processor.execute()
+            system = type(processor).__name__
+            if observer is not None:
+                observer.on_processor_started(system)
+            started = time.perf_counter()
+            try:
+                await processor.execute()
+            except Exception as exc:
+                if observer is not None:
+                    observer.on_processor_failed(
+                        system, exc, (time.perf_counter() - started) * 1000.0
+                    )
+                raise
+            else:
+                if observer is not None:
+                    observer.on_processor_finished(
+                        system, (time.perf_counter() - started) * 1000.0
+                    )
 
     @override
     def cleanup(self) -> None:

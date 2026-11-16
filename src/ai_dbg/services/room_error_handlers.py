@@ -9,7 +9,7 @@ from ..session.server import (
     RoomNotFoundError,
 )
 from .game_state_errors import GameStateError
-from .task_dispatch import RoomBusyError
+from .job_dispatch import RoomBusyError
 
 
 ###############################################################################################################################################
@@ -36,7 +36,7 @@ def register_room_error_handlers(app: FastAPI) -> None:
     async def _room_busy(request: Request, exc: RoomBusyError) -> JSONResponse:
         return JSONResponse(
             status_code=409,
-            content={"detail": "该房间已有任务在进行中，请稍后重试"},
+            content={"detail": "该房间已有 job 在进行中，请稍后重试"},
         )
 
     @app.exception_handler(GameStateError)

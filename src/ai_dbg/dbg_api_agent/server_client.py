@@ -48,6 +48,10 @@ from ..models import (
     DungeonStartResponse,
     DungeonStateResponse,
     EntitiesDetailsResponse,
+    JobDetail,
+    JobEventsResponse,
+    JobSnapshot,
+    JobStatusListResponse,
     LoginRequest,
     LoginResponse,
     LogoutRequest,
@@ -56,14 +60,12 @@ from ..models import (
     NewGameResponse,
     SessionMessageResponse,
     StagesStateResponse,
-    TaskSnapshot,
-    TaskStatusListResponse,
 )
 from .config import server_config
 
 
-class TaskFailedError(Exception):
-    """任务执行失败时抛出。"""
+class JobFailedError(Exception):
+    """job 执行失败时抛出。"""
 
     pass
 
@@ -211,34 +213,32 @@ async def fetch_dungeon_list() -> DungeonListResponse:
         return DungeonListResponse.model_validate(response.json())
 
 
-async def fetch_tasks_status(job_ids: List[int]) -> TaskStatusListResponse:
-    """批量查询任务状态。"""
+async def fetch_jobs_status(job_ids: List[int]) -> JobStatusListResponse:
+    """批量查询 job 状态。"""
     async with build_client(10) as client:
         response = await client.get(
-            "/api/tasks/v1/status",
+            "/api/jobs/v1/status",
             params={"job_ids": job_ids},
         )
         response.raise_for_status()
-        return TaskStatusListResponse.model_validate(response.json())
+        return JobStatusListResponse.model_validate(response.json())
 
 
-async def watch_task_until_done(
-    job_id: int, timeout_seconds: int = 120
-) -> TaskSnapshot:
-    """通过 SSE 等待任务完成，返回终态 TaskSnapshot。
+async def watch_job_until_done(job_id: int, timeout_seconds: int = 120) -> JobSnapshot:
+    """通过 SSE 等待 job 完成，返回终态 JobSnapshot。
 
     Args:
-        job_id: 要监听的任务 ID
+        job_id: 要监听的 job id
         timeout_seconds: 最大等待秒数（同时透传给服务端 SSE 生成器）
 
     Returns:
-        TaskSnapshot: 状态为 SUCCEEDED 的任务快照
+        JobSnapshot: 状态为 SUCCEEDED 的 job 快照
 
     Raises:
-        TaskFailedError: 任务不存在或失败（status=FAILED）
+        JobFailedError: job 不存在或失败（status=FAILED）
         TimeoutError: 等待超时
     """
-    url = f"/api/tasks/v1/watch/{job_id}"
+    url = f"/api/jobs/v1/watch/{job_id}"
     params = {"timeout_seconds": timeout_seconds}
     timeout = httpx.Timeout(
         connect=10.0,
@@ -256,19 +256,47 @@ async def watch_task_until_done(
                 if not payload:
                     continue
                 data = json.loads(payload)
-                # 错误封套（任务不存在 / 超时）不带 status 字段；任务快照必带 status。
-                # 注意：TaskSnapshot 即使成功也会序列化出 "error": null，故不能用
+                # 错误封套（job 不存在 / 超时）不带 status 字段；job 快照必带 status。
+                # 注意：JobSnapshot 即使成功也会序列化出 "error": null，故不能用
                 # `"error" in data` 判定失败。
                 if "status" not in data:
                     if data.get("error") == "timeout":
-                        raise TimeoutError(f"任务 {job_id} 等待超时")
-                    raise TaskFailedError(f"{data.get('error')}: job_id={job_id}")
-                record = TaskSnapshot.model_validate(data)
+                        raise TimeoutError(f"job {job_id} 等待超时")
+                    raise JobFailedError(f"{data.get('error')}: job_id={job_id}")
+                record = JobSnapshot.model_validate(data)
                 if record.status == ProcrastinateJobStatus.FAILED:
-                    raise TaskFailedError(record.error or "未知错误")
+                    raise JobFailedError(record.error or "未知错误")
                 if record.status == ProcrastinateJobStatus.SUCCEEDED:
                     return record
-    raise TimeoutError(f"任务 {job_id} 等待超时")
+                if record.status in (
+                    ProcrastinateJobStatus.CANCELLED,
+                    ProcrastinateJobStatus.ABORTED,
+                ):
+                    raise JobFailedError(
+                        record.error or f"job 状态: {record.status.value}"
+                    )
+    raise TimeoutError(f"job {job_id} 等待超时")
+
+
+async def fetch_job_detail(job_id: int) -> JobDetail:
+    """查询单个 job 的状态与完整执行事件。"""
+    async with build_client(10) as client:
+        response = await client.get(f"/api/jobs/v1/{job_id}")
+        response.raise_for_status()
+        return JobDetail.model_validate(response.json())
+
+
+async def fetch_job_events(
+    job_id: int, *, after_id: int = 0, limit: int = 500
+) -> JobEventsResponse:
+    """增量查询 job 执行事件。"""
+    async with build_client(10) as client:
+        response = await client.get(
+            f"/api/jobs/v1/{job_id}/events",
+            params={"after_id": after_id, "limit": limit},
+        )
+        response.raise_for_status()
+        return JobEventsResponse.model_validate(response.json())
 
 
 async def fetch_dungeon_state(user_name: str, game_name: str) -> DungeonStateResponse:
@@ -309,7 +337,7 @@ async def start_dungeon(
 
 
 async def dungeon_exit(user_name: str, game_name: str) -> DungeonExitResponse:
-    """触发退出副本任务，返回任务ID。"""
+    """触发退出副本 job，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/exit/v1/",
@@ -341,7 +369,7 @@ async def dungeon_advance_stage(
 async def dungeon_opening_init(
     user_name: str, game_name: str
 ) -> DungeonOpeningInitResponse:
-    """触发开场房间初始化（叙事 + 牌库初始化），返回任务ID。"""
+    """触发开场房间初始化（叙事 + 牌库初始化），返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/opening/init/v1/",
@@ -357,7 +385,7 @@ async def dungeon_opening_init(
 async def dungeon_spoils_generate(
     user_name: str, game_name: str
 ) -> DungeonSpoilsGenerateResponse:
-    """触发副本奖励生成（外部显式触发 GenerateSpoilsAction），返回任务ID。"""
+    """触发副本奖励生成（外部显式触发 GenerateSpoilsAction），返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/spoils/generate/v1/",
@@ -373,7 +401,7 @@ async def dungeon_spoils_generate(
 async def dungeon_spoils_pick_card(
     user_name: str, game_name: str, actor_name: str, card_name: str
 ) -> DungeonSpoilsPickCardResponse:
-    """触发副本领卡（Spoils 子操作 pick_card，外部显式触发 PickSpoilsAction），返回任务ID。"""
+    """触发副本领卡（Spoils 子操作 pick_card，外部显式触发 PickSpoilsAction），返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/spoils/pick_card/v1/",
@@ -423,7 +451,7 @@ async def dungeon_combat_collect_loot(
 async def dungeon_combat_init(
     user_name: str, game_name: str
 ) -> DungeonCombatInitResponse:
-    """触发战斗初始化，返回任务ID。"""
+    """触发战斗初始化，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/init/v1/",
@@ -439,7 +467,7 @@ async def dungeon_combat_init(
 async def dungeon_combat_retreat(
     user_name: str, game_name: str
 ) -> DungeonCombatRetreatResponse:
-    """触发战斗撤退，返回任务ID。"""
+    """触发战斗撤退，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/retreat/v1/",
@@ -455,7 +483,7 @@ async def dungeon_combat_retreat(
 async def dungeon_combat_draw_cards(
     user_name: str, game_name: str
 ) -> DungeonCombatDrawCardsResponse:
-    """为全体战斗角色激活抽牌动作，返回任务ID。"""
+    """为全体战斗角色激活抽牌动作，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/draw_cards/v1/",
@@ -475,7 +503,7 @@ async def dungeon_combat_play_cards(
     card_name: str,
     targets: List[str],
 ) -> DungeonCombatPlayCardsResponse:
-    """让指定角色打出指定卡牌，返回任务ID。"""
+    """让指定角色打出指定卡牌，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/play_cards/v1/",
@@ -496,7 +524,7 @@ async def dungeon_combat_pass_turn(
     game_name: str,
     actor_name: str,
 ) -> DungeonCombatPassTurnResponse:
-    """让指定角色过牌，返回任务ID。"""
+    """让指定角色过牌，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/pass_turn/v1/",
@@ -515,7 +543,7 @@ async def dungeon_combat_use_consumable(
     game_name: str,
     item_name: str,
 ) -> DungeonCombatUseConsumableItemResponse:
-    """使用玩家背包内消耗品，返回任务ID。"""
+    """使用玩家背包内消耗品，返回 job id。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/use_consumable/v1/",
@@ -534,7 +562,7 @@ async def dungeon_combat_equip_gear(
     game_name: str,
     item_name: str,
 ) -> DungeonCombatEquipGearItemResponse:
-    """使用玩家背包内装备，返回任务信息。"""
+    """使用玩家背包内装备，返回 job 信息。"""
     async with build_client(10) as client:
         response = await client.post(
             "/api/dungeon/combat/equip_gear/v1/",
@@ -551,7 +579,7 @@ async def dungeon_combat_equip_gear(
 async def compact_context(
     user_name: str, game_name: str, target_name: str
 ) -> CompactContextResponse:
-    """手动压缩指定实体的 LLM 记忆，返回任务ID。"""
+    """手动压缩指定实体的 LLM 记忆，返回 job id。"""
     async with build_client(30) as client:
         response = await client.post(
             "/api/compact_context/v1/",

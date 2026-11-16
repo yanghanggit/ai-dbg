@@ -134,26 +134,26 @@ def _get(
     return r.status_code, data
 
 
-def _poll_task(client: httpx.Client, job_id: int, timeout: float = 300.0) -> str:
+def _poll_job(client: httpx.Client, job_id: int, timeout: float = 300.0) -> str:
     """轮询任务直到终态，返回 'succeeded' / 'failed'，超时则失败。"""
-    status = _poll_task_status(client, job_id, timeout)
+    status = _poll_job_status(client, job_id, timeout)
     if status == "failed":
-        code, data = _get(client, "/api/tasks/v1/status", params={"job_ids": job_id})
-        tasks = data.get("tasks", []) if code == 200 else []
-        error = tasks[0].get("error") if tasks else None
+        code, data = _get(client, "/api/jobs/v1/status", params={"job_ids": job_id})
+        jobs = data.get("jobs", []) if code == 200 else []
+        error = jobs[0].get("error") if jobs else None
         pytest.fail(f"任务失败: {error}")
     return status
 
 
-def _poll_task_status(client: httpx.Client, job_id: int, timeout: float = 300.0) -> str:
+def _poll_job_status(client: httpx.Client, job_id: int, timeout: float = 300.0) -> str:
     """轮询任务直到终态，返回 'succeeded' / 'failed'；超时则失败。"""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        code, data = _get(client, "/api/tasks/v1/status", params={"job_ids": job_id})
+        code, data = _get(client, "/api/jobs/v1/status", params={"job_ids": job_id})
         if code == 200:
-            tasks = data.get("tasks", [])
-            if tasks:
-                status = (tasks[0].get("status") or "").lower()
+            jobs = data.get("jobs", [])
+            if jobs:
+                status = (jobs[0].get("status") or "").lower()
                 if status in ("succeeded", "failed"):
                     return status
         time.sleep(1)
@@ -204,7 +204,12 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     )
     assert code == 200
     assert data.get("job_id")
-    _poll_task(client, data["job_id"])
+    _poll_job(client, data["job_id"])
+    code, detail = _get(client, f"/api/jobs/v1/{data['job_id']}")
+    assert code == 200
+    assert detail["status"] == "succeeded"
+    assert "job_succeeded" in {event["kind"] for event in detail["events"]}
+    assert any(event["kind"] == "system_finished" for event in detail["events"])
 
     # 4. 全员抽牌
     code, data = _post(
@@ -214,7 +219,7 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     )
     assert code == 200
     assert data.get("job_id")
-    _poll_task(client, data["job_id"])
+    _poll_job(client, data["job_id"])
 
     # 5. 查询玩家手牌
     hand_cards = _get_hand_cards(client, user, player_actor)
@@ -234,7 +239,21 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     )
     assert code == 200, f"非法出牌应返回 200（任务异步失败），实际 {code}: {data}"
     assert data.get("job_id")
-    assert _poll_task_status(client, data["job_id"]) == "failed", "非法出牌任务应失败"
+    failed_job_id = data["job_id"]
+    assert _poll_job_status(client, failed_job_id) == "failed", "非法出牌任务应失败"
+    code, detail = _get(client, f"/api/jobs/v1/{failed_job_id}")
+    assert code == 200
+    kinds = {event["kind"] for event in detail["events"]}
+    assert "job_failed" in kinds
+    assert "rollback_finished" in kinds
+    code, events = _get(
+        client,
+        f"/api/jobs/v1/{failed_job_id}/events",
+        params={"after_id": 0},
+    )
+    assert code == 200
+    assert events["job_id"] == failed_job_id
+    assert events["events"]
 
     # 7. 合法出牌应正常启动任务并完成
     # 优先选一张 SELF 牌验证「锁定自身、无需 targets」；手牌没有 SELF 牌时退化为任意可出牌。
@@ -258,7 +277,7 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     )
     assert code == 200, f"合法出牌应返回 200，实际 {code}: {data}"
     assert data.get("job_id")
-    _poll_task(client, data["job_id"])
+    _poll_job(client, data["job_id"])
 
     # 8. 再打一张需要锚点的牌（若手牌里还有），验证非 SELF 通路
     hand_cards = _get_hand_cards(client, user, player_actor)
@@ -281,4 +300,4 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
         )
         assert code == 200, f"锚点出牌应返回 200，实际 {code}: {data}"
         assert data.get("job_id")
-        _poll_task(client, data["job_id"])
+        _poll_job(client, data["job_id"])

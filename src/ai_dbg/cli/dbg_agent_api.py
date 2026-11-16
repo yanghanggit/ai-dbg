@@ -1,7 +1,7 @@
 """DBG AI 代理的服务器 API 走查 CLI。
 
 定位：「后端开发者/代理走查服务器 API」的入口。
-- 一次性进程：每次调用 = 一次 HTTP 请求（+ 必要时等待任务），无 TTY、无界面。
+- 一次性进程：每次调用 = 一次 HTTP 请求（+ 必要时等待 job），无 TTY、无界面。
 - 状态在服务端内存里；本脚本不缓存世界状态，只按参数寻址（--user/--game）。
 - 输出统一为 JSON；HTTP 4xx/5xx 的 detail 原样透出，并以非零退出码结束。
 
@@ -18,7 +18,7 @@ HTTPS / JWT（连接层集中在一处）：
     --token <jwt>          （或 AI_DBG_API_TOKEN，注入 Authorization: Bearer）
 
 日志：``logs/run_agent_api_<timestamp>.log``（DEBUG；控制台级别由 AI_DBG_API_LOG_LEVEL 决定）。
-命令分组：dungeon / opening / spoils / combat；`status` 会同时给出 suggested_actions。
+命令分组：dungeon / opening / spoils / combat；`status` 会同时给出 suggested_actions；`job` 用于查看单个执行的状态与事件。
 """
 
 import asyncio
@@ -53,11 +53,13 @@ from ai_dbg.dbg_api_agent.server_client import (
     dungeon_spoils_remove,
     fetch_blueprint_list,
     fetch_dungeon_list,
+    fetch_job_detail,
+    fetch_job_events,
     login,
     logout,
     new_game,
     start_dungeon,
-    watch_task_until_done,
+    watch_job_until_done,
 )
 from ai_dbg.dbg_api_agent.status import build_status
 from ai_dbg.paths import LOGS_DIR
@@ -144,9 +146,13 @@ def _run(action: str, coro: Any) -> None:
     _emit({"ok": True, "action": action, "result": result})
 
 
-async def _await_task(resp: Any) -> Dict[str, Any]:
-    """统一处理「返回 job_id 的异步动作」：自动等待任务终态。"""
-    snapshot = await watch_task_until_done(resp.job_id)
+async def _await_job(resp: Any) -> Dict[str, Any]:
+    """统一处理「返回 job_id 的异步动作」：自动等待 job 终态。"""
+    try:
+        snapshot = await watch_job_until_done(resp.job_id)
+    except Exception as error:
+        # 失败也保留 job_id，客户端可继续 GET /api/jobs/v1/{job_id} 查看执行事件
+        raise RuntimeError(f"job_id={resp.job_id}: {error}") from error
     return {
         "job_id": resp.job_id,
         "message": getattr(resp, "message", None),
@@ -326,6 +332,23 @@ def dungeon_list_cmd() -> None:
     _run("dungeon-list", go())
 
 
+@main.command("job")
+@click.option("--job-id", type=int, required=True, help="要查询的 job id")
+@click.option("--after-id", type=int, default=0, show_default=True, help="事件增量游标")
+@click.option("--events-only", is_flag=True, help="只返回事件，不返回 job 状态")
+def job_cmd(job_id: int, after_id: int, events_only: bool) -> None:
+    """查询单个 job 的状态和执行事件。"""
+
+    async def go() -> Dict[str, Any]:
+        if events_only:
+            events_resp = await fetch_job_events(job_id, after_id=after_id)
+            return events_resp.model_dump(mode="json")
+        detail_resp = await fetch_job_detail(job_id)
+        return detail_resp.model_dump(mode="json")
+
+    _run("job", go())
+
+
 @main.command("compact")
 @identity_options
 @click.option("--target", "target", required=True, help="要压缩记忆的实体名")
@@ -333,7 +356,7 @@ def compact_cmd(user: str, game: str, target: str) -> None:
     """手动压缩指定实体的 LLM 记忆。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await compact_context(user, game, target))
+        return await _await_job(await compact_context(user, game, target))
 
     _run("compact", go())
 
@@ -364,7 +387,7 @@ def dungeon_exit_cmd(user: str, game: str) -> None:
     """退出副本，返回大厅。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_exit(user, game))
+        return await _await_job(await dungeon_exit(user, game))
 
     _run("dungeon exit", go())
 
@@ -394,7 +417,7 @@ def opening_init_cmd(user: str, game: str) -> None:
     """初始化开场房间（叙事 + 环境）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_opening_init(user, game))
+        return await _await_job(await dungeon_opening_init(user, game))
 
     _run("opening init", go())
 
@@ -413,7 +436,7 @@ def spoils_generate_cmd(user: str, game: str) -> None:
     """生成奖励候选（Spoils）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_spoils_generate(user, game))
+        return await _await_job(await dungeon_spoils_generate(user, game))
 
     _run("spoils generate", go())
 
@@ -426,7 +449,7 @@ def spoils_pick_card_cmd(user: str, game: str, actor_name: str, card_name: str) 
     """从角色的 Spoils 领取一张卡加入其牌库。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(
+        return await _await_job(
             await dungeon_spoils_pick_card(user, game, actor_name, card_name)
         )
 
@@ -458,7 +481,7 @@ def combat_init_cmd(user: str, game: str) -> None:
     """初始化战斗（进入 ONGOING）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_combat_init(user, game))
+        return await _await_job(await dungeon_combat_init(user, game))
 
     _run("combat init", go())
 
@@ -469,7 +492,7 @@ def combat_draw_cards_cmd(user: str, game: str) -> None:
     """开启新回合并为全体抓牌。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_combat_draw_cards(user, game))
+        return await _await_job(await dungeon_combat_draw_cards(user, game))
 
     _run("combat draw-cards", go())
 
@@ -490,7 +513,7 @@ def combat_play_cards_cmd(
     """让角色打出卡牌。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(
+        return await _await_job(
             await dungeon_combat_play_cards(
                 user, game, actor_name, card_name, list(targets)
             )
@@ -506,7 +529,7 @@ def combat_pass_turn_cmd(user: str, game: str, actor_name: str) -> None:
     """让角色过牌（结束其回合，推进行动权）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_combat_pass_turn(user, game, actor_name))
+        return await _await_job(await dungeon_combat_pass_turn(user, game, actor_name))
 
     _run("combat pass-turn", go())
 
@@ -518,7 +541,7 @@ def combat_use_consumable_cmd(user: str, game: str, item_name: str) -> None:
     """使用背包内消耗品（队伍级，不推进行动权；物化为手牌后需再出牌）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(
+        return await _await_job(
             await dungeon_combat_use_consumable(user, game, item_name)
         )
 
@@ -532,7 +555,7 @@ def combat_equip_gear_cmd(user: str, game: str, item_name: str) -> None:
     """使用背包内装备（队伍级，不推进行动权）。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_combat_equip_gear(user, game, item_name))
+        return await _await_job(await dungeon_combat_equip_gear(user, game, item_name))
 
     _run("combat equip-gear", go())
 
@@ -554,7 +577,7 @@ def combat_retreat_cmd(user: str, game: str) -> None:
     """战斗撤退。"""
 
     async def go() -> Dict[str, Any]:
-        return await _await_task(await dungeon_combat_retreat(user, game))
+        return await _await_job(await dungeon_combat_retreat(user, game))
 
     _run("combat retreat", go())
 

@@ -99,7 +99,7 @@ def activate_generate_spoils(
     """
     为当前所在非战斗房间内的所有队伍成员激活奖励生成动作（GenerateSpoilsAction）。
 
-    由外部入口（CLI / API）显式调用，随后推动 game.pipeline.process()
+    由外部入口（CLI / API）显式调用，随后推动 game.pipeline.process(observer)
     让 GenerateSpoilsActionSystem 响应并生成候选奖励（SpoilsComponent）。
 
     `prototype_ids` 为显式候选规格（调测 / 脚本用）：非空时按此列表物化，不做随机抽取。
@@ -171,7 +171,7 @@ def activate_pick_spoils_card(
     """
     为指定队伍成员激活「从 Spoils 领取一张卡」子操作（PickSpoilsAction, reward_kind=CARD）。
 
-    由外部入口（CLI / API）显式调用，随后推动 game.pipeline.process()
+    由外部入口（CLI / API）显式调用，随后推动 game.pipeline.process(observer)
     让 PickSpoilsActionSystem 响应并把选中卡加入牌库。
     """
 

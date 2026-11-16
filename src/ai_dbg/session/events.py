@@ -3,6 +3,7 @@
 from typing import Optional
 
 from ..game.events import DomainEventSink
+from ..job_context import current_job_id
 from ..models import AnyAgentEvent, PlayerSession
 from .store import SessionStore
 
@@ -34,9 +35,10 @@ class PlayerSessionEventSink(DomainEventSink):
 
     ###############################################################################
     def publish(self, agent_event: AnyAgentEvent) -> None:
+        job_id = self._job_id if self._job_id is not None else current_job_id()
         message = self._session.add_agent_event(
             agent_event,
-            job_id=self._job_id,
+            job_id=job_id,
         )
         try:
             self._store.append(self._session, message)

@@ -88,7 +88,7 @@ async def new_game(
         blueprint=blueprint_data,
     )
 
-    # 所有房间状态变更都在事务锁内完成，避免与其他请求 / 后台任务并发写坏状态
+    # 所有房间状态变更都在事务锁内完成，避免与其他请求 / 后台 job 并发写坏状态
     async with room.transaction():
 
         # 会话属于用户，不属于某一局游戏；新局只更新当前上下文

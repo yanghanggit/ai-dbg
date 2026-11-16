@@ -10,8 +10,8 @@
   一个 pipeline 访问它的 ECS context。
 * **不阻塞 tick**：用非阻塞方式判断房间是否忙（``room.is_busy``），忙则本轮跳过；否则一个
   长 pipeline 会拖住整个遍历。
-* **不跑长流程**：本回调只做“判断 + 派发”，真正的 LLM pipeline 交给后台任务
-  （``defer_room_task`` + Procrastinate worker）执行。
+* **不跑长流程**：本回调只做“判断 + 派发”，真正的 LLM pipeline 交给后台 job
+  （``defer_room_job`` + Procrastinate worker）执行。
 
 注：房间是进程内内存态，因此定时器应与 GameServer 跑在同一进程（当前由 ``lifespan`` 启动）。
 """
@@ -33,10 +33,10 @@ async def on_room_tick(room: PlayerRoom) -> None:
 
     未来在此实现玩法，例如：
 
-        # 满足条件时派发任务；长流程交给 worker，不要在本回调里直接跑 pipeline。
-        # from .task_dispatch import defer_room_task
+        # 满足条件时派发 job；长流程交给 worker，不要在本回调里直接跑 pipeline。
+        # from .job_dispatch import defer_room_job
         # if should_spawn_dungeon(room.game):
-        #     await defer_room_task(spawn_dungeon_task, user_name=room.username)
+        #     await defer_room_job(spawn_dungeon_job, user_name=room.username)
     """
     return
 

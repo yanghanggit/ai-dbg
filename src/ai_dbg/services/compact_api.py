@@ -11,9 +11,9 @@ from ..models import (
     CompactContextRequest,
     CompactContextResponse,
 )
-from .compact_tasks import execute_compact_context_task
+from .compact_jobs import execute_compact_context_job
 from .game_server_dependencies import CurrentGameServer
-from .task_dispatch import defer_room_task
+from .job_dispatch import defer_room_job
 
 ###################################################################################################################################################################
 compact_api_router = APIRouter()
@@ -44,25 +44,25 @@ async def compact_context(
             detail="没有登录，请先登录",
         )
 
-    # 轻量校验：游戏实例存在（激活动作在任务内执行）
+    # 轻量校验：游戏实例存在（激活动作在 job 内执行）
     if current_room.game is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="没有游戏，请先登录",
         )
 
-    # 派发上下文压缩任务
-    job_id = await defer_room_task(
-        execute_compact_context_task,
+    # 派发上下文压缩 job
+    job_id = await defer_room_job(
+        execute_compact_context_job,
         user_name=payload.user_name,
         target_name=payload.target_name,
     )
 
-    logger.info(f"📝 创建上下文压缩任务: job_id={job_id}, user={payload.user_name}")
+    logger.info(f"📝 创建 上下文压缩 job: job_id={job_id}, user={payload.user_name}")
 
     return CompactContextResponse(
         job_id=job_id,
-        message="上下文压缩任务已启动，请通过会话消息查询结果",
+        message="上下文压缩 job 已启动，请通过会话消息查询结果",
     )
 
 

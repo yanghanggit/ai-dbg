@@ -63,7 +63,7 @@ async def test_global_pipeline_is_safe_in_opening_room() -> None:
     game = _make_opening_game()
     await initialize_game(game)
 
-    await game.pipeline.process()
+    await game.pipeline.process(None)
 
     # 开场初始化应正常写入角色记忆，且没有战斗临时组件被创建。
     player_entity = game.entity_index["角色.玩家"]

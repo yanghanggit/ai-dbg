@@ -140,6 +140,12 @@ def save_world(
         # 将临时目录替换为正式存档目录
         os.replace(tmp_dir, save_dir)
 
+        # 只有成功替换后才更新“最近成功快照”指针
+        if user_name is not None and game_name is not None:
+            from .latest import write_latest_snapshot
+
+            write_latest_snapshot(worlds_dir, user_name, game_name, save_dir)
+
         logger.debug(f"存档成功: {save_dir}")
         return True
 

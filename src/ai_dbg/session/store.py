@@ -121,7 +121,5 @@ class SessionStore:
             try:
                 messages.append(SessionMessage.model_validate_json(line))
             except Exception as exc:  # noqa: BLE001 - 带行号的损坏历史需要明确报错
-                raise ValueError(
-                    f"会话历史损坏: {path}:{line_number}: {exc}"
-                ) from exc
+                raise ValueError(f"会话历史损坏: {path}:{line_number}: {exc}") from exc
         return messages

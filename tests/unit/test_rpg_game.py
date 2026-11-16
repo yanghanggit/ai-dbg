@@ -264,9 +264,7 @@ class TestNotifyEntities:
         notify_entities(game, set(), _agent_event("empty broadcast"))
         assert len(game.events.events) == before + 1
 
-    def test_domain_events_accumulate_in_order(
-        self, game: Any, actor: Entity
-    ) -> None:
+    def test_domain_events_accumulate_in_order(self, game: Any, actor: Entity) -> None:
         """每次 notify_entities 都会追加一条领域事件。"""
         before = list(game.events.events)
         notify_entities(game, {actor}, _agent_event("seq test"))

@@ -16,9 +16,9 @@ from .card_prototype_operations import (
 )
 from .client import *
 from .config import PostgreSQLConfig, postgresql_config
+from .job_event import JobEventDB
+from .job_event_operations import append_job_event, get_job_error, list_job_events
 from .procrastinate_app import procrastinate_app
-from .task_error import TaskErrorDB
-from .task_error_operations import get_task_error, save_task_error
 from .user import *
 from .vector_document import VectorDocumentDB
 from .vector_document_operations import save_vector_document, search_similar_documents
@@ -46,11 +46,12 @@ __all__: List[str] = [
     "list_card_prototype_index",
     "get_card_prototype",
     "get_card_prototype_by_name",
-    # Task error models
-    "TaskErrorDB",
-    # Task error operations
-    "save_task_error",
-    "get_task_error",
+    # Job event models
+    "JobEventDB",
+    # Job event operations
+    "append_job_event",
+    "get_job_error",
+    "list_job_events",
     # Procrastinate task queue app
     "procrastinate_app",
 ]

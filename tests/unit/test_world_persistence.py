@@ -233,6 +233,7 @@ class TestRestoreErrors:
         with pytest.raises(FileNotFoundError, match="world_state.json"):
             restore_world(tmp_path)
 
+
 # ---------------------------------------------------------------------------
 # 临时目录 + 原子替换
 # ---------------------------------------------------------------------------
@@ -252,10 +253,7 @@ class TestAtomicSave:
 
         monkeypatch.setattr(persistence_save, "_write_text", failing_write)
 
-        assert (
-            persistence_save.save_world(_make_world(), tmp_path, save_dir)
-            is False
-        )
+        assert persistence_save.save_world(_make_world(), tmp_path, save_dir) is False
         assert not save_dir.exists()
         assert not [p for p in tmp_path.iterdir() if ".tmp-" in p.name]
 

@@ -14,6 +14,7 @@ from .dungeon_room import *
 from .entities import *
 from .entity_factory import *
 from .items import *
+from .job import *
 from .memory_tags import *
 from .messages import *
 from .player_session import *
@@ -21,6 +22,5 @@ from .registry import *
 from .session_message import *
 from .str_list import *
 from .target_type import *
-from .task import *
 from .utils import *
 from .world_state import *

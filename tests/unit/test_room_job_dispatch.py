@@ -5,7 +5,7 @@ from typing import Any, Optional
 import pytest
 from procrastinate.exceptions import AlreadyEnqueued
 
-from ai_dbg.services.task_dispatch import RoomBusyError, defer_room_task
+from ai_dbg.services.job_dispatch import RoomBusyError, defer_room_job
 
 
 class _FakeTask:
@@ -29,20 +29,20 @@ class _FakeTask:
         return 123
 
 
-async def test_defer_room_task_sets_lock_and_passes_kwargs() -> None:
+async def test_defer_room_job_sets_lock_and_passes_kwargs() -> None:
     task = _FakeTask()
 
-    job_id = await defer_room_task(task, user_name="alice", card_name="x")
+    job_id = await defer_room_job(task, user_name="alice", card_name="x")
 
     assert job_id == 123
     assert task.queueing_lock == "room:alice"
     assert task.deferred == {"user_name": "alice", "card_name": "x"}
 
 
-async def test_defer_room_task_duplicate_raises_room_busy() -> None:
+async def test_defer_room_job_duplicate_raises_room_busy() -> None:
     task = _FakeTask(exc=AlreadyEnqueued("already enqueued"))
 
     with pytest.raises(RoomBusyError) as excinfo:
-        await defer_room_task(task, user_name="alice")
+        await defer_room_job(task, user_name="alice")
 
     assert excinfo.value.user_name == "alice"
