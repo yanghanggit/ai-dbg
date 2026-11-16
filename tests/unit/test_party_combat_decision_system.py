@@ -6,7 +6,7 @@
 
 import json
 from types import SimpleNamespace
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,12 +14,10 @@ import pytest
 from ai_dbg.entitas import GroupEvent
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
-)
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CombatState,
     DeathComponent,
     HandComponent,
     HumanMessage,
@@ -36,7 +34,11 @@ from ai_dbg.systems.combat_decision_common import (
     build_combat_decision_tag,
 )
 from ai_dbg.systems.party_combat_decision_system import PartyCombatDecisionSystem
-from dungeon_support import install_combat
+from dungeon_support import (
+    append_combat_round,
+    install_combat,
+    set_combat_state,
+)
 
 
 def _make_card() -> Card:
@@ -79,9 +81,7 @@ def game(context: Context) -> Any:
     mock.entity_index = {}
     mock.world.agent_memories = {}
     mock.player_session = MagicMock()
-    install_combat(mock, MagicMock())
-    cast(Any, current_dungeon_combat(mock)).is_ongoing = True
-    cast(Any, current_dungeon_combat(mock)).rounds = [MagicMock()]
+    install_combat(mock)
     return mock
 
 
@@ -189,10 +189,7 @@ class TestPartyDecisionRecord:
         self, context: Context, game: Any
     ) -> None:
         """上一回合出过牌不影响本回合：本回合只过牌，就是一次真的过牌决策。"""
-        cast(Any, current_dungeon_combat(game)).rounds = [
-            MagicMock(),
-            MagicMock(),
-        ]
+        append_combat_round(game)
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
         game.world.agent_memories[actor.name] = SimpleNamespace(
@@ -221,7 +218,7 @@ class TestPartyDecisionRecord:
     async def test_skips_when_combat_not_ongoing(
         self, context: Context, game: Any
     ) -> None:
-        cast(Any, current_dungeon_combat(game)).is_ongoing = False
+        set_combat_state(game, CombatState.COMPLETE)
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 

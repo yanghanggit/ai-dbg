@@ -6,8 +6,10 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import ExecuteProcessor
+from ..game.combat.state import transition_combat_to_post_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -36,7 +38,7 @@ class CombatPostCombatTransitionSystem(ExecuteProcessor):
         assert combat.is_won or combat.is_lost, "战斗结果状态异常！"
 
         logger.info("战斗结束，转换战斗状态：COMPLETE -> POST_COMBAT")
-        combat.transition_to_post_combat()
+        transition_combat_to_post_combat(current_combat_entity(self._game))
 
 
 #######################################################################################################################################

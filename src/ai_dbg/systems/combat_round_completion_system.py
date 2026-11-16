@@ -6,14 +6,17 @@ from loguru import logger
 
 from ..entitas import ExecuteProcessor
 from ..game.combat import get_alive_actors_in_stage
+from ..game.combat.state import latest_combat_round, mark_round_completed
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
     get_player_entity,
 )
+from ..models import CombatRoundComponent
 
 
 ###############################################################################################################################################
@@ -33,14 +36,18 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
         if not current_dungeon_combat(self._game).is_ongoing:
             return
 
-        latest_round = current_dungeon_combat(self._game).latest_round
+        combat_entity = current_combat_entity(self._game)
+        latest_round = latest_combat_round(self._game, combat_entity)
 
         # 守卫②：无回合，或回合已标记完成 → 跳过
-        if latest_round is None or latest_round.is_completed:
+        if latest_round is None:
+            return
+        round_comp = latest_round.get(CombatRoundComponent)
+        if round_comp.is_completed:
             return
 
         # 守卫③：init round（无行动顺序） → 跳过
-        if not latest_round.action_order:
+        if not round_comp.action_order:
             return
 
         # 获取本场景所有存活角色
@@ -52,11 +59,11 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
 
         # 判断：所有存活角色均已 pass turn（completed_actors 是行动权推进的唯一依据，
         # 与 energy 是否耗尽无关；死亡角色已被 get_alive_actors_in_stage 过滤，不会阻塞回合结束）
-        completed = set(latest_round.completed_actors)
+        completed = set(round_comp.completed_actors)
         all_passed = all(actor.name in completed for actor in actors_in_stage)
 
         if all_passed:
-            latest_round.is_completed = True
+            mark_round_completed(latest_round)
             logger.info(
-                f"回合完成：所有存活角色均已 pass turn，is_completed = True（action_order={latest_round.action_order}）"
+                f"回合完成：所有存活角色均已 pass turn，is_completed = True（action_order={round_comp.action_order}）"
             )

@@ -35,11 +35,11 @@ from ai_dbg.models import (
     MonsterComponent,
     PartyMemberComponent,
     PlayCardsAction,
-    Round,
     TargetType,
 )
 from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
 from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from dungeon_support import install_combat
 
 
 #######################################################################################################
@@ -69,15 +69,15 @@ def _make_actor(game: Any, name: str, *, monster: bool = False) -> Entity:
     return entity
 
 
-def _arm_combat(game: Any) -> None:
-    """造一个进行中的战斗房间（转移系统以此作为前置）。"""
-    from ai_dbg.models import Combat, CombatState
-    from dungeon_support import install_combat
-
-    combat = Combat(name="场景.河湾芦苇丛")
-    combat.state = CombatState.ONGOING
-    combat.rounds = [Round(action_order=[], completed_actors=[])]
-    install_combat(game, combat, room_name="场景.河湾芦苇丛")
+def _arm_combat(game: Any, *, draw_completed: bool = True) -> None:
+    """造一个进行中的战斗房间（转移/抽牌系统以此作为前置）。"""
+    install_combat(
+        game,
+        room_name="场景.河湾芦苇丛",
+        action_order=[],
+        current_actor=None,
+        draw_completed=draw_completed,
+    )
 
 
 #######################################################################################################
@@ -184,7 +184,7 @@ class TestPileChangeWritesRealMemory:
         self, sample_game: Any, tmp_path: Path
     ) -> None:
         game = sample_game
-        _arm_combat(game)
+        _arm_combat(game, draw_completed=False)
         actor = _make_actor(game, "角色.无名")
         actor.add(
             CharacterStatsComponent,

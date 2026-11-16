@@ -15,7 +15,7 @@ from ..entitas import ComponentData, EntityData
 from ..models import (
     AppearanceComponent,
     CharacterStatsComponent,
-    Combat,
+    CombatView,
     DeathComponent,
     DungeonRoomType,
     EnvironmentComponent,
@@ -157,7 +157,7 @@ def _entity_summary(name: str, components: EntityData) -> EntitySummary:
 
 
 ########################################################################################################################
-def _round_summary(combat: Combat) -> Optional[Dict[str, Any]]:
+def _round_summary(combat: CombatView) -> Optional[Dict[str, Any]]:
     """最近一回合的回合内状态与日志。"""
     latest = combat.latest_round
     if latest is None:
@@ -220,7 +220,7 @@ def _spoils_info(
 
 
 ########################################################################################################################
-def _combat_info(combat: Combat) -> Dict[str, Any]:
+def _combat_info(combat: CombatView) -> Dict[str, Any]:
     return {
         "name": combat.name,
         "state": combat.state.name,

@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 """DiscardCardsActionSystem 单元测试。"""
 
@@ -9,19 +9,17 @@ import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
-)
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CombatState,
     DiscardPileComponent,
     HandComponent,
     PlayCardsAction,
     TargetType,
 )
 from ai_dbg.systems.discard_cards_action_system import DiscardCardsActionSystem
-from dungeon_support import install_combat
+from dungeon_support import install_combat, set_combat_state
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,8 +66,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
-    cast(Any, current_dungeon_combat(game)).is_ongoing = True
+    install_combat(game)
     return game
 
 
@@ -93,7 +90,7 @@ class TestDiscardCardsActionSystemSkip:
         mock_game: Any,
         system: DiscardCardsActionSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
+        set_combat_state(mock_game, CombatState.COMPLETE)
         entity = _make_entity(context, "英雄")
         card = _make_card("闪击", source="英雄")
         entity.get(HandComponent).cards.append(card)

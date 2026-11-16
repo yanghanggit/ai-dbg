@@ -17,9 +17,10 @@ from ai_dbg.models import (
     AgentMemory,
     AIMessage,
     Blueprint,
-    Combat,
     CombatComponent,
+    CombatRoundComponent,
     CombatState,
+    CombatStateComponent,
     DungeonRoomComponent,
     DungeonRoomType,
     DungeonRunComponent,
@@ -143,8 +144,6 @@ class TestRoundTrip:
         """副本/房间/战斗组件应按 JSON 模式落盘，并能还原出原始字段类型。"""
         world = _make_world()
         created_at = datetime(2026, 1, 2, 3, 4, 5)
-        combat = Combat(name="场景.测试")
-        combat.state = CombatState.ONGOING
         world.entities = {
             "副本.测试": dump_components(
                 DungeonRunComponent(
@@ -161,7 +160,24 @@ class TestRoundTrip:
                     index=0,
                     room_type=DungeonRoomType.COMBAT,
                 ),
-                CombatComponent(name="场景.测试", combat=combat),
+                CombatComponent(
+                    name="场景.测试",
+                    combat_name="场景.测试#combat",
+                ),
+            ),
+            "场景.测试#combat": dump_components(
+                CombatStateComponent(
+                    name="场景.测试#combat",
+                    room_name="场景.测试",
+                    state=CombatState.ONGOING,
+                )
+            ),
+            "场景.测试#combat#round-1": dump_components(
+                CombatRoundComponent(
+                    name="场景.测试#combat#round-1",
+                    combat_name="场景.测试#combat",
+                    index=1,
+                )
             ),
         }
         save_dir = tmp_path / "snap"
@@ -173,9 +189,15 @@ class TestRoundTrip:
         raw_dungeon = restored_world.entities["副本.测试"]["DungeonRunComponent"]
         raw_room = restored_world.entities["场景.测试"]["DungeonRoomComponent"]
         raw_combat = restored_world.entities["场景.测试"]["CombatComponent"]
+        raw_state = restored_world.entities["场景.测试#combat"]["CombatStateComponent"]
+        raw_round = restored_world.entities["场景.测试#combat#round-1"][
+            "CombatRoundComponent"
+        ]
         assert DungeonRunComponent(**raw_dungeon).created_at == created_at
         assert DungeonRoomComponent(**raw_room).room_type == DungeonRoomType.COMBAT
-        assert CombatComponent(**raw_combat).combat.state == CombatState.ONGOING
+        assert CombatComponent(**raw_combat).combat_name == "场景.测试#combat"
+        assert CombatStateComponent(**raw_state).state == CombatState.ONGOING
+        assert CombatRoundComponent(**raw_round).index == 1
 
     def test_world_state_json_excludes_split_fields(self, tmp_path: Path) -> None:
         """world_state.json 应排除独立存储的字段。"""

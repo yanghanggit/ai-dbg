@@ -6,8 +6,10 @@ from loguru import logger
 
 from ..entitas import Component, Entity, ExecuteProcessor
 from ..game.combat import clear_round_state
+from ..game.combat.state import complete_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -74,7 +76,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
         logger.info(f"战斗结束，结果: {combat_result}")
 
         # 推进战斗状态机（ONGOING -> COMPLETE），后续 pipeline 系统据此判断是否进入战后阶段
-        current_dungeon_combat(self._game).complete_combat(combat_result)
+        complete_combat(current_combat_entity(self._game), combat_result)
 
         # 根据判定结果清理回合状态并广播战斗结果
         record_round_end_discard(self._game, clear_round_state(self._game))

@@ -24,8 +24,6 @@ from ai_dbg.models import (
     Card,
     CharacterStats,
     CharacterStatsComponent,
-    Combat,
-    CombatState,
     DiscardPileComponent,
     DrawPileComponent,
     ExhaustPileComponent,
@@ -36,7 +34,6 @@ from ai_dbg.models import (
     PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
-    Round,
     RoundStatsComponent,
     TargetType,
     ToolMessage,
@@ -79,16 +76,12 @@ def _make_entity(game: Any, name: str, *, monster: bool) -> Entity:
 
 
 def _arm_combat(game: Any) -> None:
-    combat = Combat(name=_STAGE_NAME)
-    combat.state = CombatState.ONGOING
-    combat.rounds = [
-        Round(
-            action_order=["角色.无名", "怪物.渡口野狗"],
-            completed_actors=[],
-            current_actor="怪物.渡口野狗",
-        )
-    ]
-    install_combat(game, combat, room_name=_STAGE_NAME)
+    install_combat(
+        game,
+        room_name=_STAGE_NAME,
+        action_order=["角色.无名", "怪物.渡口野狗"],
+        current_actor="怪物.渡口野狗",
+    )
 
 
 #######################################################################################################

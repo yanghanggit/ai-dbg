@@ -9,8 +9,10 @@ from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
 )
+from ..game.combat.state import transition_combat_to_ongoing
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -106,7 +108,7 @@ class CombatInitStageSystem(ExecuteProcessor):
         )
 
         # 设置战斗为进行中（第一回合将由 DrawCardsAction 触发的 CombatRoundStartSystem 创建）
-        current_dungeon_combat(self._game).transition_to_ongoing()
+        transition_combat_to_ongoing(current_combat_entity(self._game))
         assert current_dungeon_combat(
             self._game
         ).is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"

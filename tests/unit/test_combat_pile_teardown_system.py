@@ -1,17 +1,18 @@
 """CombatPileTeardownSystem 单元测试。"""
 
 import json
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from ai_dbg.entitas import Entity
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.dungeon import current_dungeon_combat
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CombatResult,
+    CombatState,
     DeckComponent,
     DiscardPileComponent,
     DrawPileComponent,
@@ -19,7 +20,7 @@ from ai_dbg.models import (
     TargetType,
 )
 from ai_dbg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
-from dungeon_support import install_combat
+from dungeon_support import install_combat, set_combat_state
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -41,7 +42,7 @@ def mock_game(context: Context) -> Any:
     game.world.agent_memories = {}
     game.player_session = MagicMock()
     game.get_group.side_effect = context.get_group
-    install_combat(game, MagicMock())
+    install_combat(game)
     return game
 
 
@@ -93,7 +94,7 @@ class TestCombatPileTeardownSystemSkip:
         self, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """当 is_post_combat 为 False 时，应跳过并不调用 get_group。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = False
+        set_combat_state(mock_game, CombatState.ONGOING)
 
         await system.execute()
 
@@ -113,7 +114,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 DrawPileComponent。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         await system.execute()
@@ -125,7 +130,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 DiscardPileComponent。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         await system.execute()
@@ -137,7 +146,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体不应再持有 ExhaustPileComponent。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         await system.execute()
@@ -149,7 +162,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """执行后实体应仍持有 DeckComponent（原始牌库跨战斗持久存在）。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         await system.execute()
@@ -161,7 +178,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """战斗结束后 DeckComponent 中的原始牌库应保持不变（副本被丢弃，原始不受影响）。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         # 预置原始牌库（模拟 DeckGenerationSystem 锁定后的状态）
@@ -183,7 +204,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """战斗子堆中的副本（包括外来牌）战斗结束后应全部丢弃，不写入 DeckComponent。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         entity = _make_combat_entity(context, "英雄")
 
         own_copy = _make_card("闪击", source="英雄")
@@ -210,7 +235,11 @@ class TestCombatPileTeardownSystemPileRemoval:
         self, context: Context, mock_game: Any, system: CombatPileTeardownSystem
     ) -> None:
         """多个实体应全部被处理，Pile 组件全部移除，DeckComponent 保留。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_post_combat = True
+        set_combat_state(
+            mock_game,
+            CombatState.POST_COMBAT,
+            result=CombatResult.WIN,
+        )
         hero = _make_combat_entity(context, "英雄")
         monster = _make_combat_entity(context, "哥布林")
 

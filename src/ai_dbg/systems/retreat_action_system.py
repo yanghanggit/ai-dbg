@@ -6,8 +6,10 @@ from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import mark_dead
+from ..game.combat.state import mark_combat_retreated
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_entity,
     current_dungeon_combat,
     current_dungeon_name,
     is_current_room_dungeon_combat,
@@ -72,7 +74,7 @@ class RetreatActionSystem(ReactiveProcessor):
             self._process_retreat_action(entity, dungeon_name)
 
         # 标记当前战斗为撤退状态
-        current_dungeon_combat(self._game).retreated = True
+        mark_combat_retreated(current_combat_entity(self._game))
 
     ####################################################################################################################################
     def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:

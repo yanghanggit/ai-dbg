@@ -7,20 +7,24 @@ from loguru import logger
 from ...entitas import Entity, Matcher
 from ...models import (
     Card,
+    CombatRoundComponent,
+    CombatRoundView,
     DeathComponent,
     DiscardPileComponent,
     DrawPileComponent,
     ExhaustPileComponent,
     HandComponent,
-    Round,
     RoundStatsComponent,
 )
 from ..context import DBGGame
 from ..entities import get_actor_entity
 
 
-def get_current_turn_actor(game: DBGGame, round: Round) -> Optional[str]:
-    """从最新回合快照中找出第一个尚未 pass turn 的角色名。"""
+def get_current_turn_actor(
+    game: DBGGame,
+    round: CombatRoundView | CombatRoundComponent,
+) -> Optional[str]:
+    """从回合快照中找出第一个尚未 pass turn 的角色名。"""
     if not round.action_order:
         return None
 

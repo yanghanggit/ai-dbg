@@ -293,7 +293,7 @@ def _make_transfer_game(actors: Dict[str, Entity]) -> Any:
     mock_game.ecs = Context()
     mock_game.world.agent_memories = {}
     mock_game.entity_index = actors
-    install_combat(mock_game, MagicMock(is_ongoing=True))
+    install_combat(mock_game)
     for entity in actors.values():
         if not entity.has(HandComponent):
             entity.add(HandComponent, entity.name, [])

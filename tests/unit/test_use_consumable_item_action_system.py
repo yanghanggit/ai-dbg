@@ -5,22 +5,24 @@
 扣库存失败则不物化、不广播。效果结算交给后续出牌仲裁。
 """
 
-from typing import Any, List, cast
+from typing import Any, List
 from unittest.mock import MagicMock
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import current_dungeon_combat
+from ai_dbg.game.combat.state import combat_rounds, create_combat_round
+from ai_dbg.game.dungeon import current_combat_entity
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CombatRoundComponent,
+    CombatState,
     ConsumableItem,
     HandComponent,
     InventoryComponent,
     PlayerComponent,
-    Round,
     RoundEntryKind,
     StageComponent,
     UseConsumableItemAction,
@@ -28,7 +30,11 @@ from ai_dbg.models import (
 from ai_dbg.systems.use_consumable_item_action_system import (
     UseConsumableItemActionSystem,
 )
-from dungeon_support import install_combat
+from dungeon_support import (
+    current_round_entity,
+    install_combat,
+    set_combat_state,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -84,15 +90,19 @@ def _make_player_entity(
     return entity
 
 
-def _setup_mock_dungeon(mock_game: Any, *, round_count: int = 1) -> Round:
+def _setup_mock_dungeon(mock_game: Any, *, round_count: int = 1) -> Entity:
     """为 mock_game 配置进行中的战斗状态与最新回合。"""
-    install_combat(mock_game, MagicMock())
-    combat: Any = current_dungeon_combat(mock_game)
-    combat.is_ongoing = True
-    combat.rounds = [MagicMock()] * round_count
-    latest = Round()
-    combat.latest_round = latest
-    return latest
+    combat_entity = current_combat_entity(mock_game)
+    existing_rounds = combat_rounds(mock_game, combat_entity)
+    for index in range(len(existing_rounds) + 1, round_count + 1):
+        create_combat_round(
+            mock_game,
+            combat_entity,
+            index=index,
+            action_order=[],
+            current_actor=None,
+        )
+    return current_round_entity(mock_game)
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +122,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
+    install_combat(game)
     return game
 
 
@@ -156,7 +166,7 @@ class TestReact:
         mock_game: Any,
         system: UseConsumableItemActionSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
+        set_combat_state(mock_game, CombatState.COMPLETE)
         item = _make_consumable("灼血药剂", count=2)
         actor = _make_actor_entity(context, "角色.无名", item)
 
@@ -283,9 +293,11 @@ class TestReact:
 
         await system.react([actor])
 
-        latest: Any = current_dungeon_combat(mock_game).latest_round
+        round_entity = current_round_entity(mock_game)
         consumable_entries = [
-            entry for entry in latest.entries if entry.kind == RoundEntryKind.CONSUMABLE
+            entry
+            for entry in round_entity.get(CombatRoundComponent).entries
+            if entry.kind == RoundEntryKind.CONSUMABLE
         ]
         assert len(consumable_entries) == 1
         assert consumable_entries[0].log

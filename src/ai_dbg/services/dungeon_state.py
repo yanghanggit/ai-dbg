@@ -106,7 +106,7 @@ async def get_dungeon_room(
         )
 
     # 返回当前副本房间的运行时视图
-    return DungeonRoomResponse(room=dungeon_room_view(room_entity))
+    return DungeonRoomResponse(room=dungeon_room_view(current_room.game, room_entity))
 
 
 ###################################################################################################################################################################

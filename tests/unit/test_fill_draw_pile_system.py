@@ -58,7 +58,7 @@ def game(context: Context) -> Any:
     game = MagicMock()
     game.ecs = context
     game.entity_index = {}
-    install_combat(game, MagicMock())
+    install_combat(game)
     return game
 
 

@@ -6,8 +6,10 @@ from typing import Dict, Final, List, Tuple, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ..game.combat.state import mark_round_draw_completed
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -15,6 +17,7 @@ from ..models import (
     ActorComponent,
     Card,
     CharacterStatsComponent,
+    CombatRoundComponent,
     DeathComponent,
     DiscardPileComponent,
     DrawCardsAction,
@@ -177,8 +180,11 @@ class DrawCardsActionSystem(ReactiveProcessor):
             return
 
         # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
-        last_round = current_dungeon_combat(self._game).latest_round
-        assert last_round is not None, "DrawCardsActionSystem: 无法获取当前回合信息！"
+        last_round_entity = current_combat_round_entity(self._game)
+        assert (
+            last_round_entity is not None
+        ), "DrawCardsActionSystem: 无法获取当前回合实体！"
+        last_round = last_round_entity.get(CombatRoundComponent)
         if last_round.draw_completed:
             logger.debug(
                 f"DrawCardsActionSystem: 第 {len(current_dungeon_combat(self._game).rounds)} 回合已抽牌，跳过重复抽牌"
@@ -237,6 +243,6 @@ class DrawCardsActionSystem(ReactiveProcessor):
             )
 
         # 标记本回合 DRAW 阶段已完成
-        last_round.draw_completed = True
+        mark_round_draw_completed(last_round_entity)
 
     #######################################################################################################################################

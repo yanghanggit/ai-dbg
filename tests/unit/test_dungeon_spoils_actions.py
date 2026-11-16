@@ -67,7 +67,7 @@ def _mock_game(
     if in_dungeon:
         make_dungeon_entity(game)
         if in_combat:
-            install_combat(game, MagicMock(), room_name=stage.name)
+            install_combat(game, room_name=stage.name)
         else:
             install_opening_room(game, room_name=stage.name)
     return game

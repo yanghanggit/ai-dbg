@@ -19,8 +19,10 @@ from ..game.combat import (
     compute_character_stats,
     set_character_hp,
 )
+from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
 )
 from ..game.entities import (
@@ -539,9 +541,11 @@ def apply_arbitration_result(
             ),
         )
 
-    latest_round = current_dungeon_combat(game).latest_round
-    assert latest_round is not None, "latest_round 不应为 None"
-    latest_round.record(_ROUND_ENTRY_KIND[kind], combat_log, narrative)
+    round_entity = current_combat_round_entity(game)
+    assert round_entity is not None, "current_combat_round_entity 不应为 None"
+    record_round_entry(
+        round_entity, _ROUND_ENTRY_KIND[kind], combat_log, narrative
+    )
 
 
 def record_aborted_loop(
@@ -570,9 +574,10 @@ def record_aborted_loop(
         ),
     )
 
-    latest_round = current_dungeon_combat(game).latest_round
-    assert latest_round is not None, "latest_round 不应为 None"
-    latest_round.record(
+    round_entity = current_combat_round_entity(game)
+    assert round_entity is not None, "current_combat_round_entity 不应为 None"
+    record_round_entry(
+        round_entity,
         RoundEntryKind.FAILED,
         f"[{kind}] {loop_id} 结算未完成：{reason}",
         "（结算未完成，本回合无变化）",

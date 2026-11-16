@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from ai_dbg.entitas import Context
@@ -33,15 +32,7 @@ def _make_game() -> tuple[MagicMock, Context, Entity]:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(
-        game,
-        SimpleNamespace(
-            is_ongoing=True,
-            latest_round=SimpleNamespace(draw_completed=True),
-            rounds=[object()],
-        ),
-        room_name=stage.name,
-    )
+    install_combat(game, room_name=stage.name)
     return game, context, player
 
 

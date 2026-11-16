@@ -8,8 +8,10 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import compute_character_stats
+from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -133,9 +135,10 @@ class EquipGearItemActionSystem(ReactiveProcessor):
         )
 
         # 记录本回合装备使用结果
-        latest_round = current_dungeon_combat(self._game).latest_round
-        if latest_round is not None:
-            latest_round.record(
+        round_entity = current_combat_round_entity(self._game)
+        if round_entity is not None:
+            record_round_entry(
+                round_entity,
                 RoundEntryKind.GEAR,
                 f"[{entity.name} 装备 {item.name}] 生成手牌「{'、'.join(card_names)}」",
                 "；".join(card.description for card in cards),

@@ -13,6 +13,7 @@ from ..game.combat import (
     assert_no_residual_combat_state,
     set_character_hp,
 )
+from ..game.combat.state import create_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_dungeon_combat,
@@ -26,9 +27,6 @@ from ..game.memory import (
 )
 from ..game.stage.transition import stage_transition
 from ..models import (
-    Combat,
-    CombatComponent,
-    CombatState,
     CurrentDungeonRoomComponent,
     DeathComponent,
     DungeonComponent,
@@ -146,15 +144,9 @@ async def advance_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
     if leaving_combat:
         assert_no_residual_combat_state(dbg_game)
 
-    # 进入战斗房间时创建战斗实例并初始化
+    # 进入战斗房间时创建战斗实体并初始化
     if next_room_component.room_type == DungeonRoomType.COMBAT:
-        if next_room.has(CombatComponent):
-            assert (
-                next_room.get(CombatComponent).combat.state == CombatState.NONE
-            ), f"{next_room.name} 战斗已初始化，同一战斗房间不可重开"
-        combat = Combat(name=next_room.name)
-        combat.state = CombatState.INITIALIZATION
-        next_room.replace(CombatComponent, next_room.name, combat)
+        create_combat(dbg_game, next_room)
     else:
         # 进入非战斗房间时，清理上一轮残留的奖励状态（奖励与房间生命周期绑定）
         cleared = clear_party_spoils(dbg_game)

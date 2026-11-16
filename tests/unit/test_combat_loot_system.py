@@ -1,20 +1,19 @@
 """CombatLootSystem 单元测试：掉落推理必须写回怪物记忆（与出牌决策一致）。"""
 
-from typing import Any, List, cast
+from typing import Any, List
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas import Entity
 from ai_dbg.entitas.context import Context
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
-)
 from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     AppearanceComponent,
+    CombatResult,
+    CombatState,
     LootComponent,
     MonsterComponent,
     PartyMemberComponent,
@@ -22,7 +21,7 @@ from ai_dbg.models import (
     StageComponent,
 )
 from ai_dbg.systems.combat_loot_system import CombatLootSystem
-from dungeon_support import install_combat
+from dungeon_support import install_combat, set_combat_state
 
 _MODULE = "ai_dbg.systems.combat_loot_system"
 
@@ -70,13 +69,10 @@ def _make_game(context: Context, monsters: List[Entity], player: Entity) -> Any:
     game.player_session = MagicMock()
     install_combat(
         game,
-        MagicMock(
-            is_combat_completed=True,
-            is_won=True,
-            rounds=[MagicMock()],
-        ),
         room_name=stage.name,
+        state=CombatState.COMPLETE,
     )
+    set_combat_state(game, CombatState.COMPLETE, result=CombatResult.WIN)
     return game
 
 
@@ -157,7 +153,7 @@ class TestLootMemory:
         player = _make_player(context)
         monster = _make_monster(context, "怪物.渡口野狗")
         game = _make_game(context, [monster], player)
-        cast(Any, current_dungeon_combat(game)).is_won = False
+        set_combat_state(game, CombatState.COMPLETE, result=CombatResult.LOSE)
         system = CombatLootSystem(game)
 
         await system.execute()

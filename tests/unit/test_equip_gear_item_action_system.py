@@ -1,16 +1,17 @@
 """EquipGearItemActionSystem 单元测试：验证 GearItem 转化为手牌的流程。"""
 
-from typing import Any, List, cast
+from typing import Any, List
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import current_dungeon_combat
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CombatRoundComponent,
+    CombatState,
     EquipGearItemAction,
     EquippedGearComponent,
     GearItem,
@@ -18,12 +19,15 @@ from ai_dbg.models import (
     InventoryComponent,
     PartyMemberComponent,
     PlayerComponent,
-    Round,
     RoundEntryKind,
     StageComponent,
 )
 from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
-from dungeon_support import install_combat
+from dungeon_support import (
+    current_round_entity,
+    install_combat,
+    set_combat_state,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,13 +70,9 @@ def _make_player_entity(context: Context, name: str, items: List[GearItem]) -> E
     return entity
 
 
-def _setup_mock_game(mock_game: Any, player: Entity) -> Round:
-    install_combat(mock_game, MagicMock())
-    cast(Any, current_dungeon_combat(mock_game)).is_ongoing = True
-    cast(Any, current_dungeon_combat(mock_game)).rounds = [MagicMock()]
-    latest_round = Round()
-    cast(Any, current_dungeon_combat(mock_game)).latest_round = latest_round
-    return latest_round
+def _setup_mock_game(mock_game: Any, player: Entity) -> Entity:
+    del player
+    return current_round_entity(mock_game)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
+    install_combat(game)
     return game
 
 
@@ -114,7 +114,7 @@ class TestReact:
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
-        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
+        set_combat_state(mock_game, CombatState.COMPLETE)
         gear = _make_gear("装备.测试")
         actor = _make_actor_entity(context, "角色.测试", gear)
 
@@ -132,7 +132,7 @@ class TestReact:
         gear = _make_gear("装备.测试")
         actor = _make_actor_entity(context, "角色.测试", gear)
         player = _make_player_entity(context, "player", [gear])
-        latest_round = _setup_mock_game(mock_game, player)
+        latest_round_entity = _setup_mock_game(mock_game, player)
         generated = Card(name="斩击", description="x")
         with patch.object(system, "_materialize_cards", return_value=[generated]):
             await system.react([actor])
@@ -146,7 +146,9 @@ class TestReact:
         assert generated in actor.get(HandComponent).cards
         # 本回合装备使用结果被记入记录队列
         gear_entries = [
-            entry for entry in latest_round.entries if entry.kind == RoundEntryKind.GEAR
+            entry
+            for entry in latest_round_entity.get(CombatRoundComponent).entries
+            if entry.kind == RoundEntryKind.GEAR
         ]
         assert len(gear_entries) == 1
         assert gear_entries[0].log

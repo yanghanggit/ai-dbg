@@ -1,12 +1,26 @@
 """测试辅助：直接在 ECS 中构造副本/房间/战斗状态。"""
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, List, Optional
 
 from ai_dbg.entitas import Entity
+from ai_dbg.game.combat.state import (
+    combat_rounds,
+    create_combat,
+    create_combat_round,
+    mark_round_completed,
+    mark_round_draw_completed,
+)
+from ai_dbg.game.dungeon import (
+    current_combat_entity,
+    current_combat_round_entity,
+    current_dungeon_combat,
+)
 from ai_dbg.game.entities import create_entity
 from ai_dbg.models import (
-    CombatComponent,
+    CombatResult,
+    CombatState,
+    CombatStateComponent,
     CurrentDungeonRoomComponent,
     DungeonComponent,
     DungeonRoomComponent,
@@ -64,13 +78,18 @@ def set_current_room(game: Any, room: Entity) -> None:
 
 def install_combat(
     game: Any,
-    combat: Any,
     *,
     room_name: str = "场景.测试",
     index: int = 0,
     dungeon_name: str = "副本.测试",
+    state: CombatState = CombatState.ONGOING,
+    rounds: int = 1,
+    action_order: Optional[List[str]] = None,
+    current_actor: Optional[str] = None,
+    draw_completed: bool = True,
+    is_completed: bool = False,
 ) -> Any:
-    """把任意 combat 对象挂到当前战斗房间上，返回该对象。"""
+    """创建战斗房间、战斗实体与若干回合，返回当前战斗只读视图。"""
     room = make_room_entity(
         game,
         name=room_name,
@@ -79,13 +98,23 @@ def install_combat(
         dungeon_name=dungeon_name,
     )
     set_current_room(game, room)
-    if room.has(CombatComponent):
-        room.remove(CombatComponent)
-    room.set(
-        CombatComponent,
-        CombatComponent.model_construct(name=room.name, combat=combat),
-    )
-    return combat
+    combat_entity = create_combat(game, room, state=state)
+
+    for round_index in range(1, rounds + 1):
+        round_entity = create_combat_round(
+            game,
+            combat_entity,
+            index=round_index,
+            action_order=action_order or [],
+            current_actor=current_actor,
+        )
+        if round_index == rounds:
+            if draw_completed:
+                mark_round_draw_completed(round_entity)
+            if is_completed:
+                mark_round_completed(round_entity)
+
+    return current_dungeon_combat(game)
 
 
 def install_opening_room(
@@ -112,3 +141,48 @@ def clear_current_room(game: Any) -> None:
     for entity in list(game.ecs.entities):
         if entity.has(CurrentDungeonRoomComponent):
             entity.remove(CurrentDungeonRoomComponent)
+
+
+def append_combat_round(
+    game: Any,
+    *,
+    action_order: Optional[List[str]] = None,
+    current_actor: Optional[str] = None,
+) -> Entity:
+    """测试辅助：给当前战斗追加一个新回合。"""
+    combat_entity = current_combat_entity(game)
+    index = len(combat_rounds(game, combat_entity)) + 1
+    return create_combat_round(
+        game,
+        combat_entity,
+        index=index,
+        action_order=action_order or [],
+        current_actor=current_actor,
+    )
+
+
+def set_combat_state(
+    game: Any,
+    state: CombatState,
+    *,
+    result: CombatResult = CombatResult.NONE,
+    retreated: bool = False,
+) -> None:
+    """测试辅助：直接改写当前战斗的状态组件。"""
+    combat_entity = current_combat_entity(game)
+    state_comp = combat_entity.get(CombatStateComponent)
+    combat_entity.replace(
+        CombatStateComponent,
+        state_comp.name,
+        state_comp.room_name,
+        state,
+        result,
+        retreated,
+    )
+
+
+def current_round_entity(game: Any) -> Entity:
+    """测试辅助：返回当前回合实体。"""
+    round_entity = current_combat_round_entity(game)
+    assert round_entity is not None, "当前战斗没有回合"
+    return round_entity

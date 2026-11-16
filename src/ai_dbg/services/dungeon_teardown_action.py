@@ -5,6 +5,10 @@
 
 from loguru import logger
 
+from ..game.combat.state import (
+    destroy_combat,
+    get_combat_entity_for_room,
+)
 from ..game.context import DBGGame
 from ..game.dungeon import (
     dungeon_rooms,
@@ -14,7 +18,7 @@ from ..game.entities import (
     destroy_entity,
     get_actors_in_stage,
 )
-from ..models import MonsterComponent
+from ..models import CombatComponent, MonsterComponent
 
 
 ###################################################################################################################################################################
@@ -37,8 +41,13 @@ def teardown_dungeon(dbg_game: DBGGame) -> None:
             if actor_entity.has(MonsterComponent):
                 destroy_entity(dbg_game, actor_entity)
 
-    # 2. 销毁所有房间对应的 Stage 实体（房间组件随实体一起消失）
+    # 2. 销毁房间对应的战斗实体，再销毁 Stage 实体
     for room_entity in rooms:
+        if room_entity.has(CombatComponent):
+            destroy_combat(
+                dbg_game,
+                get_combat_entity_for_room(dbg_game, room_entity),
+            )
         destroy_entity(dbg_game, room_entity)
 
     # 3. 销毁副本实体

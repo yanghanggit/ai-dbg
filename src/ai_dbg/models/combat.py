@@ -1,9 +1,13 @@
-"""战斗相关模型定义"""
+"""战斗相关模型定义。
+
+`Combat` / `Round` 的运行时状态已经迁移到 ECS：战斗是实体，回合也是实体。
+本模块只保留枚举、值对象与只读视图，供系统、API 与测试消费。
+"""
 
 from enum import IntEnum, StrEnum, unique
 from typing import List, Optional, final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 ###############################################################################################################################################
@@ -57,38 +61,28 @@ class RoundEntry(BaseModel):
 
 ###############################################################################################################################################
 @final
-class Round(BaseModel):
-    """战斗回合"""
+class CombatRoundView(BaseModel):
+    """回合的只读投影；运行时数据由回合实体上的组件持有。"""
 
-    completed_actors: List[str] = []  # 已完成出牌的角色名称（按出手顺序追加，允许重复）
-    action_order: List[str] = (
-        []
-    )  # 回合开始时确定的行动顺序快照（去重、按优先级排列）；写入后本回合内不再变动
-    current_actor: Optional[str] = (
-        None  # 当前 turn 应行动的角色名；由系统写入，供无 ECS 访问的消费点读取
-    )
-    is_completed: bool = False  # 回合结束标记；
-    draw_completed: bool = False  # 抽牌阶段结束标记；
-    entries: List[RoundEntry] = []  # 本回合内所有操作的记录队列（按发生顺序线性追加）
-
-    ########################################################################################################################
-    def record(self, kind: RoundEntryKind, log: str, narrative: str) -> RoundEntry:
-        """记录一条本回合内的操作。所有写点统一经由本接口，保证全局先后顺序。"""
-        entry = RoundEntry(kind=kind, log=log, narrative=narrative)
-        self.entries.append(entry)
-        return entry
+    index: int
+    completed_actors: List[str] = Field(default_factory=list)
+    action_order: List[str] = Field(default_factory=list)
+    current_actor: Optional[str] = None
+    is_completed: bool = False
+    draw_completed: bool = False
+    entries: List[RoundEntry] = Field(default_factory=list)
 
 
 ###############################################################################################################################################
 @final
-class Combat(BaseModel):
-    """战斗实例"""
+class CombatView(BaseModel):
+    """战斗的只读投影；运行时数据由战斗/回合实体上的组件持有。"""
 
     name: str
     state: CombatState = CombatState.NONE
     result: CombatResult = CombatResult.NONE
-    rounds: List[Round] = []
-    retreated: bool = False  # 是否通过撤退结束本次战斗
+    rounds: List[CombatRoundView] = Field(default_factory=list)
+    retreated: bool = False
 
     ########################################################################################################################
     @property
@@ -122,36 +116,7 @@ class Combat(BaseModel):
 
     ########################################################################################################################
     @property
-    def latest_round(self) -> Optional[Round]:
+    def latest_round(self) -> Optional[CombatRoundView]:
         if len(self.rounds) == 0:
             return None
         return self.rounds[-1]
-
-    ########################################################################################################################
-    def complete_combat(self, result: CombatResult) -> None:
-        """完成战斗，设置结果"""
-        assert self.state == CombatState.ONGOING
-        assert result == CombatResult.WIN or result == CombatResult.LOSE
-        assert self.result == CombatResult.NONE
-        self.state = CombatState.COMPLETE
-        self.result = result
-
-    ########################################################################################################################
-    def transition_to_ongoing(self) -> None:
-        """将战斗状态转换为进行中"""
-        assert self.state == CombatState.INITIALIZATION
-        assert self.result == CombatResult.NONE
-        self.state = CombatState.ONGOING
-
-    ########################################################################################################################
-    def transition_to_post_combat(self) -> None:
-        """将战斗状态转换为战后阶段"""
-        assert self.result in (
-            CombatResult.WIN,
-            CombatResult.LOSE,
-        )
-        assert self.state == CombatState.COMPLETE
-        self.state = CombatState.POST_COMBAT
-
-
-###############################################################################################################################################

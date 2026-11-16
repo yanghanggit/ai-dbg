@@ -11,8 +11,10 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -130,9 +132,10 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
         entity.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
 
         # 记录本回合消耗品使用结果（与装备记录同队列）
-        latest_round = current_dungeon_combat(self._game).latest_round
-        if latest_round is not None:
-            latest_round.record(
+        round_entity = current_combat_round_entity(self._game)
+        if round_entity is not None:
+            record_round_entry(
+                round_entity,
                 RoundEntryKind.CONSUMABLE,
                 f"[{entity.name} 使用 {item.name} ×{removed_item.count}] 生成手牌「{'、'.join(card_names)}」",
                 "；".join(card.description for card in cards),

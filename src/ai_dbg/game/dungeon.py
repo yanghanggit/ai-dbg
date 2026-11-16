@@ -4,8 +4,8 @@ from typing import List, Optional
 
 from ..entitas import Entity, Matcher
 from ..models import (
-    Combat,
     CombatComponent,
+    CombatView,
     CurrentDungeonRoomComponent,
     DungeonComponent,
     DungeonRoomComponent,
@@ -13,6 +13,11 @@ from ..models import (
     DungeonRoomView,
     DungeonRunComponent,
     DungeonStateView,
+)
+from .combat.state import (
+    combat_view,
+    current_combat_round,
+    get_combat_entity_for_room,
 )
 from .context import DBGGame
 from .entities import (
@@ -90,12 +95,25 @@ def current_dungeon_combat_room(dbg_game: DBGGame) -> Entity:
 
 
 ###############################################################################################################################################
-def current_dungeon_combat(dbg_game: DBGGame) -> Combat:
-    """返回当前战斗实例；调用方应先用 is_current_room_dungeon_combat 守卫。"""
+def current_combat_entity(dbg_game: DBGGame) -> Entity:
+    """返回当前战斗房间对应的战斗实体。
+
+    调用方应先用 is_current_room_dungeon_combat 守卫。
+    """
     room_entity = current_dungeon_combat_room(dbg_game)
-    combat_component = room_entity.get(CombatComponent)
-    assert combat_component is not None, "当前战斗房间缺少 CombatComponent"
-    return combat_component.combat
+    return get_combat_entity_for_room(dbg_game, room_entity)
+
+
+###############################################################################################################################################
+def current_combat_round_entity(dbg_game: DBGGame) -> Optional[Entity]:
+    """返回当前战斗的当前回合实体。"""
+    return current_combat_round(dbg_game, current_combat_entity(dbg_game))
+
+
+###############################################################################################################################################
+def current_dungeon_combat(dbg_game: DBGGame) -> CombatView:
+    """返回当前战斗的只读视图；调用方应先用 is_current_room_dungeon_combat 守卫。"""
+    return combat_view(dbg_game, current_combat_entity(dbg_game))
 
 
 ###############################################################################################################################################
@@ -148,15 +166,20 @@ def is_current_room_dungeon_opening(dbg_game: DBGGame) -> bool:
 
 
 ###############################################################################################################################################
-def dungeon_room_view(room_entity: Entity) -> DungeonRoomView:
+def dungeon_room_view(dbg_game: DBGGame, room_entity: Entity) -> DungeonRoomView:
     """把一个房间实体投影成 API 视图。"""
     room_component = _require_room_component(room_entity)
-    combat_component = room_entity.get(CombatComponent)
+    combat: Optional[CombatView] = None
+    if room_entity.has(CombatComponent):
+        combat = combat_view(
+            dbg_game, get_combat_entity_for_room(dbg_game, room_entity)
+        )
+
     return DungeonRoomView(
         name=room_entity.name,
         index=room_component.index,
         type=room_component.room_type,
-        combat=combat_component.combat if combat_component is not None else None,
+        combat=combat,
     )
 
 
@@ -183,7 +206,8 @@ def dungeon_state_view(dbg_game: DBGGame) -> DungeonStateView:
         assets=dungeon_run.assets,
         current_room_index=current_room_index(dbg_game),
         rooms=[
-            dungeon_room_view(room_entity) for room_entity in dungeon_rooms(dbg_game)
+            dungeon_room_view(dbg_game, room_entity)
+            for room_entity in dungeon_rooms(dbg_game)
         ],
     )
 

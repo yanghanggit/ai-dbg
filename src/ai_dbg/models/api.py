@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from ..entitas import ContextData
 from .assets_meta import AssetKey
 from .blueprint import Blueprint
-from .combat import Combat
+from .combat import CombatView
 from .dungeon import Dungeon
 from .dungeon_room import DungeonRoomType
 from .player_session import PlayerSession
@@ -60,7 +60,7 @@ class DungeonRoomView(BaseModel):
     name: str
     index: int
     type: DungeonRoomType
-    combat: Optional[Combat] = None
+    combat: Optional[CombatView] = None
 
 
 @final

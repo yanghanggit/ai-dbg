@@ -9,16 +9,12 @@ from typing import Any
 这里把两个代表性系统各钉一条，规则变动时会立刻失败。
 """
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
-)
 from ai_dbg.models import (
     ActorComponent,
     Card,
@@ -67,12 +63,10 @@ def _make_game(actor: Entity, stage: Entity) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
-    combat: Any = current_dungeon_combat(game)
-    combat.is_ongoing = True
-    combat.rounds = [SimpleNamespace()]
-    combat.latest_round = SimpleNamespace(
-        is_completed=False, completed_actors=[], current_actor=actor.name
+    install_combat(
+        game,
+        action_order=[actor.name],
+        current_actor=actor.name,
     )
     return game
 

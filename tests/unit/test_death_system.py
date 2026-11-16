@@ -15,11 +15,11 @@ from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
+    CombatRoundComponent,
     DeathComponent,
-    Round,
 )
 from ai_dbg.systems.death_system import DeathSystem
-from dungeon_support import install_combat
+from dungeon_support import current_round_entity, install_combat
 
 
 def _make_actor(context: Context, name: str, hp: int, max_hp: int = 10) -> Entity:
@@ -34,7 +34,7 @@ def _make_game(
     entities: Dict[str, Entity],
     action_order: List[str],
     current_actor: str,
-) -> tuple[MagicMock, Round]:
+) -> MagicMock:
     context = next(iter(entities.values()))._context
     game = MagicMock()
     game.ecs = context
@@ -42,15 +42,13 @@ def _make_game(
     game.world.agent_memories = {}
     game.player_session = MagicMock()
 
-    combat = MagicMock()
-    combat.is_ongoing = True
-    rnd = Round(
-        action_order=action_order, completed_actors=[], current_actor=current_actor
+    install_combat(
+        game,
+        action_order=action_order,
+        current_actor=current_actor,
     )
-    combat.latest_round = rnd
-    install_combat(game, combat)
 
-    return game, rnd
+    return game
 
 
 @pytest.mark.asyncio
@@ -58,7 +56,7 @@ async def test_current_actor_death_advances_pointer() -> None:
     context = Context()
     dying = _make_actor(context, "角色.坏运气", hp=0)
     nxt = _make_actor(context, "角色.无名", hp=5)
-    game, rnd = _make_game(
+    game = _make_game(
         {"角色.坏运气": dying, "角色.无名": nxt},
         ["角色.坏运气", "角色.无名"],
         "角色.坏运气",
@@ -67,7 +65,10 @@ async def test_current_actor_death_advances_pointer() -> None:
     await DeathSystem(game).execute()
 
     assert dying.has(DeathComponent)
-    assert rnd.current_actor == "角色.无名"
+    assert (
+        current_round_entity(game).get(CombatRoundComponent).current_actor
+        == "角色.无名"
+    )
     # 死亡通知带结构化标记
     death_message = game.world.agent_memories["角色.坏运气"].messages[-1]
     assert death_message.death_notification == "角色.坏运气"
@@ -78,7 +79,7 @@ async def test_non_current_actor_death_keeps_pointer() -> None:
     context = Context()
     dying = _make_actor(context, "怪物.头狼", hp=0)
     current = _make_actor(context, "角色.坏运气", hp=5)
-    game, rnd = _make_game(
+    game = _make_game(
         {"怪物.头狼": dying, "角色.坏运气": current},
         ["角色.坏运气", "怪物.头狼"],
         "角色.坏运气",
@@ -87,7 +88,10 @@ async def test_non_current_actor_death_keeps_pointer() -> None:
     await DeathSystem(game).execute()
 
     assert dying.has(DeathComponent)
-    assert rnd.current_actor == "角色.坏运气"
+    assert (
+        current_round_entity(game).get(CombatRoundComponent).current_actor
+        == "角色.坏运气"
+    )
 
 
 @pytest.mark.asyncio
@@ -95,7 +99,7 @@ async def test_pointer_becomes_none_when_no_alive_actor_left() -> None:
     context = Context()
     a = _make_actor(context, "角色.坏运气", hp=0)
     b = _make_actor(context, "角色.无名", hp=0)
-    game, rnd = _make_game(
+    game = _make_game(
         {"角色.坏运气": a, "角色.无名": b},
         ["角色.坏运气", "角色.无名"],
         "角色.坏运气",
@@ -103,4 +107,4 @@ async def test_pointer_becomes_none_when_no_alive_actor_left() -> None:
 
     await DeathSystem(game).execute()
 
-    assert rnd.current_actor is None
+    assert current_round_entity(game).get(CombatRoundComponent).current_actor is None

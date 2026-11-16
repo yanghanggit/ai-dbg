@@ -10,8 +10,10 @@ from ..game.combat import (
     get_current_turn_actor,
     mark_dead,
 )
+from ..game.combat.state import set_round_current_actor
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -20,6 +22,7 @@ from ..game.memory import (
 )
 from ..models import (
     CharacterStatsComponent,
+    CombatRoundComponent,
     DeathComponent,
     HumanMessage,
 )
@@ -78,10 +81,14 @@ class DeathSystem(ExecuteProcessor):
             return
         if not current_dungeon_combat(self._game).is_ongoing:
             return
-        latest_round = current_dungeon_combat(self._game).latest_round
-        if latest_round is None or latest_round.current_actor != entity.name:
+        latest_round_entity = current_combat_round_entity(self._game)
+        if latest_round_entity is None:
             return
-        latest_round.current_actor = get_current_turn_actor(self._game, latest_round)
+        latest_round = latest_round_entity.get(CombatRoundComponent)
+        if latest_round.current_actor != entity.name:
+            return
+        next_actor = get_current_turn_actor(self._game, latest_round)
+        set_round_current_actor(latest_round_entity, next_actor)
         logger.info(
-            f"DeathSystem: 当前行动者 {entity.name} 死亡，回合指针推进为 {latest_round.current_actor}"
+            f"DeathSystem: 当前行动者 {entity.name} 死亡，回合指针推进为 {next_actor}"
         )

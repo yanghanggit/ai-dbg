@@ -1,7 +1,7 @@
 """TurnEndArbitrationSystem 单元测试。"""
 
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,14 +9,13 @@ import pytest
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
-)
 from ai_dbg.game.memory import REPLACED_MESSAGES_ATTR
 from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
+    CombatRoundComponent,
+    CombatState,
     HandComponent,
     HumanMessage,
     PassTurnAction,
@@ -26,7 +25,11 @@ from ai_dbg.models import (
 )
 from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.turn_end_arbitration_system import TurnEndArbitrationSystem
-from dungeon_support import install_combat
+from dungeon_support import (
+    current_round_entity,
+    install_combat,
+    set_combat_state,
+)
 
 
 def _make_card(name: str, *, turn_end: bool = False) -> Card:
@@ -66,10 +69,7 @@ def mock_game(context: Context, monkeypatch: pytest.MonkeyPatch) -> Any:
         )
     }
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
-    combat: Any = current_dungeon_combat(game)
-    combat.is_ongoing = True
-    combat.rounds = [MagicMock()]
+    install_combat(game)
     stage = context.create_entity()
     stage._name = "场景.测试密室"
     from ai_dbg.models import StageComponent
@@ -135,7 +135,7 @@ class TestTurnEndArbitrationSystem:
     async def test_react_skips_when_not_ongoing(
         self, context: Context, mock_game: Any
     ) -> None:
-        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
+        set_combat_state(mock_game, CombatState.COMPLETE)
         system = TurnEndArbitrationSystem(mock_game)
         entity = context.create_entity()
         entity.add(PassTurnAction, "英雄")
@@ -202,8 +202,8 @@ class TestTurnEndArbitrationSystem:
         assert "本次结算未完成" in notice.content
         assert "未落库" in notice.content
 
-        latest_round: Any = current_dungeon_combat(mock_game).latest_round
-        assert latest_round.record.call_args.args[0] == RoundEntryKind.FAILED
+        entries = current_round_entity(mock_game).get(CombatRoundComponent).entries
+        assert entries[0].kind == RoundEntryKind.FAILED
 
 
 class TestTurnEndLoopMemoryCompression:

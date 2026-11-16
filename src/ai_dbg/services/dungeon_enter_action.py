@@ -10,6 +10,7 @@ from loguru import logger
 
 from ..entitas import Entity, Matcher
 from ..game.combat import assert_no_residual_combat_state
+from ..game.combat.state import create_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_dungeon_name,
@@ -26,9 +27,6 @@ from ..game.memory import (
 )
 from ..game.stage.transition import stage_transition
 from ..models import (
-    Combat,
-    CombatComponent,
-    CombatState,
     CurrentDungeonRoomComponent,
     DeathComponent,
     DungeonComponent,
@@ -152,16 +150,9 @@ def enter_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
     # 保底断言：pipeline 理应已清理完毕，此时不应存在残留战斗临时组件
     assert_no_residual_combat_state(dbg_game)
 
-    # 若是战斗房间则创建战斗实例并初始化；开场房间仅做场景传送，不创建战斗
+    # 若是战斗房间则创建战斗实体并初始化；开场房间仅做场景传送，不创建战斗
     if room_component.room_type == DungeonRoomType.COMBAT:
-        if enter_room.has(CombatComponent):
-            existing_combat = enter_room.get(CombatComponent).combat
-            assert (
-                existing_combat.state == CombatState.NONE
-            ), f"{enter_room.name} 战斗已初始化，同一战斗房间不可重开"
-        combat = Combat(name=enter_room.name)
-        combat.state = CombatState.INITIALIZATION
-        enter_room.replace(CombatComponent, enter_room.name, combat)
+        create_combat(dbg_game, enter_room)
     else:
         # 进入非战斗房间时，清理上一局残留的奖励状态（奖励与房间生命周期绑定）
         cleared = clear_party_spoils(dbg_game)

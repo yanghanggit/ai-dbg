@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 """CombatOutcomeSystem 单元测试。"""
 
@@ -9,12 +9,14 @@ import pytest
 from ai_dbg.entitas.context import Context
 from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.dungeon import (
-    current_dungeon_combat,
+    current_combat_entity,
 )
 from ai_dbg.models import (
     ActorComponent,
     Card,
     CombatResult,
+    CombatState,
+    CombatStateComponent,
     DeathComponent,
     DiscardPileComponent,
     DrawPileComponent,
@@ -29,7 +31,7 @@ from ai_dbg.systems.combat_outcome_system import (
     CombatOutcomeSystem,
     _build_combat_result_notification,
 )
-from dungeon_support import install_combat
+from dungeon_support import install_combat, set_combat_state
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -116,8 +118,7 @@ def mock_game(context: Context) -> Any:
     game.entity_index = {}
     game.world.agent_memories = {}
     game.player_session = MagicMock()
-    install_combat(game, MagicMock())
-    cast(Any, current_dungeon_combat(game)).is_ongoing = True
+    install_combat(game)
     return game
 
 
@@ -364,9 +365,12 @@ class TestExecute:
         self, context: Context, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
         """战斗非 ONGOING 时，complete_combat / clear_round_state 均不应调用。"""
-        cast(Any, current_dungeon_combat(mock_game)).is_ongoing = False
+        set_combat_state(mock_game, CombatState.COMPLETE)
         await system.execute()
-        cast(Any, current_dungeon_combat(mock_game)).complete_combat.assert_not_called()
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).state
+            == CombatState.COMPLETE
+        )
         # mock_game.clear_round_state.assert_not_called()
         mock_game.add_human_message.assert_not_called()
 
@@ -380,7 +384,10 @@ class TestExecute:
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {ally, monster})
         await system.execute()
-        cast(Any, current_dungeon_combat(mock_game)).complete_combat.assert_not_called()
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).result
+            == CombatResult.NONE
+        )
         # mock_game.clear_round_state.assert_not_called()
 
     @pytest.mark.asyncio
@@ -392,9 +399,10 @@ class TestExecute:
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {ally, monster})
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_called_once_with(CombatResult.LOSE)
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).result
+            == CombatResult.LOSE
+        )
 
     @pytest.mark.asyncio
     async def test_enemy_eliminated_takes_priority_over_cardless(
@@ -405,9 +413,10 @@ class TestExecute:
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
         self._setup(mock_game, context, {ally, dead_monster})
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_called_once_with(CombatResult.WIN)
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).result
+            == CombatResult.WIN
+        )
 
     @pytest.mark.asyncio
     async def test_enemy_eliminated_triggers_win(
@@ -418,9 +427,10 @@ class TestExecute:
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
         self._setup(mock_game, context, {ally, dead_monster})
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_called_once_with(CombatResult.WIN)
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).result
+            == CombatResult.WIN
+        )
         # mock_game.clear_round_state.assert_called_once()
 
     @pytest.mark.asyncio
@@ -443,9 +453,10 @@ class TestExecute:
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {dead_ally, monster})
         await system.execute()
-        cast(
-            Any, current_dungeon_combat(mock_game)
-        ).complete_combat.assert_called_once_with(CombatResult.LOSE)
+        assert (
+            current_combat_entity(mock_game).get(CombatStateComponent).result
+            == CombatResult.LOSE
+        )
         # mock_game.clear_round_state.assert_called_once()
 
     @pytest.mark.asyncio

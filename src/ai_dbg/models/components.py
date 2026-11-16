@@ -1,7 +1,7 @@
 """ECS 组件定义。添加到实体后由对应系统读取处理。"""
 
 from datetime import datetime
-from typing import Dict, List, final
+from typing import Dict, List, Optional, final
 
 from pydantic import Field
 
@@ -10,7 +10,7 @@ from .artifact import Artifact
 from .assets_meta import AssetKey
 from .card import Card
 from .character_stats import CharacterStats
-from .combat import Combat
+from .combat import CombatResult, CombatState, RoundEntry
 from .dungeon_room import DungeonRoomType
 from .items import AnyItem, GearItem
 from .registry import register_component_type
@@ -149,10 +149,49 @@ class CurrentDungeonRoomComponent(Component):
 @final
 @register_component_type
 class CombatComponent(Component):
-    """战斗房间的战斗实例。"""
+    """标记战斗房间，并链接到该房间对应的战斗实体。"""
 
     name: str
-    combat: Combat
+    combat_name: str
+
+
+############################################################################################################
+@final
+@register_component_type
+class CombatStateComponent(Component):
+    """战斗实体的状态机与结算信息。"""
+
+    name: str
+    room_name: str
+    state: CombatState = CombatState.NONE
+    result: CombatResult = CombatResult.NONE
+    retreated: bool = False
+
+
+############################################################################################################
+@final
+@register_component_type
+class CombatRoundComponent(Component):
+    """战斗回合实体上的回合快照与操作记录。"""
+
+    name: str
+    combat_name: str
+    index: int
+    is_completed: bool = False
+    draw_completed: bool = False
+    action_order: List[str] = Field(default_factory=list)
+    completed_actors: List[str] = Field(default_factory=list)
+    current_actor: Optional[str] = None
+    entries: List[RoundEntry] = Field(default_factory=list)
+
+
+############################################################################################################
+@final
+@register_component_type
+class CurrentCombatRoundComponent(Component):
+    """标记战斗实体当前所在的回合；同一战斗最多一个。"""
+
+    name: str
 
 
 ############################################################################################################

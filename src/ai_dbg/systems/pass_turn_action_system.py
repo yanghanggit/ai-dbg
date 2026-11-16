@@ -11,8 +11,13 @@ from ..game.combat import (
     get_current_turn_actor,
     get_energy,
 )
+from ..game.combat.state import (
+    append_round_completed_actor,
+    set_round_current_actor,
+)
 from ..game.context import DBGGame
 from ..game.dungeon import (
+    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -24,6 +29,7 @@ from ..game.messaging import (
 )
 from ..models import (
     ActorComponent,
+    CombatRoundComponent,
     HandComponent,
     NoneEvent,
     PassTurnAction,
@@ -83,8 +89,11 @@ class PassTurnActionSystem(ReactiveProcessor):
             current_rounds is not None
         ), "PassTurnActionSystem: current_rounds is None"
 
-        last_round = current_dungeon_combat(self._game).latest_round
-        assert last_round is not None, "PassTurnActionSystem: latest_round is None"
+        last_round_entity = current_combat_round_entity(self._game)
+        assert (
+            last_round_entity is not None
+        ), "PassTurnActionSystem: latest_round_entity is None"
+        last_round = last_round_entity.get(CombatRoundComponent)
 
         pass_turn_action = entity.get(PassTurnAction)
         logger.debug(f"  [{pass_turn_action.name}] 选择过牌（跳过出牌机会）")
@@ -101,13 +110,14 @@ class PassTurnActionSystem(ReactiveProcessor):
             consume_energy(entity, cur_energy)
 
         # 将过牌角色加入本回合已完成行动的角色列表，确保下一角色的回合判定正确
-        last_round.completed_actors.append(pass_turn_action.name)
+        append_round_completed_actor(last_round_entity, pass_turn_action.name)
+        last_round = last_round_entity.get(CombatRoundComponent)
 
         # 结束当前角色的回合，进入下一角色的回合
-        last_round.current_actor = get_current_turn_actor(self._game, last_round)
-        logger.debug(
-            f"advance_turn: current_turn_actor_name updated to {last_round.current_actor}"
-        )
+        next_actor = get_current_turn_actor(self._game, last_round)
+        set_round_current_actor(last_round_entity, next_actor)
+        last_round = last_round_entity.get(CombatRoundComponent)
+        logger.debug(f"advance_turn: current_turn_actor_name updated to {next_actor}")
 
         # 输出当前回合状态日志
         logger.debug(
