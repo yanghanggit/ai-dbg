@@ -1,6 +1,6 @@
 """Card 目标类型（`TargetType.SELF`）字段组合的单元测试。"""
 
-from ai_rpg.models import Card, TargetType
+from ai_dbg.models import Card, TargetType
 
 
 def test_self_type_ignores_target_selection() -> None:

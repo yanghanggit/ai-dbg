@@ -4,17 +4,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     DeckComponent,
     GenerateSpoilsAction,
     PartyMemberComponent,
     SpoilsComponent,
 )
-from ai_rpg.services.dungeon_spoils_actions import (
+from ai_dbg.services.dungeon_spoils_actions import (
     activate_generate_spoils,
     remove_spoils,
 )
@@ -129,14 +129,14 @@ def test_generate_spoils_activates_action_in_non_combat_room(context: Context) -
 ###################################################################################################################################################################
 def test_party_has_any_spoils_requires_component() -> None:
     """「生成完了但零产出」可被判定：队内无 SpoilsComponent 即视为未完成。"""
-    from ai_rpg.entitas.context import Context
-    from ai_rpg.models import (
+    from ai_dbg.entitas.context import Context
+    from ai_dbg.models import (
         ActorComponent,
         Card,
         PartyMemberComponent,
         SpoilsComponent,
     )
-    from ai_rpg.services.dungeon_spoils_actions import party_has_any_spoils
+    from ai_dbg.services.dungeon_spoils_actions import party_has_any_spoils
 
     context = Context()
     game = MagicMock(spec=DBGGame)

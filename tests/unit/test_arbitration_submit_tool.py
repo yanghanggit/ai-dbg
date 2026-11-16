@@ -10,17 +10,17 @@ unsettled_affixes）。三份定义由 `arbitration_common.make_submit_arbitrati
 
 from typing import Any, Dict, List
 
-from ai_rpg.models import Card, TargetType
-from ai_rpg.systems.artifact_post_arbitration_system import (
+from ai_dbg.models import Card, TargetType
+from ai_dbg.systems.artifact_post_arbitration_system import (
     SUBMIT_ARBITRATION_TOOL as ARTIFACT_SUBMIT,
 )
-from ai_rpg.systems.play_cards_arbitration_system import (
+from ai_dbg.systems.play_cards_arbitration_system import (
     SUBMIT_ARBITRATION_TOOL as PLAY_CARDS_SUBMIT,
 )
-from ai_rpg.systems.play_cards_arbitration_system import (
+from ai_dbg.systems.play_cards_arbitration_system import (
     _build_play_cards_arbitration_prompt,
 )
-from ai_rpg.systems.turn_end_arbitration_system import (
+from ai_dbg.systems.turn_end_arbitration_system import (
     SUBMIT_ARBITRATION_TOOL as TURN_END_SUBMIT,
 )
 
@@ -102,10 +102,10 @@ def test_play_arbitration_prompt_does_not_restate_submit_field_specs() -> None:
 
 def test_arbitration_prompts_state_source_relationship_without_conditionals() -> None:
     """source 只说明「创建者 / 持有者可能不同」，不写「若 A 则 X」式条件指令。"""
-    from ai_rpg.systems.autonomous_arbitration_system import (
+    from ai_dbg.systems.autonomous_arbitration_system import (
         _build_autonomous_arbitration_tool_prompt,
     )
-    from ai_rpg.systems.turn_end_arbitration_system import (
+    from ai_dbg.systems.turn_end_arbitration_system import (
         _build_turn_end_arbitration_prompt,
     )
 

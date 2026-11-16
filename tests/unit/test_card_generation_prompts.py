@@ -4,20 +4,20 @@
 注入全局规范，改为「原型 design + submit_card 工具契约」。
 """
 
-from ai_rpg.models import Card, MaterialItem
-from ai_rpg.systems.assemble_dungeon_deck_system import (
+from ai_dbg.models import Card, MaterialItem
+from ai_dbg.systems.assemble_dungeon_deck_system import (
     DECK_SIZE,
     _build_deck_select_prompt,
 )
-from ai_rpg.systems.card_common import (
+from ai_dbg.systems.card_common import (
     Candidate,
     build_card_design_prompt,
 )
-from ai_rpg.systems.context_compaction_prompt_builders import build_compaction_prompt
-from ai_rpg.systems.craft_consumable_item_action_system import (
+from ai_dbg.systems.context_compaction_prompt_builders import build_compaction_prompt
+from ai_dbg.systems.craft_consumable_item_action_system import (
     _build_consumable_select_prompt,
 )
-from ai_rpg.systems.craft_gear_item_action_system import _build_gear_select_prompt
+from ai_dbg.systems.craft_gear_item_action_system import _build_gear_select_prompt
 
 FIELD_SPEC = "## 卡牌字段语义"
 AFFIX_SPEC = "## 词缀设计规范"

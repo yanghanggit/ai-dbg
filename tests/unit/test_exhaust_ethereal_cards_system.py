@@ -5,10 +5,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     ExhaustPileComponent,
@@ -16,7 +16,7 @@ from ai_rpg.models import (
     PassTurnAction,
     TargetType,
 )
-from ai_rpg.systems.exhaust_ethereal_cards_system import ExhaustEtherealCardsSystem
+from ai_dbg.systems.exhaust_ethereal_cards_system import ExhaustEtherealCardsSystem
 
 # ---------------------------------------------------------------------------
 # Helpers

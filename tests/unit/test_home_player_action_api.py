@@ -21,14 +21,14 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from ai_rpg.services.game_server_dependencies import get_game_server
-from ai_rpg.services.home_api import home_api_router
-from ai_rpg.services.home_tasks import (
+from ai_dbg.services.game_server_dependencies import get_game_server
+from ai_dbg.services.home_api import home_api_router
+from ai_dbg.services.home_tasks import (
     execute_home_speak_task,
     execute_home_switch_stage_task,
 )
-from ai_rpg.services.room_error_handlers import register_room_error_handlers
-from ai_rpg.services.task_dispatch import RoomBusyError
+from ai_dbg.services.room_error_handlers import register_room_error_handlers
+from ai_dbg.services.task_dispatch import RoomBusyError
 
 SPEAK_PATH = "/api/home/player/speak/v1/"
 SWITCH_PATH = "/api/home/player/switch_stage/v1/"
@@ -102,7 +102,7 @@ def _response_schema(spec: Dict[str, Any], path: str) -> Dict[str, Any]:
 def _patch_defer(job_id: int = 123) -> Iterator[AsyncMock]:
     """替换任务派发助手，隔离 Procrastinate。"""
     defer = AsyncMock(return_value=job_id)
-    with patch("ai_rpg.services.home_api.defer_room_task", defer):
+    with patch("ai_dbg.services.home_api.defer_room_task", defer):
         yield defer
 
 
@@ -234,7 +234,7 @@ def test_switch_stage_returns_404_when_not_logged_in(
 def test_speak_returns_409_when_room_busy(client: TestClient) -> None:
     """重复派发被 queueing_lock 拦截时返回 409。"""
     with patch(
-        "ai_rpg.services.home_api.defer_room_task",
+        "ai_dbg.services.home_api.defer_room_task",
         AsyncMock(side_effect=RoomBusyError("u1")),
     ):
         response = client.post(

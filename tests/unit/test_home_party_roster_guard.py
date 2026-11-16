@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     NPCComponent,
     PartyRosterComponent,
 )
-from ai_rpg.services.home_actions import add_party_member
+from ai_dbg.services.home_actions import add_party_member
 
 
 @pytest.fixture()

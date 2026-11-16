@@ -9,9 +9,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from ai_rpg.entitas import Context, Matcher
-from ai_rpg.entitas.exceptions import GroupSingleEntity
-from ai_rpg.entitas.group import Group
+from ai_dbg.entitas import Context, Matcher
+from ai_dbg.entitas.exceptions import GroupSingleEntity
+from ai_dbg.entitas.group import Group
 from ecs_testing import Health, Position, Velocity
 
 

@@ -9,17 +9,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
     DeathComponent,
     Round,
 )
-from ai_rpg.systems.death_system import DeathSystem
+from ai_dbg.systems.death_system import DeathSystem
 
 
 def _make_actor(context: Context, name: str, hp: int, max_hp: int = 10) -> Entity:

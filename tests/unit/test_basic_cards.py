@@ -5,7 +5,7 @@
 又把「基础」和「设计」混成一谈。
 """
 
-from ai_rpg.models.card import AFFIX_FIELDS
+from ai_dbg.models.card import AFFIX_FIELDS
 from demo import CARD_PROTOTYPES
 from demo.card_skeletons import BASIC_ATTACK_SKELETON, BASIC_DEFENSE_SKELETON
 from demo.world import _make_attack_card, _make_defense_card

@@ -11,9 +11,9 @@ from typing import Iterator
 
 import pytest
 
-from ai_rpg.entitas import Component, Entity
-from ai_rpg.game.rpg_entity_manager import RPGEntityManager
-from ai_rpg.models import (
+from ai_dbg.entitas import Component, Entity
+from ai_dbg.game.rpg_entity_manager import RPGEntityManager
+from ai_dbg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
     create_component_type,
@@ -104,7 +104,7 @@ class TestIndexHandleContract:
         assert entity in manager.entities
 
     def test_group_entities_support_copy_for_safe_iteration(self) -> None:
-        from ai_rpg.entitas import Matcher
+        from ai_dbg.entitas import Matcher
 
         manager = RPGEntityManager()
         entity = manager._create_entity("iter")

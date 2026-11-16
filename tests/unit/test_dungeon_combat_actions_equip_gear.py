@@ -2,12 +2,12 @@ from types import SimpleNamespace
 from typing import List
 from unittest.mock import MagicMock, patch
 
-from ai_rpg.models import (
+from ai_dbg.models import (
     GearItem,
     HandComponent,
     PartyMemberComponent,
 )
-from ai_rpg.services.dungeon_combat_actions import activate_equip_gear
+from ai_dbg.services.dungeon_combat_actions import activate_equip_gear
 
 
 def _make_game() -> MagicMock:
@@ -45,7 +45,7 @@ def test_activate_equip_gear_rejects_non_party_actor() -> None:
     game.get_player_entity.return_value = _make_player([])
 
     with patch(
-        "ai_rpg.services.dungeon_combat_actions.get_current_turn_actor",
+        "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
         return_value="怪物.测试",
     ):
         ok, msg = activate_equip_gear(game, "装备.测试")
@@ -62,7 +62,7 @@ def test_activate_equip_gear_rejects_missing_hand() -> None:
     game.get_player_entity.return_value = _make_player([])
 
     with patch(
-        "ai_rpg.services.dungeon_combat_actions.get_current_turn_actor",
+        "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
         return_value="角色.测试",
     ):
         ok, msg = activate_equip_gear(game, "装备.测试")
@@ -79,7 +79,7 @@ def test_activate_equip_gear_activates_action() -> None:
     game.get_player_entity.return_value = _make_player([gear])
 
     with patch(
-        "ai_rpg.services.dungeon_combat_actions.get_current_turn_actor",
+        "ai_dbg.services.dungeon_combat_actions.get_current_turn_actor",
         return_value="角色.测试",
     ):
         ok, msg = activate_equip_gear(game, "装备.测试")

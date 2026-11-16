@@ -11,9 +11,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from ai_rpg.entitas import Context, Entity
-from ai_rpg.entitas.components import Component
-from ai_rpg.entitas.exceptions import (
+from ai_dbg.entitas import Context, Entity
+from ai_dbg.entitas.components import Component
+from ai_dbg.entitas.exceptions import (
     AlreadyAddedComponent,
     EntityNotEnabled,
     MissingComponent,

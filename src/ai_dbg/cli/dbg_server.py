@@ -1,0 +1,248 @@
+import asyncio
+import contextlib
+import os
+import sys
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import AsyncGenerator, Optional
+
+import click
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from loguru import logger
+from starlette.types import Scope
+
+from ai_dbg.game.game_server import GameServer
+from ai_dbg.models import (
+    ASSETS_URL_PREFIX,
+    ApiRouteInfo,
+    ServerInfoResponse,
+)
+from ai_dbg.paths import ASSETS_DIR, LOGS_DIR
+from ai_dbg.pgsql import procrastinate_app
+from ai_dbg.services.compact_api import compact_api_router
+from ai_dbg.services.components_api import components_api_router
+from ai_dbg.services.dungeon_combat_api import (
+    dungeon_combat_api_router,
+)
+from ai_dbg.services.dungeon_lifecycle_api import (
+    dungeon_lifecycle_api_router,
+)
+from ai_dbg.services.dungeon_opening_api import (
+    dungeon_opening_api_router,
+)
+from ai_dbg.services.dungeon_spoils_api import (
+    dungeon_spoils_api_router,
+)
+from ai_dbg.services.dungeon_state import dungeon_state_api_router
+from ai_dbg.services.entity_details import (
+    entity_details_api_router,
+)
+from ai_dbg.services.game_server_runtime import bind_runtime_game_server
+from ai_dbg.services.gameplay_scheduler import run_gameplay_scheduler
+from ai_dbg.services.home_api import home_api_router
+from ai_dbg.services.login import login_api_router
+from ai_dbg.services.new_game import new_game_api_router
+from ai_dbg.services.player_session import player_session_api_router
+from ai_dbg.services.room_error_handlers import register_room_error_handlers
+from ai_dbg.services.stages_state import stages_state_api_router
+from ai_dbg.services.tasks_api import tasks_api_router
+
+load_dotenv()
+
+
+async def _room_reaper(game_server: GameServer, ttl: float, interval: float) -> None:
+    """周期性回收空闲超时且不在忙的房间。"""
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            reaped = await game_server.reap_expired(ttl)
+        except Exception as e:
+            logger.error(f"room reaper error: {e}")
+            continue
+        if reaped:
+            logger.info(f"🧹 回收空闲房间: {reaped}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """在 FastAPI 生命周期内打开 Procrastinate 并嵌入运行 worker（与 GameServer 单例同进程/同事件循环）"""
+    async with procrastinate_app.open_async():
+        game_server = GameServer()
+        app.state.game_server = game_server
+        bind_runtime_game_server(game_server)
+        worker_task = asyncio.create_task(
+            procrastinate_app.run_worker_async(install_signal_handlers=False)
+        )
+        room_ttl = float(os.environ.get("GAME_ROOM_TTL_SECONDS", "1800"))
+        reaper_interval = float(os.environ.get("GAME_ROOM_REAP_INTERVAL_SECONDS", "60"))
+        reaper_task: Optional[asyncio.Task[None]] = None
+        if room_ttl > 0:
+            reaper_task = asyncio.create_task(
+                _room_reaper(game_server, room_ttl, reaper_interval)
+            )
+        tick_interval = float(os.environ.get("GAME_TICK_INTERVAL_SECONDS", "60"))
+        scheduler_task: Optional[asyncio.Task[None]] = None
+        if tick_interval > 0:
+            scheduler_task = asyncio.create_task(
+                run_gameplay_scheduler(game_server, tick_interval)
+            )
+        try:
+            yield
+        finally:
+            if reaper_task is not None:
+                reaper_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await asyncio.wait_for(reaper_task, timeout=10)
+            if scheduler_task is not None:
+                scheduler_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await asyncio.wait_for(scheduler_task, timeout=10)
+            worker_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.wait_for(worker_task, timeout=10)
+
+
+app = FastAPI(lifespan=lifespan)
+register_room_error_handlers(app)
+
+
+@app.get(path="/", response_model=ServerInfoResponse)
+async def get_api_info(request: Request) -> ServerInfoResponse:
+    """API 根路由接口"""
+    from fastapi.routing import APIRoute
+
+    base_url = str(request.base_url)
+    logger.info(f"获取API路由信息: {base_url}")
+
+    # 收集所有已注册的路由信息
+    # FastAPI 把 APIRoute.tags 标注为 list[str | Enum]；本项目只用字符串标签，
+    # 这里统一成 str 以匹配 ServerInfoResponse 的字段类型。
+    routes_info: list[ApiRouteInfo] = []
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            routes_info.append(
+                ApiRouteInfo(
+                    path=route.path,
+                    name=route.name,
+                    methods=list(route.methods),
+                    tags=[str(tag) for tag in route.tags] if route.tags else [],
+                )
+            )
+
+    return ServerInfoResponse(
+        service="AI DBG Game Server",
+        base_url=base_url,
+        assets_url_prefix=ASSETS_URL_PREFIX,
+        description="AI DBG Game Server API Root Endpoint",
+        status="healthy",
+        timestamp=datetime.now(),
+        version="0.0.1",
+        routes=routes_info,
+    )
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+############################################################################################################
+# 挂载静态文件服务
+class AssetStaticFiles(StaticFiles):
+    """资源静态服务。
+
+    资源文件名内容寻址（``<UTC时间戳>_<uuid>``，生成后永不改写），因此可安全地
+    声明为不可变资源，让浏览器/CDN 长期缓存、连条件请求（304）都不再发起。
+    """
+
+    _CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+    def file_response(
+        self,
+        full_path: str | os.PathLike[str],
+        stat_result: os.stat_result,
+        scope: Scope,
+        status_code: int = 200,
+    ) -> Response:
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        response.headers["cache-control"] = self._CACHE_CONTROL
+        return response
+
+
+app.mount(
+    ASSETS_URL_PREFIX,
+    AssetStaticFiles(directory=str(ASSETS_DIR)),
+    name=ASSETS_URL_PREFIX.lstrip("/"),
+)
+
+# 注册各个 API 路由
+app.include_router(router=player_session_api_router)
+app.include_router(router=components_api_router)
+app.include_router(router=entity_details_api_router)
+app.include_router(router=stages_state_api_router)
+app.include_router(router=dungeon_state_api_router)
+app.include_router(router=tasks_api_router)
+app.include_router(router=login_api_router)
+app.include_router(router=new_game_api_router)
+app.include_router(router=home_api_router)
+app.include_router(router=compact_api_router)
+app.include_router(router=dungeon_lifecycle_api_router)
+app.include_router(router=dungeon_combat_api_router)
+app.include_router(router=dungeon_opening_api_router)
+app.include_router(router=dungeon_spoils_api_router)
+
+
+@click.command()
+@click.option(
+    "--host",
+    default="0.0.0.0",
+    show_default=True,
+    help="监听地址",
+)
+@click.option(
+    "--port",
+    type=int,
+    envvar="GAME_SERVER_PORT",
+    required=True,
+    show_envvar=True,
+    help="监听端口（未传入时回退读取 .env 的 GAME_SERVER_PORT）",
+)
+def main(host: str, port: int) -> None:
+    """启动 AI DBG 游戏服务器（uvicorn）。
+
+    port 可通过 --port 传入；未传入时回退读取 .env 中的 GAME_SERVER_PORT。
+    """
+
+    import datetime
+
+    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    _log_file = LOGS_DIR / f"run_game_server_{_timestamp}.log"
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        level="DEBUG",
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    )
+    logger.add(_log_file, level="DEBUG")
+    logger.info(f"日志配置: 级别=DEBUG, 文件路径={_log_file}")
+
+    logger.info(f"启动游戏服务器，地址: {host}, 端口: {port}")
+
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+    )
+
+
+if __name__ == "__main__":
+    main()

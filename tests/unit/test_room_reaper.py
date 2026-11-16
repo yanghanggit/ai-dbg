@@ -4,8 +4,8 @@ import asyncio
 import time
 from typing import cast
 
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.game_server import GameServer
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_server import GameServer
 
 
 class _FakeGame:

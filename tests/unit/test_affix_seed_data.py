@@ -15,7 +15,7 @@ from typing import Iterator, Tuple
 import pytest
 from pydantic import ValidationError
 
-from ai_rpg.models import AFFIX_FIELDS, Card
+from ai_dbg.models import AFFIX_FIELDS, Card
 from demo.card_prototypes import CARD_PROTOTYPES
 from demo.card_skeletons import AOE_BUFF_SKELETON
 from demo.world import create_badluck, create_nameless

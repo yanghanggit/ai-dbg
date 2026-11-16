@@ -11,8 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, cast
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.models import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
@@ -39,11 +39,11 @@ from ai_rpg.models import (
     TargetType,
     ToolMessage,
 )
-from ai_rpg.systems.card_pile_common import PILE_EXHAUST
-from ai_rpg.systems.combat_decision_common import REASON_MISSING
-from ai_rpg.systems.monster_combat_decision_system import MonsterCombatDecisionSystem
+from ai_dbg.systems.card_pile_common import PILE_EXHAUST
+from ai_dbg.systems.combat_decision_common import REASON_MISSING
+from ai_dbg.systems.monster_combat_decision_system import MonsterCombatDecisionSystem
 
-_MODULE = "ai_rpg.systems.monster_combat_decision_system"
+_MODULE = "ai_dbg.systems.monster_combat_decision_system"
 _STAGE_NAME = "场景.河湾芦苇丛"
 
 

@@ -4,10 +4,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.game.rpg_game import RPGGame
-from ai_rpg.models import AnnounceAction, SpeakAction, WhisperAction
-from ai_rpg.systems.action_cleanup_system import ActionCleanupSystem
+from ai_dbg.entitas.context import Context
+from ai_dbg.game.rpg_game import RPGGame
+from ai_dbg.models import AnnounceAction, SpeakAction, WhisperAction
+from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
 
 # ---------------------------------------------------------------------------

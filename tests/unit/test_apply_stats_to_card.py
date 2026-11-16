@@ -5,7 +5,7 @@
 者属性变化。
 """
 
-from ai_rpg.models import Card, CharacterStats, apply_stats_to_card
+from ai_dbg.models import Card, CharacterStats, apply_stats_to_card
 
 
 def _stats() -> CharacterStats:

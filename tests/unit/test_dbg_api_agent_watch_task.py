@@ -10,8 +10,8 @@ import httpx
 import pytest
 from procrastinate.jobs import Status as ProcrastinateJobStatus
 
-from ai_rpg.dbg_api_agent.config import server_config
-from ai_rpg.dbg_api_agent.server_client import (
+from ai_dbg.dbg_api_agent.config import server_config
+from ai_dbg.dbg_api_agent.server_client import (
     TaskFailedError,
     watch_task_until_done,
 )

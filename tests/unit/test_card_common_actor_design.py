@@ -14,10 +14,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import AgentMemory, HumanMessage, SystemMessage
-from ai_rpg.systems import card_common
-from ai_rpg.systems.card_common import (
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import AgentMemory, HumanMessage, SystemMessage
+from ai_dbg.systems import card_common
+from ai_dbg.systems.card_common import (
     Candidate,
     DesignOutcome,
     SelectionOutcome,
@@ -65,7 +65,7 @@ def _make_game() -> Tuple[MagicMock, MagicMock, MagicMock]:
 
 
 def _make_candidate(name: str) -> Candidate:
-    from ai_rpg.models import Card
+    from ai_dbg.models import Card
 
     return Candidate(
         card=Card(name=name, description="", source="角色.无名"),

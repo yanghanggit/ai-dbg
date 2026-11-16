@@ -3,11 +3,11 @@
 from typing import Any, Dict, cast
 from unittest.mock import MagicMock
 
-import ai_rpg.game.dbg_combat_processor as combat_processor
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_combat_processor import resolve_targets
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+import ai_dbg.game.dbg_combat_processor as combat_processor
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_combat_processor import resolve_targets
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Blueprint,
     Card,
@@ -23,7 +23,7 @@ from ai_rpg.models import (
     TargetType,
     WorldState,
 )
-from ai_rpg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
 
 
 def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame:

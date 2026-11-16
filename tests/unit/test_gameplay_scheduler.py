@@ -5,9 +5,9 @@ from typing import List
 
 import pytest
 
-from ai_rpg.game.game_server import GameServer
-from ai_rpg.game.player_room import PlayerRoom
-from ai_rpg.services import gameplay_scheduler
+from ai_dbg.game.game_server import GameServer
+from ai_dbg.game.player_room import PlayerRoom
+from ai_dbg.services import gameplay_scheduler
 
 
 async def test_tick_calls_hook_under_lock(monkeypatch: pytest.MonkeyPatch) -> None:

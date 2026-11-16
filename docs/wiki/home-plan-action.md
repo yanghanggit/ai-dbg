@@ -2,7 +2,7 @@
 
 ## 定位
 
-家园模式下把「本轮谁行动」转化为 ECS 行动组件的响应式系统对。`HomeNpcPlanSystem` 处理 NPC——自主决策、真实调用 LLM；`HomePlayerPlanSystem` 处理玩家——动作已由客户端决定、不调用 LLM。二者共享同一触发信号 `PlanAction`，按阵营分流后殊途同归：把决策落成 `SpeakAction` 等组件交给下游动作系统。
+家园模式下把「本轮谁行动」转化为 ECS 行动组件的响应式系统对。`HomeNpcPlanSystem` 处理 NPC——自主决策、真实调用 LLM；`HomePlayerPlanSystem` 处理玩家——动作已由玩家侧决定、不调用 LLM。二者共享同一触发信号 `PlanAction`，按阵营分流后殊途同归：把决策落成 `SpeakAction` 等组件交给下游动作系统。
 
 ## 设计决策
 

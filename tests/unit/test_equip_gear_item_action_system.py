@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     AgentEvent,
     Card,
     EquipGearItemAction,
@@ -20,7 +20,7 @@ from ai_rpg.models import (
     Round,
     RoundEntryKind,
 )
-from ai_rpg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
+from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
 
 # ---------------------------------------------------------------------------
 # Helpers

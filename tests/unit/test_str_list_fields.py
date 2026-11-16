@@ -9,7 +9,7 @@
 - 消耗品堆叠身份纳入内置卡牌规格。
 """
 
-from ai_rpg.models import (
+from ai_dbg.models import (
     Artifact,
     Card,
     ConsumableItem,
@@ -19,11 +19,11 @@ from ai_rpg.models import (
     render_labeled_str_list,
     render_str_list,
 )
-from ai_rpg.systems.monster_combat_decision_system import _format_card
-from ai_rpg.systems.play_cards_arbitration_system import (
+from ai_dbg.systems.monster_combat_decision_system import _format_card
+from ai_dbg.systems.play_cards_arbitration_system import (
     _build_play_cards_arbitration_prompt,
 )
-from ai_rpg.systems.turn_end_arbitration_system import _build_turn_end_card_lines
+from ai_dbg.systems.turn_end_arbitration_system import _build_turn_end_card_lines
 
 AFFIX_A = "[穿甲]:本卡 damage 结算时无视目标 block"
 AFFIX_B = "[自损]:打出时对自身结算本卡 damage×1 的伤害"

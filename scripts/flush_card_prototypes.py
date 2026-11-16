@@ -40,8 +40,8 @@ from typing import List, Tuple
 
 import click
 
-from ai_rpg.models import Card
-from ai_rpg.pgsql import (
+from ai_dbg.models import Card
+from ai_dbg.pgsql import (
     delete_card_prototypes,
     get_card_prototype,
     list_card_prototype_index,

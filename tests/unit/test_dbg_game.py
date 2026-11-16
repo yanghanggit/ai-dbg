@@ -2,13 +2,13 @@ from typing import Any, List, Optional, cast
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_combat_processor import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_combat_processor import (
     compute_character_stats,
     set_character_hp,
 )
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     Actor,
     ActorComponent,
     ActorType,

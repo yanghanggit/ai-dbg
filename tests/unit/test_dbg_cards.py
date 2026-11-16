@@ -7,13 +7,13 @@ from typing import Dict, List, Optional
 
 import pytest
 
-from ai_rpg.dbg_game_agent import cards as cards_module
-from ai_rpg.dbg_game_agent.cards import (
+from ai_dbg.dbg_game_agent import cards as cards_module
+from ai_dbg.dbg_game_agent.cards import (
     filter_entries,
     resolve_candidate_ids,
     resolve_prototype_ids,
 )
-from ai_rpg.pgsql import CardPrototypeIndexEntry
+from ai_dbg.pgsql import CardPrototypeIndexEntry
 
 
 def _entry(

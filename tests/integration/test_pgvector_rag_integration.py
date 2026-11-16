@@ -15,9 +15,9 @@ from typing import Dict, Generator, List, Tuple
 import pytest
 from loguru import logger
 
-from ai_rpg.embedding_model import embedding_model
-from ai_rpg.pgsql.client import pgsql_ensure_database_tables
-from ai_rpg.rag import add_documents, delete_collection, search_documents
+from ai_dbg.embedding_model import embedding_model
+from ai_dbg.pgsql.client import pgsql_ensure_database_tables
+from ai_dbg.rag import add_documents, delete_collection, search_documents
 
 # ============================================================================
 # 测试专用知识库（独立于游戏主系统）

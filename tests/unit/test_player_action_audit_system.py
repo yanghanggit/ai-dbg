@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     AgentMemory,
     AIMessage,
     AnnounceAction,
@@ -19,7 +19,7 @@ from ai_rpg.models import (
     WhisperAction,
     WorldComponent,
 )
-from ai_rpg.systems.player_action_audit_system import (
+from ai_dbg.systems.player_action_audit_system import (
     ContentAuditResponse,
     PlayerActionAuditSystem,
     _build_audit_prompt,
@@ -272,7 +272,7 @@ class TestFilterPlayerActions:
         world = self._make_audit_entity(context)
 
         with patch(
-            "ai_rpg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
             _FakeAuditService(_approved_json()),
         ):
 
@@ -294,7 +294,7 @@ class TestFilterPlayerActions:
         world = self._make_audit_entity(context)
 
         with patch(
-            "ai_rpg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
             _FakeAuditService(_rejected_json()),
         ):
 
@@ -316,7 +316,7 @@ class TestFilterPlayerActions:
         world = self._make_audit_entity(context)
 
         with patch(
-            "ai_rpg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
             _FakeAuditService(error=RuntimeError("网络错误")),
         ):
 
@@ -337,7 +337,7 @@ class TestFilterPlayerActions:
         world = self._make_audit_entity(context)
 
         with patch(
-            "ai_rpg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.player_action_audit_system.DEEPSEEK_SERVICE",
             _FakeAuditService("这不是JSON"),
         ):
 

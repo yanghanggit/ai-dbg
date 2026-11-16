@@ -6,7 +6,7 @@
 
 import pytest
 
-from ai_rpg.models import (
+from ai_dbg.models import (
     AFFIX_FIELDS,
     DESIGNABLE_AFFIX_FIELDS,
     Card,

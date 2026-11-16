@@ -1,5 +1,5 @@
 """
-Unit tests for src/ai_rpg/game/stage_transition.py
+Unit tests for src/ai_dbg/game/stage_transition.py
 
 覆盖范围：
   - 3 个格式化纯函数
@@ -12,15 +12,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.rpg_stage_transition import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.rpg_stage_transition import (
     _build_stage_arrival_message,
     _build_stage_departure_message,
     _build_stage_transition_message,
     _validate_stage_transition_prerequisites,
     stage_transition,
 )
-from ai_rpg.models import (
+from ai_dbg.models import (
     ActorComponent,
     PlayerComponent,
     StageComponent,

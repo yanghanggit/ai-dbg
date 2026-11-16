@@ -10,9 +10,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     GenerateSpoilsAction,
@@ -21,9 +21,9 @@ from ai_rpg.models import (
     SpoilsComponent,
     TargetType,
 )
-from ai_rpg.systems import generate_spoils_action_system as spoils_module
-from ai_rpg.systems.card_common import Candidate, DesignOutcome
-from ai_rpg.systems.generate_spoils_action_system import GenerateSpoilsActionSystem
+from ai_dbg.systems import generate_spoils_action_system as spoils_module
+from ai_dbg.systems.card_common import Candidate, DesignOutcome
+from ai_dbg.systems.generate_spoils_action_system import GenerateSpoilsActionSystem
 
 
 def _make_candidate(name: str) -> Candidate:

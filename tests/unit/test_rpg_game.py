@@ -1,5 +1,5 @@
 """
-Unit tests for src/ai_rpg/game/rpg_game.py
+Unit tests for src/ai_dbg/game/rpg_game.py
 
 覆盖范围（不重复 test_rpg_agent_memory.py 中已有的用例）：
   - get_agent_memory
@@ -16,8 +16,8 @@ from typing import Any, cast
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.models import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.models import (
     ActorComponent,
     HumanMessage,
     IdentityComponent,

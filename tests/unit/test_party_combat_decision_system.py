@@ -11,11 +11,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas import GroupEvent
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas import GroupEvent
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     DeathComponent,
@@ -27,13 +27,13 @@ from ai_rpg.models import (
     PlayCardsAction,
     TargetType,
 )
-from ai_rpg.systems.combat_decision_common import (
+from ai_dbg.systems.combat_decision_common import (
     ACTION_PLAY,
     REASON_PLACEHOLDER,
     UNPLAYABLE_CAUSE,
     build_combat_decision_tag,
 )
-from ai_rpg.systems.party_combat_decision_system import PartyCombatDecisionSystem
+from ai_dbg.systems.party_combat_decision_system import PartyCombatDecisionSystem
 
 
 def _make_card() -> Card:

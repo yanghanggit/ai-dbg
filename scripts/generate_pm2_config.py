@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# from ai_rpg.services import server_configuration
+# from ai_dbg.services import server_configuration
 
 load_dotenv()
 
@@ -31,7 +31,7 @@ module.exports = {{
       name: 'game-server-{game_server_port}',
       script: path.join(__dirname, '.venv/bin/uvicorn'),
       interpreter: 'none',
-      args: 'ai_rpg.cli.dbg_server:app --host 0.0.0.0 --port {game_server_port}',
+      args: 'ai_dbg.cli.dbg_server:app --host 0.0.0.0 --port {game_server_port}',
       cwd: __dirname,
       env: {{
         PYTHONPATH: `${{__dirname}}/src:${{__dirname}}`,

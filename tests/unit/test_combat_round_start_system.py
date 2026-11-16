@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
@@ -14,7 +14,7 @@ from ai_rpg.models import (
     IdentityComponent,
     RoundStatsComponent,
 )
-from ai_rpg.systems.combat_round_start_system import (
+from ai_dbg.systems.combat_round_start_system import (
     ActionOrderStrategy,
     CombatRoundStartSystem,
 )

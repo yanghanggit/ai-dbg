@@ -10,15 +10,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_rpg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.rpg_agent_memory import (
+from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.rpg_agent_memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
 )
-from ai_rpg.models import (
+from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
@@ -29,7 +29,7 @@ from ai_rpg.models import (
     SystemMessage,
     TargetType,
 )
-from ai_rpg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
+from ai_dbg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
 
 
 def _make_card() -> Card:
@@ -88,7 +88,7 @@ def _patch_stats() -> Any:
     """
     stats = SimpleNamespace(hp=7, max_hp=10)
     return patch.multiple(
-        "ai_rpg.systems.arbitration_common",
+        "ai_dbg.systems.arbitration_common",
         compute_character_stats=MagicMock(return_value=stats),
         set_character_hp=MagicMock(return_value=stats),
     )
@@ -144,7 +144,7 @@ class TestLoopMemoryCompression:
         with (
             _patch_stats(),
             patch(
-                "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+                "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
                 new=AsyncMock(side_effect=_fake_loop_success),
             ) as mock_agent_loop,
         ):
@@ -189,7 +189,7 @@ class TestLoopMemoryCompression:
         actor = _make_actor(context, "角色.无名", _make_card(), [])
 
         with patch(
-            "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+            "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
             new=AsyncMock(side_effect=_fake_loop_failure),
         ):
             await system._run_arbitration(actor)
@@ -231,7 +231,7 @@ class TestLoopMemoryCompression:
         actor = _make_actor(context, "角色.无名", _make_card(), [])
 
         with patch(
-            "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+            "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
             new=AsyncMock(side_effect=RuntimeError("boom")),
         ):
             await system._run_arbitration(actor)
@@ -261,7 +261,7 @@ class TestLoopMemoryCompression:
         with (
             _patch_stats(),
             patch(
-                "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+                "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
                 new=AsyncMock(side_effect=_fake_loop_success),
             ),
         ):
@@ -291,7 +291,7 @@ class TestLoopIdUniqueness:
         with (
             _patch_stats(),
             patch(
-                "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+                "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
                 new=AsyncMock(side_effect=_fake_loop),
             ),
         ):
@@ -330,7 +330,7 @@ class TestLoopIdUniqueness:
         mock_game.add_human_message.side_effect = _append_notice
 
         with patch(
-            "ai_rpg.systems.play_cards_arbitration_system.agent_loop",
+            "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
             new=AsyncMock(side_effect=_fake_failing_loop),
         ):
             await system._run_arbitration(actor)
@@ -341,7 +341,7 @@ class TestLoopIdUniqueness:
 
     def test_sequence_is_derived_from_persisted_memory(self) -> None:
         """序号取自记忆里已有的 loop 起点标记：每条 CLI 命令是独立进程，进程内计数器会重号。"""
-        from ai_rpg.systems.arbitration_common import make_loop_id
+        from ai_dbg.systems.arbitration_common import make_loop_id
 
         empty: List[Any] = [SystemMessage(content="system")]
         assert make_loop_id(empty, "play_cards", 1, "角色.无名", "斩击") == (
@@ -361,7 +361,7 @@ class TestLoopIdUniqueness:
 
 class TestSubmitHandlerStoresSummary:
     def test_play_cards_submit_stores_summary(self) -> None:
-        from ai_rpg.systems.arbitration_common import (
+        from ai_dbg.systems.arbitration_common import (
             ArbitrationContext,
             submit_arbitration,
         )

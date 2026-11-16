@@ -1,0 +1,181 @@
+"""家园模式动作。
+
+包含所有在家园模式（HomeComponent 场景）下执行的游戏动作函数，
+包括剧情推进、对话、场景切换、副本进入/生成，以及队伍名单编排。
+"""
+
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from loguru import logger
+
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.dbg_store import store_game_async
+from ai_dbg.models import DungeonGenerationSpec, PlayerSession, WorldState
+from ai_dbg.services.home_actions import (
+    activate_generate_dungeon,
+    activate_plan_action,
+    activate_speak_action,
+    activate_switch_stage,
+    add_party_member,
+    get_party_roster,
+    remove_party_member,
+)
+
+from .core import restore_game
+
+
+###############################################################################
+async def add_party_member_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    member_name: str,
+    save_dir: Path,
+) -> DBGGame:
+    """将指定盟友加入队伍名单并归档。"""
+    terminal_game = await restore_game(world, player_session)
+
+    success, error_detail = add_party_member(terminal_game, member_name)
+    if not success:
+        logger.error(f"添加队伍成员失败: {error_detail}")
+        return terminal_game
+
+    await store_game_async(terminal_game, save_dir)
+    logger.info(f"已将 {member_name} 加入队伍名单，存档: {save_dir}")
+    return terminal_game
+
+
+###############################################################################
+async def remove_party_member_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    member_name: str,
+    save_dir: Path,
+) -> DBGGame:
+    """将指定盟友从队伍名单移除并归档。"""
+    terminal_game = await restore_game(world, player_session)
+
+    success, error_detail = remove_party_member(terminal_game, member_name)
+    if not success:
+        logger.error(f"移除队伍成员失败: {error_detail}")
+        return terminal_game
+
+    await store_game_async(terminal_game, save_dir)
+    logger.info(f"已将 {member_name} 从队伍名单移除，存档: {save_dir}")
+    return terminal_game
+
+
+###############################################################################
+async def get_party_roster_game(
+    world: WorldState,
+    player_session: PlayerSession,
+) -> List[str]:
+    """返回当前队伍名单（只读，不归档）。"""
+    terminal_game = await restore_game(world, player_session)
+    return get_party_roster(terminal_game)
+
+
+###############################################################################
+async def advance_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    actor_names: List[str],
+    save_dir: Path,
+) -> DBGGame:
+    """推进一轮家园剧情，为指定角色激活行动计划并归档。"""
+    terminal_game = await restore_game(world, player_session)
+
+    success, error_detail = activate_plan_action(terminal_game, actor_names)
+    if not success:
+        logger.error(f"激活行动计划失败: {error_detail}")
+        return terminal_game
+
+    await terminal_game._home_pipeline.process()
+
+    await store_game_async(terminal_game, save_dir)
+    return terminal_game
+
+
+###############################################################################
+async def stages_game(
+    world: WorldState,
+    player_session: PlayerSession,
+) -> Dict[str, List[str]]:
+    """返回当前各场景内角色名单（只读，不归档）。"""
+    terminal_game = await restore_game(world, player_session)
+    return terminal_game.get_actors_by_stage_as_names()
+
+
+###############################################################################
+async def speak_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    target: str,
+    content: str,
+    save_dir: Path,
+) -> DBGGame:
+    """玩家向指定 NPC 说话并归档。"""
+    terminal_game = await restore_game(world, player_session)
+
+    success, _ = activate_speak_action(
+        dbg_game=terminal_game,
+        target=target,
+        content=content,
+    )
+    if not success:
+        logger.error(f"激活对话行动失败: target={target}")
+        return terminal_game
+
+    await terminal_game._home_pipeline.process()
+
+    await store_game_async(terminal_game, save_dir)
+    return terminal_game
+
+
+###############################################################################
+async def switch_stage_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    stage_name: str,
+    save_dir: Path,
+) -> DBGGame:
+    """玩家切换到指定场景并归档。"""
+    terminal_game = await restore_game(world, player_session)
+
+    success, _ = activate_switch_stage(
+        dbg_game=terminal_game,
+        stage_name=stage_name,
+    )
+    if not success:
+        logger.error(f"激活场景切换失败: stage={stage_name}")
+        return terminal_game
+
+    await terminal_game._home_pipeline.process()
+
+    await store_game_async(terminal_game, save_dir)
+    return terminal_game
+
+
+###############################################################################
+async def generate_dungeon_game(
+    world: WorldState,
+    player_session: PlayerSession,
+    save_dir: Path,
+    spec: Optional[DungeonGenerationSpec] = None,
+) -> DBGGame:
+    """激活 LLM 动态生成副本流水线并归档。需处于家园模式。
+
+    `spec` 为显式结构规格（房间数 / 每房间怪物数 / 怪物牌库原型），仅调测入口传入；
+    不传则完全走默认口径。
+    """
+    terminal_game = await restore_game(world, player_session)
+
+    success, error_detail = activate_generate_dungeon(terminal_game, spec=spec)
+    if not success:
+        logger.error(f"激活副本创建失败: {error_detail}")
+        return terminal_game
+
+    await terminal_game._dungeon_generate_pipeline.process()
+
+    await store_game_async(terminal_game, save_dir)
+    return terminal_game

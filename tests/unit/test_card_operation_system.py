@@ -13,10 +13,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     AgentMemory,
     Card,
@@ -29,8 +29,8 @@ from ai_rpg.models import (
     SystemMessage,
     TargetType,
 )
-from ai_rpg.systems import card_operation_system as engine_module
-from ai_rpg.systems.card_operation_system import (
+from ai_dbg.systems import card_operation_system as engine_module
+from ai_dbg.systems.card_operation_system import (
     MAX_NEW_CARDS_PER_RESOLUTION,
     CardOperationSystem,
     _find_card,

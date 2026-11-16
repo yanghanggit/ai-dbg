@@ -10,11 +10,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     AppearanceComponent,
@@ -23,8 +23,8 @@ from ai_rpg.models import (
     SystemMessage,
     WornCostumeComponent,
 )
-from ai_rpg.systems.appearance_synthesis_common import make_appearance_label
-from ai_rpg.systems.appearance_synthesis_system import AppearanceSynthesisSystem
+from ai_dbg.systems.appearance_synthesis_common import make_appearance_label
+from ai_dbg.systems.appearance_synthesis_system import AppearanceSynthesisSystem
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -183,7 +183,7 @@ class TestExecute:
         ]
 
         with patch(
-            "ai_rpg.systems.appearance_synthesis_system.batch_complete",
+            "ai_dbg.systems.appearance_synthesis_system.batch_complete",
         ) as mock_batch:
             await system.execute()
 
@@ -218,7 +218,7 @@ class TestExecute:
             ]
 
         with patch(
-            "ai_rpg.systems.appearance_synthesis_system.batch_complete",
+            "ai_dbg.systems.appearance_synthesis_system.batch_complete",
             side_effect=fake_batch_complete,
         ):
             await system.execute()
@@ -242,7 +242,7 @@ class TestExecute:
         ]
 
         with patch(
-            "ai_rpg.systems.appearance_synthesis_system.batch_complete",
+            "ai_dbg.systems.appearance_synthesis_system.batch_complete",
         ) as mock_batch:
             with pytest.raises(AssertionError, match="外观合成世界实体数量异常"):
                 await system.execute()

@@ -12,10 +12,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     HandComponent,
@@ -30,8 +30,8 @@ def context() -> Context:
     return Context()
 
 
-_PLAY_MODULE = "ai_rpg.systems.play_cards_action_system"
-_PASS_MODULE = "ai_rpg.systems.pass_turn_action_system"
+_PLAY_MODULE = "ai_dbg.systems.play_cards_action_system"
+_PASS_MODULE = "ai_dbg.systems.pass_turn_action_system"
 
 
 def _make_card() -> Card:
@@ -74,7 +74,7 @@ def _make_stage(context: Context) -> Entity:
 
 async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
     """出牌是行动类广播：出牌者已有决策记录，广播必须排除他本人。"""
-    from ai_rpg.systems.play_cards_action_system import PlayCardsActionSystem
+    from ai_dbg.systems.play_cards_action_system import PlayCardsActionSystem
 
     card = _make_card()
     actor = _make_actor(context, "角色.无名", card)
@@ -97,8 +97,8 @@ async def test_play_cards_broadcast_excludes_actor(context: Context) -> None:
 
 async def test_pass_turn_broadcast_keeps_actor(context: Context) -> None:
     """过牌是观察类广播：过牌者没有其他记录，必须保留他本人。"""
-    from ai_rpg.models import PassTurnAction, RoundStatsComponent
-    from ai_rpg.systems import pass_turn_action_system as pass_module
+    from ai_dbg.models import PassTurnAction, RoundStatsComponent
+    from ai_dbg.systems import pass_turn_action_system as pass_module
 
     card = _make_card()
     actor = _make_actor(context, "角色.无名", card)

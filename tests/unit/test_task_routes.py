@@ -14,7 +14,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from ai_rpg.services.tasks_api import tasks_api_router
+from ai_dbg.services.tasks_api import tasks_api_router
 
 STATUS_PATH = "/api/tasks/v1/status"
 WATCH_PATH = "/api/tasks/v1/watch/{job_id}"

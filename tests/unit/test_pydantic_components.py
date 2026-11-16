@@ -5,8 +5,8 @@ This tests the new Pydantic-based component system.
 
 import pytest
 
-from ai_rpg.entitas import Context, Entity, Matcher
-from ai_rpg.entitas.components import Component
+from ai_dbg.entitas import Context, Entity, Matcher
+from ai_dbg.entitas.components import Component
 from ecs_testing import Counter, Health, Marker, Position, ResourcePool
 
 

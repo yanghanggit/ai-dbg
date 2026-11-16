@@ -15,8 +15,8 @@ from pathlib import Path
 
 import click
 
-from ai_rpg.models import AFFIX_FIELDS, Card, validate_affix_slot
-from ai_rpg.pgsql import list_card_prototype_index
+from ai_dbg.models import AFFIX_FIELDS, Card, validate_affix_slot
+from ai_dbg.pgsql import list_card_prototype_index
 
 
 #######################################################################################################

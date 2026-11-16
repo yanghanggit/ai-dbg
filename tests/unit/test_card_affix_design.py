@@ -1,6 +1,6 @@
 """卡牌词缀设计校验（`validate_affix_slot`）与「非法置空」（`apply_affix_design`）的单元测试。"""
 
-from ai_rpg.models import (
+from ai_dbg.models import (
     Card,
     apply_affix_design,
     validate_affix_slot,

@@ -10,12 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_rpg.deepseek import DeepSeekError
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.deepseek import DeepSeekError
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     AIMessage,
     DungeonComponent,
     EnvironmentComponent,
@@ -23,7 +23,7 @@ from ai_rpg.models import (
     PlayerComponent,
     StageComponent,
 )
-from ai_rpg.systems.environment_initialization_system import (
+from ai_dbg.systems.environment_initialization_system import (
     EnvironmentInitializationSystem,
 )
 
@@ -96,7 +96,7 @@ class TestObservedStagesOnly:
 
         with (
             patch(
-                "ai_rpg.systems.environment_initialization_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
                 side_effect=_has_actors,
             ),
             patch.object(
@@ -106,7 +106,7 @@ class TestObservedStagesOnly:
             ),
             patch.object(system, "_process_environment_response"),
             patch(
-                "ai_rpg.systems.environment_initialization_system.batch_complete",
+                "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(),
             ) as mock_batch,
         ):
@@ -128,11 +128,11 @@ class TestObservedStagesOnly:
 
         with (
             patch(
-                "ai_rpg.systems.environment_initialization_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
                 side_effect=lambda _game, _stage: {_fake_actor(), _fake_actor()},
             ),
             patch(
-                "ai_rpg.systems.environment_initialization_system.batch_complete",
+                "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(),
             ) as mock_batch,
         ):
@@ -153,7 +153,7 @@ class TestObservedStagesOnly:
 
         with (
             patch(
-                "ai_rpg.systems.environment_initialization_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
                 side_effect=lambda _game, _stage: {
                     _fake_actor(),
                     _fake_actor(is_player=True),
@@ -166,7 +166,7 @@ class TestObservedStagesOnly:
             ),
             patch.object(system, "_process_environment_response"),
             patch(
-                "ai_rpg.systems.environment_initialization_system.batch_complete",
+                "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(),
             ) as mock_batch,
         ):
@@ -189,11 +189,11 @@ class TestObservedStagesOnly:
 
         with (
             patch(
-                "ai_rpg.systems.environment_initialization_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
                 return_value=set(),
             ),
             patch(
-                "ai_rpg.systems.environment_initialization_system.batch_complete",
+                "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(),
             ) as mock_batch,
         ):
@@ -237,12 +237,12 @@ class TestFailureAccounting:
 
         with (
             patch(
-                "ai_rpg.systems.environment_initialization_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.environment_initialization_system.get_alive_actors_in_stage",
                 return_value={_fake_actor()},
             ),
             patch.object(system, "_build_request", side_effect=_build),
             patch(
-                "ai_rpg.systems.environment_initialization_system.batch_complete",
+                "ai_dbg.systems.environment_initialization_system.batch_complete",
                 new=AsyncMock(return_value=[ok_result, bad_result]),
             ),
         ):

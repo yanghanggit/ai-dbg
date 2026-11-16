@@ -1,6 +1,6 @@
 """
-Unit tests for src/ai_rpg/services/dungeon_advance_action.py
-and src/ai_rpg/services/dungeon_exit_action.py
+Unit tests for src/ai_dbg/services/dungeon_advance_action.py
+and src/ai_dbg/services/dungeon_exit_action.py
 
 覆盖本次收紧后的状态守卫：
   - current_room_index 无效（-1 尚未进入 / 越界）时拒绝推进与退出
@@ -10,8 +10,8 @@ and src/ai_rpg/services/dungeon_exit_action.py
 
 from typing import Any, List
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.models import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.models import (
     ActorComponent,
     AnyDungeonRoom,
     CharacterStats,
@@ -26,8 +26,8 @@ from ai_rpg.models import (
     StageComponent,
     StageType,
 )
-from ai_rpg.services.dungeon_advance_action import advance_dungeon
-from ai_rpg.services.dungeon_exit_action import exit_dungeon
+from ai_dbg.services.dungeon_advance_action import advance_dungeon
+from ai_dbg.services.dungeon_exit_action import exit_dungeon
 
 # ---------------------------------------------------------------------------
 # Helpers

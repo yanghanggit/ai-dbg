@@ -11,16 +11,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.rpg_stage_environment import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.rpg_stage_environment import (
     MISSING_ENVIRONMENT_NARRATIVE,
     get_stage_environment,
 )
-from ai_rpg.models import ActorComponent, EnvironmentComponent
-from ai_rpg.systems.home_planning_prompt_builders import build_planning_context
-from ai_rpg.systems.opening_init_actor_system import OpeningInitActorSystem
+from ai_dbg.models import ActorComponent, EnvironmentComponent
+from ai_dbg.systems.home_planning_prompt_builders import build_planning_context
+from ai_dbg.systems.opening_init_actor_system import OpeningInitActorSystem
 
 
 #######################################################################################################################################
@@ -99,7 +99,7 @@ class TestOpeningInitActorSystemMissingEnvironment:
 
         with (
             patch(
-                "ai_rpg.systems.opening_init_actor_system.get_alive_actors_in_stage",
+                "ai_dbg.systems.opening_init_actor_system.get_alive_actors_in_stage",
                 return_value={player},
             ),
             patch.object(

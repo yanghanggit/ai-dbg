@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from ai_rpg.game import world_persistence
-from ai_rpg.models import (
+from ai_dbg.game import world_persistence
+from ai_dbg.models import (
     AgentMemory,
     AIMessage,
     Blueprint,

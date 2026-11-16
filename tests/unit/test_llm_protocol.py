@@ -1,4 +1,4 @@
-"""抽象层（`ai_rpg.llm`）与绑定层（`ai_rpg.deepseek`）的契约检查。
+"""抽象层（`ai_dbg.llm`）与绑定层（`ai_dbg.deepseek`）的契约检查。
 
 只保留「mypy 查不出来、但改错了会静默失效」的几条：
 
@@ -7,7 +7,7 @@
 2. 值对象契约：`ChatCompletionRequest` 自校验 + 不可变；`ChatCompletionResult` 的派生属性正确。
 3. 重命名过的名字仍是同一个对象（`DeepSeekError is ChatError`）。
 4. 绑定层 `agent_loop` / `batch_complete` 的参数表与抽象层一致（手工镜像，必须防漂移）。
-5. 依赖方向：`ai_rpg.llm` 不得 import `ai_rpg.deepseek`。
+5. 依赖方向：`ai_dbg.llm` 不得 import `ai_dbg.deepseek`。
 """
 
 from __future__ import annotations
@@ -20,15 +20,15 @@ from typing import TYPE_CHECKING, List
 
 import pytest
 
-import ai_rpg.llm
-from ai_rpg.deepseek import DEEPSEEK_SERVICE, DeepSeekClient, DeepSeekError
-from ai_rpg.llm import (
+import ai_dbg.llm
+from ai_dbg.deepseek import DEEPSEEK_SERVICE, DeepSeekClient, DeepSeekError
+from ai_dbg.llm import (
     ChatCompletionRequest,
     ChatCompletionResult,
     ChatCompletionService,
     ChatError,
 )
-from ai_rpg.models import AIMessage, SystemMessage
+from ai_dbg.models import AIMessage, SystemMessage
 
 if TYPE_CHECKING:
     # 仅由 mypy 校验：不满足协议时 lint 直接失败。
@@ -134,7 +134,7 @@ def test_context_window_lookup() -> None:
 ############################################################################################################
 def test_llm_layer_never_imports_provider() -> None:
     """依赖方向守卫：抽象层不得 import 实现层（只看 import 语句，不看注释）。"""
-    llm_dir = Path(ai_rpg.llm.__file__).parent
+    llm_dir = Path(ai_dbg.llm.__file__).parent
     offenders: List[str] = []
     for path in sorted(llm_dir.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -147,7 +147,7 @@ def test_llm_layer_never_imports_provider() -> None:
                 modules += [alias.name for alias in node.names]
             if any("deepseek" in module for module in modules):
                 offenders.append(f"{path.name}:{getattr(node, 'lineno', 0)}")
-    assert not offenders, f"ai_rpg.llm 中出现了对 provider 的 import: {offenders}"
+    assert not offenders, f"ai_dbg.llm 中出现了对 provider 的 import: {offenders}"
 
 
 ############################################################################################################
@@ -174,14 +174,14 @@ def _assert_mirrors(abstraction: object, binding: object, injected: str) -> None
 
 
 def test_agent_loop_binding_mirrors_llm_signature() -> None:
-    from ai_rpg.deepseek.agent_loop import agent_loop as bound
-    from ai_rpg.llm.agent_loop import agent_loop as abstraction
+    from ai_dbg.deepseek.agent_loop import agent_loop as bound
+    from ai_dbg.llm.agent_loop import agent_loop as abstraction
 
     _assert_mirrors(abstraction, bound, injected="service")
 
 
 def test_batch_complete_binding_mirrors_llm_signature() -> None:
-    from ai_rpg.deepseek.batch import batch_complete as bound
-    from ai_rpg.llm.batch import batch_complete as abstraction
+    from ai_dbg.deepseek.batch import batch_complete as bound
+    from ai_dbg.llm.batch import batch_complete as abstraction
 
     _assert_mirrors(abstraction, bound, injected="service")

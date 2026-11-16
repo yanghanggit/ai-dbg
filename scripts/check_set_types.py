@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查 src/ai_rpg/models/ 中 BaseModel / NamedTuple 子类是否含 set/Set 类型属性。
+"""检查 src/ai_dbg/models/ 中 BaseModel / NamedTuple 子类是否含 set/Set 类型属性。
 
 set 不可 JSON 序列化，Pydantic 序列化时会隐式转为 list，可能导致反序列化后类型变化。
 发现 set 属性时 exit 1（适配 CI），无问题时 exit 0。
@@ -148,7 +148,7 @@ def main() -> None:
     # 确定 models 目录路径
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    models_dir = project_root / "src" / "ai_rpg" / "models"
+    models_dir = project_root / "src" / "ai_dbg" / "models"
 
     if not models_dir.exists():
         print(f"错误: models 目录不存在: {models_dir}")

@@ -12,15 +12,15 @@ from typing import Dict, Final, List, Optional, final
 from loguru import logger
 from pydantic import BaseModel
 
-from ai_rpg.embedding_model.sentence_transformer import embedding_model
-from ai_rpg.models import (
+from ai_dbg.embedding_model.sentence_transformer import embedding_model
+from ai_dbg.models import (
     Blueprint,
     Dungeon,
     Stage,
     World,
 )
-from ai_rpg.paths import BLUEPRINTS_DIR, DUNGEONS_DIR
-from ai_rpg.pgsql import (
+from ai_dbg.paths import BLUEPRINTS_DIR, DUNGEONS_DIR
+from ai_dbg.pgsql import (
     pgsql_create_database,
     pgsql_drop_database,
     pgsql_ensure_database_tables,
@@ -29,8 +29,8 @@ from ai_rpg.pgsql import (
     save_card_prototype,
     save_deck_build,
 )
-from ai_rpg.pgsql.user_operations import has_user, save_user
-from ai_rpg.rag import add_documents
+from ai_dbg.pgsql.user_operations import has_user, save_user
+from ai_dbg.rag import add_documents
 from demo import (
     CARD_PROTOTYPES,
     DEFAULT_DECK_BUILD,

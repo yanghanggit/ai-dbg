@@ -1,24 +1,23 @@
-# DBG AI 代理 API 走查 CLI（ai-rpg-dbg-agent-api）
+# DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）
 
 ---
 
 ## 定位
 
-`ai_rpg/cli/dbg_agent_api.py`（入口命令 `ai-rpg-dbg-agent-api`）是面向 **AI 代理**的服务器 API 走查入口：
-通过 HTTP 逐步驱动常驻的游戏服务端（`ai-rpg-dbg-server` / `ai_rpg.cli.dbg_server:app`），供代理（或开发者）观察状态、
+`ai_dbg/cli/dbg_agent_api.py`（入口命令 `ai-dbg-agent-api`）是面向 **AI 代理**的服务器 API 走查入口：
+通过 HTTP 逐步驱动常驻的游戏服务端（`ai-dbg-server` / `ai_dbg.cli.dbg_server:app`），供代理（或开发者）观察状态、
 触发动作、逐条验证接口契约。
 
-它**不是**产品客户端。正式玩家入口是独立仓库的 Web 客户端（`ai-rpg-web`），
-后端是服务端真相所在，前端只消费同一套 HTTP 契约（靠 `/openapi.json` 生成类型）。
+服务端是真相所在，对外只暴露一套 HTTP/OpenAPI 契约。
 因此本项目内的 API 走查职责，天然由代理承担。
 
-它与 `ai-rpg-dbg-agent-game` 构成一对，区别在「通过哪一层操作游戏」：
+它与 `ai-dbg-agent-game` 构成一对，区别在「通过哪一层操作游戏」：
 
-| | `ai-rpg-dbg-agent-game` | `ai-rpg-dbg-agent-api` |
+| | `ai-dbg-agent-game` | `ai-dbg-agent-api` |
 | --- | --- | --- |
-| 交互层 | 进程内直接调 `ai_rpg.services.*` | 走 HTTP（`ai_rpg.dbg_api_agent.server_client`） |
+| 交互层 | 进程内直接调 `ai_dbg.services.*` | 走 HTTP（`ai_dbg.dbg_api_agent.server_client`） |
 | 状态位置 | 本地快照 `.worlds/...`（一次性进程） | 服务端**内存**（常驻进程） |
-| 前提 | 无服务器 | 需 `ai-rpg-dbg-server` 在跑 |
+| 前提 | 无服务器 | 需 `ai-dbg-server` 在跑 |
 | 用途 | 服务层规则的无状态、可回溯验证 | HTTP 契约走查、交互式探索与边界试探 |
 
 ---
@@ -26,21 +25,21 @@
 ## 用法
 
 ```bash
-export AI_RPG_API_HOST=127.0.0.1 AI_RPG_API_PORT=8000
-export AI_RPG_USER=alice AI_RPG_GAME=Game1
+export AI_DBG_API_HOST=127.0.0.1 AI_DBG_API_PORT=8000
+export AI_DBG_USER=alice AI_DBG_GAME=Game1
 
-uv run ai-rpg-dbg-agent-api login
-uv run ai-rpg-dbg-agent-api new-game
-uv run ai-rpg-dbg-agent-api status            # 观测 + suggested_actions
-uv run ai-rpg-dbg-agent-api home enter-dungeon --dungeon "副本.坍塌庙祠"
-uv run ai-rpg-dbg-agent-api opening init
-uv run ai-rpg-dbg-agent-api opening generate-spoils
-uv run ai-rpg-dbg-agent-api opening pick-spoils-card --actor 角色.无名 --card 沉马
-uv run ai-rpg-dbg-agent-api dungeon advance-stage
-uv run ai-rpg-dbg-agent-api combat init
-uv run ai-rpg-dbg-agent-api combat draw-cards
-uv run ai-rpg-dbg-agent-api combat play-cards --actor 角色.无名 --card 基础攻击 --target 怪物.纸人
-uv run ai-rpg-dbg-agent-api combat pass-turn --actor 角色.无名
+uv run ai-dbg-agent-api login
+uv run ai-dbg-agent-api new-game
+uv run ai-dbg-agent-api status            # 观测 + suggested_actions
+uv run ai-dbg-agent-api home enter-dungeon --dungeon "副本.坍塌庙祠"
+uv run ai-dbg-agent-api opening init
+uv run ai-dbg-agent-api opening generate-spoils
+uv run ai-dbg-agent-api opening pick-spoils-card --actor 角色.无名 --card 沉马
+uv run ai-dbg-agent-api dungeon advance-stage
+uv run ai-dbg-agent-api combat init
+uv run ai-dbg-agent-api combat draw-cards
+uv run ai-dbg-agent-api combat play-cards --actor 角色.无名 --card 基础攻击 --target 怪物.纸人
+uv run ai-dbg-agent-api combat pass-turn --actor 角色.无名
 ```
 
 命令分组：顶层（`login`/`logout`/`new-game`/`status`/`dungeon-list`/`blueprint-list`/`compact`）、
@@ -59,24 +58,24 @@ uv run ai-rpg-dbg-agent-api combat pass-turn --actor 角色.无名
 
 ### 连接层（HTTPS / JWT）与日志
 
-连接层配置全部集中在 `ai_rpg/dbg_api_agent/config.py` 的 `ServerConfig`，并由
+连接层配置全部集中在 `ai_dbg/dbg_api_agent/config.py` 的 `ServerConfig`，并由
 `server_client.build_client()` 统一构造 `httpx.AsyncClient`（scheme / TLS 校验 / 鉴权头）。
 因此引入 HTTPS 与 JWT 只需改一处：
 
 ```bash
 # HTTPS：指定协议；自签证书用 --server-verify false，或传 CA bundle 路径
-export AI_RPG_API_SCHEME=https
-export AI_RPG_API_VERIFY=/etc/ssl/corp-ca.pem   # 或 false
+export AI_DBG_API_SCHEME=https
+export AI_DBG_API_VERIFY=/etc/ssl/corp-ca.pem   # 或 false
 
 # JWT：非空 token 会以 Authorization: Bearer <token> 注入所有请求
-export AI_RPG_API_TOKEN=eyJ...
+export AI_DBG_API_TOKEN=eyJ...
 ```
 
 > 当前服务端尚无 JWT，`auth_token` 为静态 token。若将来需要登录换 token +
 > 401 自动刷新，只需在 `build_client()`（或新增的鉴权过滤器）中接入，调用方无需改动。
 
 日志：每次调用写一份 `logs/run_agent_api_<timestamp>.log`（DEBUG）；控制台级别由
-`AI_RPG_API_LOG_LEVEL` 决定（默认 `WARNING`）。**日志只写 stderr/文件，stdout 始终是 JSON**。
+`AI_DBG_API_LOG_LEVEL` 决定（默认 `WARNING`）。**日志只写 stderr/文件，stdout 始终是 JSON**。
 
 ---
 
@@ -99,7 +98,7 @@ export AI_RPG_API_TOKEN=eyJ...
   `COMPLETE`/`POST_COMBAT` → `combat collect-loot` / `dungeon advance-stage`（有下一关时）/
   `dungeon exit`；撤退用 `combat retreat`。
 
-上述字符串已带组前缀，**可直接作为 `ai-rpg-dbg-agent-api` 的参数**。
+上述字符串已带组前缀，**可直接作为 `ai-dbg-agent-api` 的参数**。
 
 建议只是提示，**以服务端校验为准**。
 
@@ -109,19 +108,18 @@ export AI_RPG_API_TOKEN=eyJ...
 
 代理动态走查**不可复现**（依赖 LLM 判断），不能取代固定回归：
 
-- **契约 / 回归** → `tests/integration/test_api_e2e_smoke.py`（后端）与 `ai-rpg-web` 的
-  Vitest + MSW（前端）；
-- **探索 / 新特性走查 / 边界试探 / 交互式调试** → 代理 + `ai-rpg-dbg-agent-api`。
+- **契约 / 回归** → `tests/integration/test_api_e2e_smoke.py`；
+- **探索 / 新特性走查 / 边界试探 / 交互式调试** → 代理 + `ai-dbg-agent-api`。
 
 ---
 
 ## 目录结构
 
 ```bash
-src/ai_rpg/dbg_api_agent/
+src/ai_dbg/dbg_api_agent/
   config.py         # ServerConfig / server_config（host/port/scheme/verify/token 由 CLI 注入）
   server_client.py  # 全部 HTTP 接口封装（含 SSE 任务等待）
   status.py         # build_status：一次调用产出世界状态快照
   flow.py           # suggest_actions：由状态推断下一步
-src/ai_rpg/cli/dbg_agent_api.py  # Click CLI 薄壳（入口命令 ai-rpg-dbg-agent-api）
+src/ai_dbg/cli/dbg_agent_api.py  # Click CLI 薄壳（入口命令 ai-dbg-agent-api）
 ```

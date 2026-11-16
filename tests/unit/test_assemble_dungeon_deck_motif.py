@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from ai_rpg.entitas import Context, dump_components
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas import Context, dump_components
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     Actor,
     ActorType,
     Card,
@@ -21,13 +21,13 @@ from ai_rpg.models import (
     MotifComponent,
     TargetType,
 )
-from ai_rpg.pgsql import CardPrototypeIndexEntry
-from ai_rpg.systems import assemble_dungeon_deck_system as deck_module
-from ai_rpg.systems.assemble_dungeon_deck_system import (
+from ai_dbg.pgsql import CardPrototypeIndexEntry
+from ai_dbg.systems import assemble_dungeon_deck_system as deck_module
+from ai_dbg.systems.assemble_dungeon_deck_system import (
     DECK_SIZE,
     AssembleDungeonDeckSystem,
 )
-from ai_rpg.systems.card_common import (
+from ai_dbg.systems.card_common import (
     Candidate,
     DesignOutcome,
     SelectionOutcome,

@@ -11,17 +11,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     HandComponent,
     PlayCardsAction,
     TargetType,
 )
-from ai_rpg.systems.transfer_cards_action_system import (
+from ai_dbg.systems.transfer_cards_action_system import (
     TransferCardsActionSystem,
 )
 

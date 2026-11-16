@@ -12,12 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ai_rpg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.rpg_agent_memory import REPLACED_MESSAGES_ATTR
-from ai_rpg.models import (
+from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.rpg_agent_memory import REPLACED_MESSAGES_ATTR
+from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     Card,
@@ -28,7 +28,7 @@ from ai_rpg.models import (
     SystemMessage,
     TargetType,
 )
-from ai_rpg.systems.autonomous_arbitration_system import (
+from ai_dbg.systems.autonomous_arbitration_system import (
     AutonomousArbitrationSystem,
 )
 
@@ -131,7 +131,7 @@ class TestAutonomousArbitrationSystem:
         holder.get(HandComponent).cards.append(_make_card("召唤兽", autonomous=True))
 
         with patch(
-            "ai_rpg.systems.autonomous_arbitration_system.agent_loop"
+            "ai_dbg.systems.autonomous_arbitration_system.agent_loop"
         ) as mock_agent_loop:
             await system.react([holder])
 
@@ -147,7 +147,7 @@ class TestAutonomousArbitrationSystem:
         holder.get(HandComponent).cards.append(_make_card("召唤兽", autonomous=True))
 
         with patch(
-            "ai_rpg.systems.autonomous_arbitration_system.agent_loop",
+            "ai_dbg.systems.autonomous_arbitration_system.agent_loop",
             new=AsyncMock(
                 return_value=AgentLoopResult(
                     success=False, start_index=0, end_index=0, messages=[]
@@ -211,7 +211,7 @@ class TestAutonomousLoopMemoryCompression:
         holder.get(HandComponent).cards.append(_make_card("召唤兽", autonomous=True))
 
         with patch(
-            "ai_rpg.systems.autonomous_arbitration_system.agent_loop",
+            "ai_dbg.systems.autonomous_arbitration_system.agent_loop",
             new=AsyncMock(side_effect=self._fake_success),
         ):
             await system.react([holder])

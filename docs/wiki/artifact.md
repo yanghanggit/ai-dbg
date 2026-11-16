@@ -8,7 +8,7 @@
 
 ## 构成
 
-`Artifact` 定义在 `src/ai_rpg/models/artifact.py`：
+`Artifact` 定义在 `src/ai_dbg/models/artifact.py`：
 
 | 字段 | 说明 |
 | --- | --- |

@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.rpg_entity_manager import RPGEntityManager
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.entitas import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.rpg_entity_manager import RPGEntityManager
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     AIMessage,
     AppearanceComponent,
     AppearanceSynthesisComponent,
@@ -19,7 +19,7 @@ from ai_rpg.models import (
     WearCostumeAction,
     WornCostumeComponent,
 )
-from ai_rpg.systems.wear_costume_action_system import (
+from ai_dbg.systems.wear_costume_action_system import (
     WearCostumeActionSystem,
 )
 
@@ -30,9 +30,9 @@ from ai_rpg.systems.wear_costume_action_system import (
 _BASE_BODY = "人类基础外形"
 _COSTUME = CostumeItem(name="铁甲", description="坚固的铁制盔甲")
 _NEW_COSTUME = CostumeItem(name="法袍", description="绣有星纹的深蓝色法袍")
-_MODULE = "ai_rpg.systems.wear_costume_action_system"
+_MODULE = "ai_dbg.systems.wear_costume_action_system"
 # 外观合成的 LLM 客户端由 appearance_synthesis_common 构造，patch 要打在那里
-_SYNTH_MODULE = "ai_rpg.systems.appearance_synthesis_common"
+_SYNTH_MODULE = "ai_dbg.systems.appearance_synthesis_common"
 
 
 class _FakeSynthesisService:
@@ -133,7 +133,7 @@ class TestProcessWearCostume:
         mock_game.get_storage_entity.return_value = storage
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("合成外观"),
         ):
             await system._process_wear_costume(entity)
@@ -157,7 +157,7 @@ class TestProcessWearCostume:
         )
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("合成外观"),
         ):
             await system._process_wear_costume(entity)
@@ -180,7 +180,7 @@ class TestProcessWearCostume:
         )
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("  穿着铁甲的英勇战士  "),
         ):
             await system._process_wear_costume(entity)
@@ -202,7 +202,7 @@ class TestProcessWearCostume:
         )
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService(""),
         ):
             await system._process_wear_costume(entity)
@@ -225,7 +225,7 @@ class TestProcessWearCostume:
         )
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("合成外观"),
         ):
             await system._process_wear_costume(entity)
@@ -247,7 +247,7 @@ class TestProcessWearCostume:
         mock_game.get_storage_entity.return_value = storage
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("合成外观"),
         ):
             await system._process_wear_costume(entity)
@@ -288,7 +288,7 @@ class TestReact:
         )
 
         with patch(
-            "ai_rpg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
+            "ai_dbg.systems.wear_costume_action_system.DEEPSEEK_SERVICE",
             _FakeSynthesisService("LLM合成外观"),
         ):
             await system.react([entity])

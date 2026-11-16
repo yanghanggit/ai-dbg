@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_rpg.entitas import Entity
-from ai_rpg.entitas.context import Context
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.entitas import Entity
+from ai_dbg.entitas.context import Context
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     ActorComponent,
     AIMessage,
     AppearanceComponent,
@@ -17,9 +17,9 @@ from ai_rpg.models import (
     MonsterComponent,
     PartyMemberComponent,
 )
-from ai_rpg.systems.combat_loot_system import CombatLootSystem
+from ai_dbg.systems.combat_loot_system import CombatLootSystem
 
-_MODULE = "ai_rpg.systems.combat_loot_system"
+_MODULE = "ai_dbg.systems.combat_loot_system"
 
 _LOOT_JSON = """{
   "base_materials": [{"name": "材料.兽骨", "description": "断裂的兽骨。", "count": 2}],

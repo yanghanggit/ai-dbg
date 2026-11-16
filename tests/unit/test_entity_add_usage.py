@@ -3,7 +3,7 @@
 entitas 是底层库，本身不感知上层游戏；「``add`` 只在实体创建阶段使用」是**上层
 项目**的约定，因此约束放在 ``tests/`` 而不是 entitas 内部：
 
-- 仅 ``src/ai_rpg/game/dbg_game.py`` 中以 ``create`` / ``_create`` 开头的函数；
+- 仅 ``src/ai_dbg/game/dbg_game.py`` 中以 ``create`` / ``_create`` 开头的函数；
 - ``tests/`` 下全部代码。
 
 运行期（systems / services / pipelines）必须使用 ``Entity.replace``：它同时承担
@@ -27,7 +27,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 SCAN_DIRS: Final = ("src", "demo")
 
 #: 允许调用 add 的唯一模块。
-DBG_GAME_PATH: Final = ROOT / "src" / "ai_rpg" / "game" / "dbg_game.py"
+DBG_GAME_PATH: Final = ROOT / "src" / "ai_dbg" / "game" / "dbg_game.py"
 
 #: 模块内允许调用 add 的函数名前缀。
 CREATE_FUNC_PATTERN: Final = re.compile(r"^_?create")
@@ -163,7 +163,7 @@ def react(self, entities):
     entity = entities[0]
     entity.add(EquippedGearComponent, entity.name, [])
 """
-    path = ROOT / "src" / "ai_rpg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
     assert [(v.function, v.line) for v in _check_source(source, path)] == [("react", 4)]
 
 
@@ -173,7 +173,7 @@ def test_checker_flags_private_add_in_runtime_module() -> None:
 def react(self, entity):
     entity._add(ActorComponent, "name", "")
 """
-    path = ROOT / "src" / "ai_rpg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
     assert [(v.function, v.line) for v in _check_source(source, path)] == [("react", 3)]
 
 
@@ -202,5 +202,5 @@ def build(processors, seen, db, entities):
     db.add(document)
     entities.add(entity)
 """
-    path = ROOT / "src" / "ai_rpg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
     assert _check_source(source, path) == []

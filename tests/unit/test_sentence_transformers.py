@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 # 导入预加载的模型实例
-from ai_rpg.embedding_model import embedding_model
+from ai_dbg.embedding_model import embedding_model
 
 
 # Global fixtures for model caching to improve test performance
@@ -300,7 +300,7 @@ if __name__ == "__main__":
             from sentence_transformers import SentenceTransformer
             from sentence_transformers.util import cos_sim
 
-            from ai_rpg.embedding_model import embedding_model
+            from ai_dbg.embedding_model import embedding_model
 
             print("✅ Import successful")
 
@@ -354,7 +354,7 @@ if __name__ == "__main__":
             from sentence_transformers import SentenceTransformer
             from sentence_transformers.util import cos_sim
 
-            from ai_rpg.embedding_model import embedding_model
+            from ai_dbg.embedding_model import embedding_model
 
             # Use pre-loaded multilingual model for Chinese content
             print("1. Using pre-loaded multilingual model...")
@@ -415,7 +415,7 @@ if __name__ == "__main__":
 
             from sentence_transformers import SentenceTransformer
 
-            from ai_rpg.embedding_model import embedding_model
+            from ai_dbg.embedding_model import embedding_model
 
             print("1. Testing encoding speed with pre-loaded model...")
             assert isinstance(embedding_model, SentenceTransformer)
@@ -506,7 +506,7 @@ if __name__ == "__main__":
         try:
             from sentence_transformers import SentenceTransformer
 
-            from ai_rpg.embedding_model import embedding_model
+            from ai_dbg.embedding_model import embedding_model
 
             assert isinstance(embedding_model, SentenceTransformer)
 

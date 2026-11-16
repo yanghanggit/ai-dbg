@@ -5,17 +5,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.rpg_entity_manager import RPGEntityManager
-from ai_rpg.models import (
+from ai_dbg.entitas import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.rpg_entity_manager import RPGEntityManager
+from ai_dbg.models import (
     AppearanceComponent,
     CostumeItem,
     RemoveCostumeAction,
     StorageComponent,
     WornCostumeComponent,
 )
-from ai_rpg.systems.remove_costume_action_system import (
+from ai_dbg.systems.remove_costume_action_system import (
     RemoveCostumeActionSystem,
 )
 

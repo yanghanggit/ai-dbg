@@ -9,10 +9,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.entitas import Entity
-from ai_rpg.entitas.context import Context
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas import Entity
+from ai_dbg.entitas.context import Context
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     CharacterStats,
@@ -22,7 +22,7 @@ from ai_rpg.models import (
     FillDrawPileAction,
     TargetType,
 )
-from ai_rpg.systems.fill_draw_pile_system import FillDrawPileSystem
+from ai_dbg.systems.fill_draw_pile_system import FillDrawPileSystem
 
 
 def _make_card(name: str) -> Card:

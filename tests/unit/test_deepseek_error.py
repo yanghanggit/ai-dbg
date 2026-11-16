@@ -11,10 +11,10 @@ from typing import Any, Dict, Optional, Union
 import httpx
 import pytest
 
-from ai_rpg.deepseek import DEEPSEEK_SERVICE, DeepSeekClient, DeepSeekError
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult, ChatError
-from ai_rpg.llm.batch import batch_complete
-from ai_rpg.models import SystemMessage
+from ai_dbg.deepseek import DEEPSEEK_SERVICE, DeepSeekClient, DeepSeekError
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult, ChatError
+from ai_dbg.llm.batch import batch_complete
+from ai_dbg.models import SystemMessage
 
 
 ############################################################################################################
@@ -301,8 +301,8 @@ class TestChatDumpWiring:
     async def test_successful_chat_dumps_by_default(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("ai_rpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_RPG_CHAT_DUMP_ENABLED", raising=False)
+        monkeypatch.setattr("ai_dbg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
+        monkeypatch.delenv("AI_DBG_CHAT_DUMP_ENABLED", raising=False)
 
         request = ChatCompletionRequest(
             label="测试.落盘",
@@ -321,8 +321,8 @@ class TestChatDumpWiring:
     async def test_dump_false_writes_nothing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("ai_rpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_RPG_CHAT_DUMP_ENABLED", raising=False)
+        monkeypatch.setattr("ai_dbg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
+        monkeypatch.delenv("AI_DBG_CHAT_DUMP_ENABLED", raising=False)
 
         request = _request()  # dump=False
         result = await _service(
@@ -337,8 +337,8 @@ class TestChatDumpWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """失败请求没有可供留痕的完整对话（只在成功后落盘）。"""
-        monkeypatch.setattr("ai_rpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_RPG_CHAT_DUMP_ENABLED", raising=False)
+        monkeypatch.setattr("ai_dbg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
+        monkeypatch.delenv("AI_DBG_CHAT_DUMP_ENABLED", raising=False)
 
         request = ChatCompletionRequest(
             label="测试.失败",

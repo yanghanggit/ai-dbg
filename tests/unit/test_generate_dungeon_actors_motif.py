@@ -3,8 +3,8 @@
 LLM 会话本身在模块边界之外，这里只测「契约里有 motif → handler 记录 motif」这一段。
 """
 
-from ai_rpg.models import DungeonRoomDraft
-from ai_rpg.systems.generate_dungeon_actors_system import (
+from ai_dbg.models import DungeonRoomDraft
+from ai_dbg.systems.generate_dungeon_actors_system import (
     _ActorsResult,
     _build_record_dungeon_actor_tool,
     _handle_record_dungeon_actor,

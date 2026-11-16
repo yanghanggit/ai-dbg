@@ -1,6 +1,6 @@
 """apply_numeric_design 的单元测试：骨架数值微调（不加护栏，None 沿用原型）。"""
 
-from ai_rpg.models import Card, apply_numeric_design
+from ai_dbg.models import Card, apply_numeric_design
 
 
 def _card() -> Card:

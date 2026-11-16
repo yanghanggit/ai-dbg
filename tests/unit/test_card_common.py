@@ -2,8 +2,8 @@
 
 import pytest
 
-from ai_rpg.models import Card
-from ai_rpg.systems.card_common import (
+from ai_dbg.models import Card
+from ai_dbg.systems.card_common import (
     Candidate,
     CardDesign,
     _CardSelection,

@@ -7,7 +7,7 @@
 import asyncio
 from typing import List
 
-from ai_rpg.deepseek import (
+from ai_dbg.deepseek import (
     DEEPSEEK_SERVICE,
     DeepSeekClient,
     ToolDefinition,
@@ -15,8 +15,8 @@ from ai_rpg.deepseek import (
     agent_loop,
     batch_complete,
 )
-from ai_rpg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_rpg.models import (
+from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_dbg.models import (
     AIMessage,
     ChatMessage,
     HumanMessage,
@@ -24,7 +24,7 @@ from ai_rpg.models import (
     ToolMessage,
     get_buffer_string,
 )
-from ai_rpg.utils import batch_run_boolean_tasks
+from ai_dbg.utils import batch_run_boolean_tasks
 
 _SYSTEM = SystemMessage(content="你是一个有帮助的助手，请用中文回答。")
 

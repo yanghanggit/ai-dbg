@@ -2,8 +2,8 @@
 
 import pytest
 
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     Actor,
     ActorType,
     Blueprint,

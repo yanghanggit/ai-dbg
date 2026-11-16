@@ -15,7 +15,7 @@ schema；`CARD_PROTOTYPES` 是全部原型的注册表，供 setup_demo 灌库�
 from dataclasses import dataclass
 from typing import Final, List, Tuple
 
-from ai_rpg.models import Card
+from ai_dbg.models import Card
 from demo.card_skeletons import (
     AOE_BUFF_SKELETON,
     AOE_DEBUFF_SKELETON,

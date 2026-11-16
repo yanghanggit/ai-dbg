@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.game.game_server import GameServer
-from ai_rpg.services import home_tasks
-from ai_rpg.services.game_server_runtime import bind_runtime_game_server
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.game.game_server import GameServer
+from ai_dbg.services import home_tasks
+from ai_dbg.services.game_server_runtime import bind_runtime_game_server
 
 
 class _FakeHomeGame:

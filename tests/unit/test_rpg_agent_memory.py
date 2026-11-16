@@ -13,12 +13,12 @@ from typing import Any, List, cast
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.rpg_agent_memory import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.rpg_agent_memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
 )
-from ai_rpg.models import AIMessage, HumanMessage, SystemMessage
+from ai_dbg.models import AIMessage, HumanMessage, SystemMessage
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -16,8 +16,8 @@ from typing import List, Optional
 
 import click
 
-from ai_rpg.models import ImageMeta
-from ai_rpg.replicate import (
+from ai_dbg.models import ImageMeta
+from ai_dbg.replicate import (
     DEFAULT_IMAGE_MODEL,
     IMAGE_MODELS,
     TextToImageSpec,

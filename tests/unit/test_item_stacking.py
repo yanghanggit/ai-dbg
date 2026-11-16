@@ -12,7 +12,7 @@ from typing import List
 
 import pytest
 
-from ai_rpg.models import (
+from ai_dbg.models import (
     AnyItem,
     Card,
     ConsumableItem,

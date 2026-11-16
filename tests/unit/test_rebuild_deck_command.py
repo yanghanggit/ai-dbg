@@ -10,10 +10,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.dbg_game_agent import cards as cards_module
-from ai_rpg.dbg_game_agent.cards import find_dungeon_actor, rebuild_deck_in_dungeon
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.dbg_game_agent import cards as cards_module
+from ai_dbg.dbg_game_agent.cards import find_dungeon_actor, rebuild_deck_in_dungeon
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     Actor,
     ActorType,
     Card,
@@ -24,7 +24,7 @@ from ai_rpg.models import (
     Stage,
     StageType,
 )
-from ai_rpg.systems.card_common import Candidate, DesignOutcome
+from ai_dbg.systems.card_common import Candidate, DesignOutcome
 
 _MOTIF = "**母题**: 泥下的等待\n**意象**: 湿泥、干草"
 
@@ -173,7 +173,7 @@ async def test_rebuild_deck_requires_prototypes(
 
 #######################################################################################################################################
 def _dungeon_with_deck(names: List[str]) -> Dungeon:
-    from ai_rpg.models import Card, DeckComponent
+    from ai_dbg.models import Card, DeckComponent
 
     dungeon = _dungeon()
     actor = dungeon.rooms[0].stage.actors[0]
@@ -190,8 +190,8 @@ def _dungeon_with_deck(names: List[str]) -> Dungeon:
 
 
 def test_resolve_replacement_indices_by_name_and_position() -> None:
-    from ai_rpg.dbg_game_agent.cards import resolve_replacement_indices
-    from ai_rpg.models import Card
+    from ai_dbg.dbg_game_agent.cards import resolve_replacement_indices
+    from ai_dbg.models import Card
 
     existing = [Card(name=name, description="") for name in ("甲", "乙", "乙", "丁")]
 

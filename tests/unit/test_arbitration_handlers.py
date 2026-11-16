@@ -7,10 +7,10 @@ handler 核心已收敛到 `arbitration_common`；此处经 `turn_end` 的薄包
 from typing import Dict, List
 from unittest.mock import MagicMock
 
-from ai_rpg.entitas.context import Context
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.entitas.context import Context
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     ActorComponent,
     Card,
     CharacterStats,
@@ -18,10 +18,10 @@ from ai_rpg.models import (
     HandComponent,
     TargetType,
 )
-from ai_rpg.systems.arbitration_common import (
+from ai_dbg.systems.arbitration_common import (
     ArbitrationContext,
 )
-from ai_rpg.systems.turn_end_arbitration_system import (
+from ai_dbg.systems.turn_end_arbitration_system import (
     _handle_resolve_damage,
     _handle_resolve_effect,
 )

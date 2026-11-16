@@ -13,10 +13,10 @@ from typing import Any, Iterator
 import pytest
 from pydantic import ValidationError
 
-from ai_rpg.entitas import Context
-from ai_rpg.entitas.components import Component
-from ai_rpg.game.rpg_entity_manager import RPGEntityManager
-from ai_rpg.models import (
+from ai_dbg.entitas import Context
+from ai_dbg.entitas.components import Component
+from ai_dbg.game.rpg_entity_manager import RPGEntityManager
+from ai_dbg.models import (
     COMPONENT_TYPES,
     HomeComponent,
     IdentityComponent,

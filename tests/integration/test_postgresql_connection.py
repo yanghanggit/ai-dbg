@@ -15,9 +15,9 @@ import pytest
 from loguru import logger
 from sqlalchemy import text
 
-from ai_rpg.pgsql.client import SessionLocal
-from ai_rpg.pgsql.user import UserDB
-from ai_rpg.pgsql.user_operations import get_user, has_user, save_user
+from ai_dbg.pgsql.client import SessionLocal
+from ai_dbg.pgsql.user import UserDB
+from ai_dbg.pgsql.user_operations import get_user, has_user, save_user
 
 
 class TestPostgreSQLConnection:

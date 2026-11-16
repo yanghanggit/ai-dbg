@@ -11,8 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_rpg.game.dbg_game import DBGGame
-from ai_rpg.models import (
+from ai_dbg.game.dbg_game import DBGGame
+from ai_dbg.models import (
     DEFAULT_DUNGEON_ROOM_COUNT,
     DEFAULT_MONSTERS_PER_COMBAT_ROOM,
     DEFAULT_OPENING_ROOM_COUNT,
@@ -21,12 +21,12 @@ from ai_rpg.models import (
     HomeGenerateDungeonRequest,
     validate_generation_spec,
 )
-from ai_rpg.services.home_actions import activate_generate_dungeon
-from ai_rpg.systems.generate_dungeon_profile_system import (
+from ai_dbg.services.home_actions import activate_generate_dungeon
+from ai_dbg.systems.generate_dungeon_profile_system import (
     _handle_record_dungeon_profile,
     _ProfileResult,
 )
-from ai_rpg.systems.generate_dungeon_rooms_system import (
+from ai_dbg.systems.generate_dungeon_rooms_system import (
     _handle_record_dungeon_rooms,
     _RoomsResult,
     validate_room_layout,
@@ -177,12 +177,12 @@ def test_rooms_handler_uses_given_monsters_per_room() -> None:
 #######################################################################################################################################
 def test_assembly_gate_blocks_mismatched_actor_counts() -> None:
     """出厂闸门：怪物数量与房间规格不一致时不落盘（避免产出无怪物的可用副本）。"""
-    from ai_rpg.models import (
+    from ai_dbg.models import (
         DungeonActorDraft,
         DungeonDraft,
         DungeonRoomDraft,
     )
-    from ai_rpg.systems.assemble_dungeon_system import AssembleDungeonSystem
+    from ai_dbg.systems.assemble_dungeon_system import AssembleDungeonSystem
 
     draft = DungeonDraft(
         dungeon_name="副本.试作",
@@ -212,7 +212,7 @@ def test_assembly_gate_blocks_mismatched_actor_counts() -> None:
 
 #######################################################################################################################################
 def _room(room_type: Literal["opening", "combat"], name: str) -> Any:
-    from ai_rpg.models import DungeonRoomDraft
+    from ai_dbg.models import DungeonRoomDraft
 
     return DungeonRoomDraft(room_type=room_type, room_name=name)
 
@@ -264,7 +264,7 @@ async def _run_assembly_with(
     draft: Any,
 ) -> Tuple[bool, MagicMock]:
     """跑一次组装步骤，返回 (是否落盘, game)。落盘目录整体指向 tmp_path。"""
-    from ai_rpg.systems import assemble_dungeon_system as assembly_module
+    from ai_dbg.systems import assemble_dungeon_system as assembly_module
 
     monkeypatch.setattr(assembly_module, "DUNGEONS_DIR", tmp_path / "dungeons")
     monkeypatch.setattr(assembly_module, "DUNGEONS_DRAFTS_DIR", tmp_path / "drafts")
@@ -289,7 +289,7 @@ async def test_assembly_gate_skips_write_on_mismatch(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """上游失败（怪物数不符）时不落盘：不会产出「无怪物的可用副本」。"""
-    from ai_rpg.models import DungeonDraft, DungeonRoomDraft
+    from ai_dbg.models import DungeonDraft, DungeonRoomDraft
 
     draft = DungeonDraft(
         dungeon_name="副本.试作",
@@ -318,7 +318,7 @@ async def test_assembly_writes_when_counts_match(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """闸门不能误伤正常产物：数量一致时照常落盘。"""
-    from ai_rpg.models import DungeonActorDraft, DungeonDraft, DungeonRoomDraft
+    from ai_dbg.models import DungeonActorDraft, DungeonDraft, DungeonRoomDraft
 
     draft = DungeonDraft(
         dungeon_name="副本.试作",

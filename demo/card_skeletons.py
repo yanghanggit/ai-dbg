@@ -10,7 +10,7 @@ hit_count / block / target_type / flags）是只读骨架，非空词缀槽即�
 
 from typing import Final
 
-from ai_rpg.models import Card, TargetType
+from ai_dbg.models import Card, TargetType
 
 #######################################################################################################################################
 # ── 基础骨架（开局保底牌：统一命名、无词缀、不参与选型） ──────────

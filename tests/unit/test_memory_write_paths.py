@@ -12,9 +12,9 @@ from typing import Any, cast
 
 import pytest
 
-from ai_rpg.entitas.entity import Entity
-from ai_rpg.game import world_persistence
-from ai_rpg.models import (
+from ai_dbg.entitas.entity import Entity
+from ai_dbg.game import world_persistence
+from ai_dbg.models import (
     ActorComponent,
     AgentMemory,
     AppearanceComponent,
@@ -32,8 +32,8 @@ from ai_rpg.models import (
     Round,
     TargetType,
 )
-from ai_rpg.systems.draw_cards_action_system import DrawCardsActionSystem
-from ai_rpg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
+from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
 
 
 #######################################################################################################
@@ -65,7 +65,7 @@ def _make_actor(game: Any, name: str, *, monster: bool = False) -> Entity:
 
 def _arm_combat(game: Any) -> None:
     """造一个进行中的战斗房间（转移系统以此作为前置）。"""
-    from ai_rpg.models import (
+    from ai_dbg.models import (
         Combat,
         CombatRoom,
         CombatState,

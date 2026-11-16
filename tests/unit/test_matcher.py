@@ -4,7 +4,7 @@ Tests for the Matcher class in the entitas framework.
 
 import pytest
 
-from ai_rpg.entitas import Context, Entity, Matcher
+from ai_dbg.entitas import Context, Entity, Matcher
 from ecs_testing import Health, Name, Position, Velocity
 
 
