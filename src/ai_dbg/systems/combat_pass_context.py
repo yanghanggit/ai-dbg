@@ -3,24 +3,22 @@
 from typing import List, Optional
 
 from ..entitas import Entity, Matcher
-from ..game.context import DBGGame
 from ..models import (
     CombatPassSnapshotComponent,
     CombatRoundComponent,
     CombatTurnComponent,
     CombatTurnStatus,
 )
+from .mixin_protocol import SystemMixinProtocol
 
 
 ###################################################################################################################################################################
-class CombatPassContextMixin:
+class CombatPassContextMixin(SystemMixinProtocol):
     """为战斗动作系统提供 pass 快照、行动槽与回合的 ECS 查询。
 
     这些查询只描述当前 pass 的动作阶段上下文，不属于领域状态；因此放在系统层，
     由使用方通过 ``self`` 调用，避免领域层出现仅供系统消费的实体 GET 封装。
     """
-
-    _game: DBGGame
 
     ###############################################################################################################################################################
     def _pass_snapshot_entity_or_none(self) -> Optional[Entity]:

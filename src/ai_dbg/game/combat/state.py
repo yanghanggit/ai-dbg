@@ -132,26 +132,6 @@ def current_turn_for_round(dbg_game: DBGGame, round_entity: Entity) -> Optional[
 
 
 ###############################################################################################################################################
-def turn_name_for_actor(
-    dbg_game: DBGGame, round_entity: Entity, actor_name: str
-) -> Optional[str]:
-    """返回该角色在当前回合对应的行动槽名；优先当前槽，否则取最后一个槽。"""
-    current_turn = current_turn_for_round(dbg_game, round_entity)
-    if (
-        current_turn is not None
-        and current_turn.get(CombatTurnComponent).actor_name == actor_name
-    ):
-        return current_turn.name
-
-    matched = [
-        turn_entity
-        for turn_entity in combat_turns(dbg_game, round_entity)
-        if turn_entity.get(CombatTurnComponent).actor_name == actor_name
-    ]
-    return matched[-1].name if matched else None
-
-
-###############################################################################################################################################
 def latest_combat_round(dbg_game: DBGGame, combat_entity: Entity) -> Optional[Entity]:
     """返回指定战斗的最后一个回合实体；没有回合时返回 None。"""
     rounds = combat_rounds(dbg_game, combat_entity)

@@ -91,7 +91,7 @@ def _build_received_card_prompt(
 
 #######################################################################################################################################
 @final
-class TransferCardsActionSystem(CombatPassContextMixin, ReactiveProcessor):
+class TransferCardsActionSystem(ReactiveProcessor, CombatPassContextMixin):
     """可传递卡牌转移系统。"""
 
     def __init__(self, game: DBGGame) -> None:

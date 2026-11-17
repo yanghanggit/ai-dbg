@@ -1,7 +1,7 @@
 """仲裁 `resolve_*` handler 的定点验证：数值经纯函数落到 HP，并产出同源日志段。
 
-重点覆盖 E2E 里没有的路径：治疗回血、吸血封顶、反伤；并验证目标恒为持有者。
-handler 核心已收敛到 `arbitration_common`；此处经 `turn_end` 的薄包装验证（含持有者目标约束）。
+重点覆盖 E2E 里没有的路径：治疗回血、吸血封顶、反伤。
+handler 核心已收敛到 `arbitration_common`；此处经 `play_cards` 的薄包装验证。
 """
 
 from typing import Any, Dict, List, cast
@@ -20,7 +20,7 @@ from ai_dbg.models import (
 from ai_dbg.systems.arbitration_common import (
     ArbitrationContext,
 )
-from ai_dbg.systems.turn_end_arbitration_system import (
+from ai_dbg.systems.play_cards_arbitration_system import (
     _handle_resolve_damage,
     _handle_resolve_effect,
 )
@@ -66,7 +66,13 @@ class TestResolveDamageHandler:
         ctx = ArbitrationContext()
 
         segment = _handle_resolve_damage(
-            _make_game({"英雄": hero}), ctx, "英雄", "英雄", base_damage=5, hits=1
+            _make_game({"英雄": hero}),
+            ctx,
+            _block_card(0),
+            "英雄",
+            "英雄",
+            base_damage=5,
+            hits=1,
         )
 
         assert ctx.hp_changes["英雄"] == 9
@@ -76,7 +82,6 @@ class TestResolveDamageHandler:
 
 class TestResolveEffectHandler:
     def test_heal_holder_raises_hp(self) -> None:
-        """回合结束的受效结算目标恒为持有者本人。"""
         context = ECSContext()
         ally = _make_actor(context, "队友", hp=4, max_hp=10, hand=[])
         ctx = ArbitrationContext()
@@ -84,7 +89,6 @@ class TestResolveEffectHandler:
         segment = _handle_resolve_effect(
             _make_game({"队友": ally}),
             ctx,
-            "队友",
             "队友",
             base=5,
             hits=1,
@@ -106,7 +110,6 @@ class TestResolveEffectHandler:
             _make_game({"英雄": hero}),
             ctx,
             "英雄",
-            "英雄",
             base=5,
             hits=1,
             lifesteal_mult=1,
@@ -123,7 +126,6 @@ class TestResolveEffectHandler:
             _make_game({"英雄": hero}),
             ctx,
             "英雄",
-            "英雄",
             base=3,
             hits=2,
             reflect_mult=1,
@@ -137,45 +139,7 @@ class TestResolveEffectHandler:
         ctx = ArbitrationContext()
 
         segment = _handle_resolve_effect(
-            _make_game({}), ctx, "幽灵", "幽灵", base=5, hits=1, heal_mult=1
-        )
-
-        assert "错误" in segment
-        assert ctx.hp_changes == {}
-
-    def test_damage_non_holder_target_is_rejected(self) -> None:
-        """回合结束词缀不能指向非持有者。"""
-        context = ECSContext()
-        hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[])
-        other = _make_actor(context, "怪物", hp=10, max_hp=10, hand=[])
-        ctx = ArbitrationContext()
-
-        segment = _handle_resolve_damage(
-            _make_game({"英雄": hero, "怪物": other}),
-            ctx,
-            "英雄",
-            "怪物",
-            base_damage=5,
-            hits=1,
-        )
-
-        assert "错误" in segment
-        assert ctx.hp_changes == {}
-
-    def test_effect_non_holder_target_is_rejected(self) -> None:
-        context = ECSContext()
-        hero = _make_actor(context, "英雄", hp=10, max_hp=10, hand=[])
-        other = _make_actor(context, "怪物", hp=10, max_hp=10, hand=[])
-        ctx = ArbitrationContext()
-
-        segment = _handle_resolve_effect(
-            _make_game({"英雄": hero, "怪物": other}),
-            ctx,
-            "英雄",
-            "怪物",
-            base=5,
-            hits=1,
-            heal_mult=1,
+            _make_game({}), ctx, "幽灵", base=5, hits=1, heal_mult=1
         )
 
         assert "错误" in segment

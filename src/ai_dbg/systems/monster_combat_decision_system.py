@@ -441,7 +441,7 @@ def _handle_submit_decision(
 
 #######################################################################################################################################
 @final
-class MonsterCombatDecisionSystem(CombatPassContextMixin, ReactiveProcessor):
+class MonsterCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
     """怪物出牌决策系统：工具化决策，落库后整段过程压缩成一条决策记录。"""
 
     def __init__(self, game: DBGGame) -> None:

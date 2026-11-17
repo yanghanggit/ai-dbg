@@ -16,9 +16,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.artifact_post_arbitration_system import (
         ArtifactPostArbitrationSystem,
     )
-    from ...systems.autonomous_arbitration_system import (
-        AutonomousArbitrationSystem,
-    )
     from ...systems.card_operation_system import CardOperationSystem
     from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
     from ...systems.combat_init_actor_system import CombatInitActorSystem
@@ -70,7 +67,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
         TeardownDungeonActionSystem,
     )
     from ...systems.transfer_cards_action_system import TransferCardsActionSystem
-    from ...systems.turn_end_arbitration_system import TurnEndArbitrationSystem
     from ...systems.use_consumable_item_action_system import (
         UseConsumableItemActionSystem,
     )
@@ -128,8 +124,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(PlayCardsArbitrationSystem(dbg_game))
     pipeline.add(CardOperationSystem(dbg_game))
     pipeline.add(ArtifactPostArbitrationSystem(dbg_game))
-    pipeline.add(TurnEndArbitrationSystem(dbg_game))
-    pipeline.add(AutonomousArbitrationSystem(dbg_game))
     pipeline.add(DeathSystem(dbg_game))
 
     # ---------------------------------------------------------------------

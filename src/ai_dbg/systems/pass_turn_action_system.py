@@ -44,7 +44,7 @@ def _build_pass_turn_notice(actor_name: str, round_number: int) -> str:
 #######################################################################################################################################
 @final
 class PassTurnActionSystem(
-    CombatPassContextMixin, CombatTurnStateMixin, ReactiveProcessor
+    ReactiveProcessor, CombatPassContextMixin, CombatTurnStateMixin
 ):
     """过牌动作系统。"""
 

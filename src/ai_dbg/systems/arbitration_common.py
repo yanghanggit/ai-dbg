@@ -1,6 +1,6 @@
 """仲裁公共层：单点维护「多个仲裁共用同一个 stage 记忆」所要求的同构部分。
 
-四种仲裁（出牌 / 回合结束 / 自主运行 / 神器）的同名工具跑在同一个 stage 记忆上，
+三种仲裁（出牌 / 神器 / 运转）共用同一个 stage 记忆上的同名工具，
 工具 schema、共享提示词段落与记忆写入方式必须一致；差异仅在标签与数据段，
 那些留在各自 system 文件中。本模块只放必须同构的部分，避免 schema 与口径漂移。
 """
@@ -444,40 +444,22 @@ def build_arbitration_broadcast(
 ###########################################################################################################################################
 # 仲裁类型与共享提示词段落
 ###########################################################################################################################################
-class PromptKind(StrEnum):
-    """共享提示词段落的语境类型。
-
-    只覆盖需要按语境选词的三类仲裁；神器仲裁没有共享段落（其提示词自成一体），
-    因此不在本枚举内——传错类型在类型检查期即暴露，不会静默用错称谓。
-    """
-
-    PLAY_CARDS = "play_cards"
-    TURN_END = "turn_end"
-    AUTONOMOUS = "autonomous"
-
-
 class RoundKind(StrEnum):
     """一次仲裁在战斗回合日志中的归类：决定回合条目标记、兜底文案与失败记录。"""
 
     PLAY_CARDS = "play_cards"
-    TURN_END = "turn_end"
-    AUTONOMOUS = "autonomous"
     ARTIFACT = "artifact"
     CARD_OPERATION = "card_operation"
 
 
 _ROUND_ENTRY_KIND: Dict[RoundKind, RoundEntryKind] = {
     RoundKind.PLAY_CARDS: RoundEntryKind.CARDS,
-    RoundKind.TURN_END: RoundEntryKind.CARDS,
-    RoundKind.AUTONOMOUS: RoundEntryKind.AUTONOMOUS,
     RoundKind.ARTIFACT: RoundEntryKind.ARTIFACT,
     RoundKind.CARD_OPERATION: RoundEntryKind.CARDS,
 }
 
 _EMPTY_COMBAT_LOG: Dict[RoundKind, str] = {
     RoundKind.PLAY_CARDS: "本回合无 HP 变化",
-    RoundKind.TURN_END: "本次回合结束无 HP 变化",
-    RoundKind.AUTONOMOUS: "本次自主运行无 HP 变化",
     RoundKind.ARTIFACT: "本次神器仲裁未产生效果",
     RoundKind.CARD_OPERATION: "本次运转结算未改动牌堆",
 }
@@ -496,7 +478,6 @@ def apply_arbitration_result(
     kind: RoundKind,
     title_label: str,
     combat_log: str,
-    turn_name: Optional[str] = None,
 ) -> None:
     """落库一次仲裁结果：全场景广播 + HP + 生命值通知 + 回合记录。
 
@@ -550,7 +531,6 @@ def apply_arbitration_result(
         _ROUND_ENTRY_KIND[kind],
         combat_log,
         narrative,
-        turn_name=turn_name,
     )
 
 
@@ -561,7 +541,6 @@ def record_aborted_loop(
     kind: RoundKind,
     loop_id: str,
     reason: str,
-    turn_name: Optional[str] = None,
 ) -> None:
     """把未完成的 loop 记进记忆与回合日志：过程原样保留，只补系统说明。
 
@@ -589,14 +568,13 @@ def record_aborted_loop(
         RoundEntryKind.FAILED,
         f"[{kind}] {loop_id} 结算未完成：{reason}",
         "（结算未完成，本回合无变化）",
-        turn_name=turn_name,
     )
 
 
 @prompt_builder
-def build_calc_rules_section(get_entity_stats_tool: str, kind: PromptKind) -> str:
+def build_calc_rules_section(get_entity_stats_tool: str) -> str:
     """结算规则段落：说明「数值由系统算、LLM 只选 base 与系数」及系数清单。"""
-    target = "持有者" if kind is PromptKind.TURN_END else "目标"
+    target = "目标"
     return f"""## 结算规则（数值由系统计算）
 
 你只负责为每条效果选定 **base** 与**系数**，并写明依据：
@@ -611,7 +589,7 @@ def build_calc_rules_section(get_entity_stats_tool: str, kind: PromptKind) -> st
 
 @prompt_builder
 def build_on_hit_affix_section() -> str:
-    """受击词缀段落（仅出牌仲裁 / 自主运行使用；回合结束仲裁不处理 on_hit）。"""
+    """受击词缀段落（仅出牌仲裁使用）。"""
     return """## 受击词缀
 
 目标手牌中带受击词缀的卡，只在它是本次出牌目标时触发（出牌者自身不触发，除非同时是目标）；多条须逐条全部结算，结算对象是本次出牌者，与目标是否阵亡无关。数值取词缀明文，不引入未提及的机制；`block` 只能作为 `base`，不能授予格挡。"""
@@ -619,7 +597,7 @@ def build_on_hit_affix_section() -> str:
 
 @prompt_builder
 def build_source_section() -> str:
-    """source 与持有者的关系（出牌 / 回合结束 / 自主运行共用）。"""
+    """source 与持有者的关系（出牌仲裁使用）。"""
     return """## source 与持有者
 
 - **source**：这张牌的创建者 / 注入者；空串表示未知，副本保留原 `source`。
@@ -633,16 +611,9 @@ def build_tool_flow_section(
     resolve_damage_tool: str,
     resolve_effect_tool: str,
     submit_tool: str,
-    kind: PromptKind,
-    holder_name: str = "",
 ) -> str:
     """工具使用流程段落。"""
-    if kind is PromptKind.PLAY_CARDS:
-        read_step = f"对出牌者与每个目标调用一次 {get_entity_stats_tool}（可并发）。"
-    elif kind is PromptKind.AUTONOMOUS:
-        read_step = f"对持有者与每个可能受影响的目标调用一次 {get_entity_stats_tool}（可并发）。"
-    else:
-        read_step = f"调用 {get_entity_stats_tool} 读取持有者 {holder_name}。"
+    read_step = f"对出牌者与每个目标调用一次 {get_entity_stats_tool}（可并发）。"
     return f"""## 工具使用流程
 
 1. **读**：{read_step}

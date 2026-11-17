@@ -54,7 +54,7 @@ def _build_consumable_notice(
 
 #######################################################################################################################################
 @final
-class UseConsumableItemActionSystem(CombatPassContextMixin, ReactiveProcessor):
+class UseConsumableItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
     """消耗品使用系统：先扣减队伍背包库存，再把消耗品内置卡牌物化进当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:

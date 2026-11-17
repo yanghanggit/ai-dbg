@@ -31,7 +31,6 @@ from ..models import (
 from ..utils import prompt_builder
 from .arbitration_common import (
     ArbitrationContext,
-    PromptKind,
     RoundKind,
     apply_arbitration_result,
     build_calc_rules_section,
@@ -146,13 +145,13 @@ def _build_play_cards_arbitration_prompt(
 
 {round_action_info}
 
-{build_calc_rules_section(GET_ENTITY_STATS_TOOL.function.name, PromptKind.PLAY_CARDS)}
+{build_calc_rules_section(GET_ENTITY_STATS_TOOL.function.name)}
 
 {build_on_hit_affix_section()}
 
 {build_source_section()}
 
-{build_tool_flow_section(GET_ENTITY_STATS_TOOL.function.name, RESOLVE_DAMAGE_TOOL.function.name, RESOLVE_EFFECT_TOOL.function.name, SUBMIT_ARBITRATION_TOOL.function.name, PromptKind.PLAY_CARDS)}"""
+{build_tool_flow_section(GET_ENTITY_STATS_TOOL.function.name, RESOLVE_DAMAGE_TOOL.function.name, RESOLVE_EFFECT_TOOL.function.name, SUBMIT_ARBITRATION_TOOL.function.name)}"""
 
 
 ###########################################################################################################################################

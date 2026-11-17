@@ -1,11 +1,11 @@
-"""三种仲裁的 submit_arbitration 工具 schema 一致性回归测试。
+"""出牌 / 神器两种仲裁的 submit_arbitration 工具 schema 一致性回归测试。
 
-出牌 / 回合结束 / 神器三种仲裁共用同一个 stage 记忆、又是同名工具；参数 schema（字段集合、
-required、类型）一旦漂移，LLM 会沿用上一场仲裁看到的字段而产生调用错误（如多传
-unsettled_affixes）。三份定义由 `arbitration_common.make_submit_arbitration_tool` 统一构造，
+出牌 / 神器仲裁共用同一个 stage 记忆、又是同名工具；参数 schema（字段集合、required、
+类型）一旦漂移，LLM 会沿用上一场仲裁看到的字段而产生调用错误（如多传
+unsettled_affixes）。两份定义由 `arbitration_common.make_submit_arbitration_tool` 统一构造，
 参数结构由构造保证一致；此测试仍锁死这一点（描述文案允许按仲裁类型不同）。
 
-三者都携带 `summary`：loop 结束后据它把本次完整工具轨迹整段替换为一条压缩记忆。
+两者都携带 `summary`：loop 结束后据它把本次完整工具轨迹整段替换为一条压缩记忆。
 """
 
 from typing import Any, Dict, List
@@ -19,9 +19,6 @@ from ai_dbg.systems.play_cards_arbitration_system import (
 )
 from ai_dbg.systems.play_cards_arbitration_system import (
     _build_play_cards_arbitration_prompt,
-)
-from ai_dbg.systems.turn_end_arbitration_system import (
-    SUBMIT_ARBITRATION_TOOL as TURN_END_SUBMIT,
 )
 
 
@@ -39,7 +36,6 @@ def _schema_shape(tool: Any) -> Dict[str, Any]:
 def test_all_submit_tools_share_the_same_name() -> None:
     assert (
         PLAY_CARDS_SUBMIT.function.name
-        == TURN_END_SUBMIT.function.name
         == ARTIFACT_SUBMIT.function.name
         == "submit_arbitration"
     )
@@ -47,13 +43,13 @@ def test_all_submit_tools_share_the_same_name() -> None:
 
 def test_all_submit_tools_share_identical_parameter_shape() -> None:
     shapes: List[Dict[str, Any]] = [
-        _schema_shape(t) for t in (PLAY_CARDS_SUBMIT, TURN_END_SUBMIT, ARTIFACT_SUBMIT)
+        _schema_shape(t) for t in (PLAY_CARDS_SUBMIT, ARTIFACT_SUBMIT)
     ]
-    assert shapes[0] == shapes[1] == shapes[2]
+    assert shapes[0] == shapes[1]
 
 
 def test_all_submit_tools_require_summary() -> None:
-    for tool in (PLAY_CARDS_SUBMIT, TURN_END_SUBMIT, ARTIFACT_SUBMIT):
+    for tool in (PLAY_CARDS_SUBMIT, ARTIFACT_SUBMIT):
         properties: Dict[str, Any] = tool.function.parameters["properties"]
         assert "unsettled_affixes" in properties
         assert "summary" in properties
@@ -98,37 +94,3 @@ def test_play_arbitration_prompt_does_not_restate_submit_field_specs() -> None:
     assert "压缩性总结" not in prompt
     # cost 不参与仲裁结算，不应出现在本卡数据里（减少噪声）。
     assert "- cost：" not in prompt
-
-
-def test_arbitration_prompts_state_source_relationship_without_conditionals() -> None:
-    """source 只说明「创建者 / 持有者可能不同」，不写「若 A 则 X」式条件指令。"""
-    from ai_dbg.systems.autonomous_arbitration_system import (
-        _build_autonomous_arbitration_tool_prompt,
-    )
-    from ai_dbg.systems.turn_end_arbitration_system import (
-        _build_turn_end_arbitration_prompt,
-    )
-
-    card = Card(
-        name="测试卡",
-        description="一次试探。",
-        cost=0,
-        damage=1,
-        hit_count=1,
-        block=0,
-        target_type=TargetType.SELF,
-        on_turn_end_affixes=["[测试]:回合结束时回复本卡持有者 1 点 HP"],
-        on_autonomous_affixes=["[测试]:自主攻击一名随机敌人"],
-    )
-    prompts = [
-        _build_play_cards_arbitration_prompt("角色.甲", card, ["怪物.乙"], 1),
-        _build_turn_end_arbitration_prompt("角色.甲", [card], 1),
-        _build_autonomous_arbitration_tool_prompt(
-            "角色.甲", [card], 1, "角色.甲", "怪物.乙"
-        ),
-    ]
-    for prompt in prompts:
-        assert "## source 与持有者" in prompt
-        assert "创建者" in prompt and "持有者" in prompt
-        assert "仅当持有者 ==" not in prompt
-        assert "仅当 " not in prompt

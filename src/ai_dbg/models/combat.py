@@ -49,11 +49,10 @@ class CombatTurnStatus(StrEnum):
 class RoundEntryKind(StrEnum):
     """回合内一条记录的种类标记。"""
 
-    CARDS = "cards"  # 出牌 / 回合结束仲裁
+    CARDS = "cards"  # 出牌仲裁
     CONSUMABLE = "consumable"  # 使用消耗品
     GEAR = "gear"  # 装备转化
     ARTIFACT = "artifact"  # 场景神器仲裁
-    AUTONOMOUS = "autonomous"  # 卡牌自主运行仲裁（pass turn，在回合结束之后）
     FAILED = "failed"  # 仲裁未完成（未提交 / 循环异常）：无 HP 变更，仅留痕迹
 
 

@@ -5,7 +5,7 @@
 - 清洗（``normalize_str_list``）与保边界渲染（``render_*``）；
 - 模型层 ``NormalizedStrList`` 注解自动清洗；
 - 词缀「逐条校验 + 整槽置空」支持多条；
-- 各消费端（出牌/回合结束/怪物决策）逐条渲染全部条目；
+- 各消费端（出牌/怪物决策）逐条渲染全部条目；
 - 消耗品堆叠身份纳入内置卡牌规格。
 """
 
@@ -23,7 +23,6 @@ from ai_dbg.systems.monster_combat_decision_system import _format_card
 from ai_dbg.systems.play_cards_arbitration_system import (
     _build_play_cards_arbitration_prompt,
 )
-from ai_dbg.systems.turn_end_arbitration_system import _build_turn_end_card_lines
 
 AFFIX_A = "[穿甲]:本卡 damage 结算时无视目标 block"
 AFFIX_B = "[自损]:打出时对自身结算本卡 damage×1 的伤害"
@@ -128,12 +127,6 @@ def test_play_arbitration_prompt_renders_all_affixes_separately() -> None:
     text = _build_play_cards_arbitration_prompt(
         "角色.无名", _card(on_play_affixes=[AFFIX_A, AFFIX_B]), ["怪物.甲"], 1
     )
-    assert AFFIX_A in text and AFFIX_B in text
-    assert f"{AFFIX_A}、{AFFIX_B}" not in text
-
-
-def test_turn_end_lines_render_all_affixes_separately() -> None:
-    text = _build_turn_end_card_lines(_card(on_turn_end_affixes=[AFFIX_A, AFFIX_B]))
     assert AFFIX_A in text and AFFIX_B in text
     assert f"{AFFIX_A}、{AFFIX_B}" not in text
 

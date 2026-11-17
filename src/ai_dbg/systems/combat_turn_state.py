@@ -8,7 +8,6 @@ from ..game.combat.state import (
     combat_turns,
     current_turn_for_round,
 )
-from ..game.context import DBGGame
 from ..game.entities import get_actor_entity, get_entity_by_name
 from ..models import (
     CombatTurnComponent,
@@ -16,18 +15,17 @@ from ..models import (
     CurrentCombatTurnComponent,
     DeathComponent,
 )
+from .mixin_protocol import SystemMixinProtocol
 
 
 ###############################################################################################################################################
-class CombatTurnStateMixin:
+class CombatTurnStateMixin(SystemMixinProtocol):
     """为战斗系统提供行动槽状态迁移能力。
 
     当前槽选择、向下一槽推进、死亡槽标记都依赖系统持有的 ``DBGGame``，
     且会直接改写 ECS 实体；因此通过 mixin 让使用方以 ``self._xxx`` 调用，
     避免领域层残留仅供系统消费的 POST 封装。
     """
-
-    _game: DBGGame
 
     ###############################################################################################################################################
     def _set_current_turn(self, turn_entity: Entity) -> None:

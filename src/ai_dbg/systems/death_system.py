@@ -38,7 +38,7 @@ def _build_death_notification() -> str:
 
 ###############################################################################################################################################
 @final
-class DeathSystem(CombatTurnStateMixin, ExecuteProcessor):
+class DeathSystem(ExecuteProcessor, CombatTurnStateMixin):
     """
     死亡处理系统：将 HP 归零且尚未标记死亡的实体标记为死亡。
     """

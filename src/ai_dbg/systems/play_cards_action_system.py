@@ -51,7 +51,7 @@ def _build_unplayable_card_error_message(actor_name: str, card_name: str) -> str
 
 #######################################################################################################################################
 @final
-class PlayCardsActionSystem(CombatPassContextMixin, ReactiveProcessor):
+class PlayCardsActionSystem(ReactiveProcessor, CombatPassContextMixin):
     """出牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:

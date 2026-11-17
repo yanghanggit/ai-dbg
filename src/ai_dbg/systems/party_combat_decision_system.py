@@ -40,7 +40,7 @@ from .combat_pass_context import CombatPassContextMixin
 
 #######################################################################################################################################
 @final
-class PartyCombatDecisionSystem(CombatPassContextMixin, ReactiveProcessor):
+class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
     """为队员的出牌 / 过牌决策补一条决策记录（无推理、原因为占位句）。"""
 
     def __init__(self, game: DBGGame) -> None:

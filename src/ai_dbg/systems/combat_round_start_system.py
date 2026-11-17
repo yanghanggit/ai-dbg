@@ -69,7 +69,7 @@ def _combat_turn_entity_name(round_name: str, order_index: int) -> str:
 
 ############################################################################################################
 @final
-class CombatRoundStartSystem(CombatTurnStateMixin, ReactiveProcessor):
+class CombatRoundStartSystem(ReactiveProcessor, CombatTurnStateMixin):
     """
     战斗回合开始系统：监听 DrawCardsAction，在需要时创建并开启新回合。
 

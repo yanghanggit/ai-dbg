@@ -62,7 +62,7 @@ class _EquipContext:
 
 #######################################################################################################################################
 @final
-class EquipGearItemActionSystem(CombatPassContextMixin, ReactiveProcessor):
+class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
     """装备转化系统：把团队背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
