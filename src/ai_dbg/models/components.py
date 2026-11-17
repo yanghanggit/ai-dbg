@@ -232,6 +232,22 @@ class CurrentCombatRoundComponent(Component):
 
 ############################################################################################################
 @final
+class CombatPassSnapshotComponent(Component):
+    """一次 pipeline pass 的动作阶段快照；挂在冻结的行动槽上，不注册、不持久化。
+
+    它冻结进入动作阶段时的当前行动槽，供决策与动作系统共享，避免同一次 pass 内
+    因 current turn 推进而让不同系统看到不同行动者。它不是行动权的权威来源；
+    ``CurrentCombatTurnComponent`` 仍然是唯一权威。
+    """
+
+    combat_name: str
+    round_name: str
+    turn_name: str
+    actor_name: str
+
+
+############################################################################################################
+@final
 @register_component_type
 class NPCComponent(Component):
     """标记角色为 NPC（非玩家控制的友方角色），属于友方阵营。"""

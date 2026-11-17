@@ -19,9 +19,11 @@ from ai_dbg.game.dungeon import (
 )
 from ai_dbg.game.entities import create_entity, get_entity_by_name
 from ai_dbg.models import (
+    CombatPassSnapshotComponent,
     CombatResult,
     CombatState,
     CombatStateComponent,
+    CombatTurnComponent,
     CurrentDungeonRoomComponent,
     DungeonComponent,
     DungeonRoomComponent,
@@ -117,7 +119,27 @@ def install_combat(
             if is_completed:
                 CombatRoundCompletionSystem(game)._mark_round_completed(round_entity)
 
+    if state == CombatState.ONGOING:
+        install_pass_snapshot(game)
+
     return current_dungeon_combat(game)
+
+
+def install_pass_snapshot(game: Any) -> None:
+    """测试辅助：模拟 CombatPassSnapshotSystem 建立的 pass 快照。"""
+    combat_entity = current_combat_entity(game)
+    turn_entity = current_combat_turn(game, combat_entity)
+    if turn_entity is None:
+        return
+
+    turn_comp = turn_entity.get(CombatTurnComponent)
+    turn_entity.replace(
+        CombatPassSnapshotComponent,
+        combat_entity.name,
+        turn_comp.round_name,
+        turn_entity.name,
+        turn_comp.actor_name,
+    )
 
 
 def install_opening_room(

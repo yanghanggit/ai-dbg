@@ -296,7 +296,11 @@ def _make_transfer_game(actors: Dict[str, Entity]) -> Any:
     mock_game.world.agent_memories = {}
     for entity in actors.values():
         mock_game.ecs.register_entity(entity)
-    install_combat(mock_game)
+    install_combat(
+        mock_game,
+        action_order=["hero"],
+        current_actor="hero",
+    )
     for entity in actors.values():
         if not entity.has(HandComponent):
             entity.add(HandComponent, entity.name, [])

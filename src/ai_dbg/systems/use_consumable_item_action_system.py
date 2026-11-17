@@ -4,7 +4,7 @@
 扣库存成功后才物化；物化数量 = 每个内置牌 × 本次消耗的份数。
 """
 
-from typing import Dict, Final, List, final
+from typing import Dict, List, final
 from uuid import uuid4
 
 from loguru import logger
@@ -36,6 +36,7 @@ from ..models import (
     remove_item_by_uuid,
 )
 from ..utils import prompt_builder
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
@@ -53,12 +54,12 @@ def _build_consumable_notice(
 
 #######################################################################################################################################
 @final
-class UseConsumableItemActionSystem(ReactiveProcessor):
+class UseConsumableItemActionSystem(CombatPassContextMixin, ReactiveProcessor):
     """消耗品使用系统：先扣减队伍背包库存，再把消耗品内置卡牌物化进当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -85,6 +86,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor):
         ), f"UseConsumableItemActionSystem: 同一时间不应有多个实体触发使用消耗品，当前数量={len(entities)}"
 
         entity = entities[0]
+        self._assert_pass_actor(entity.name)
         action = entity.get(UseConsumableItemAction)
         item = action.item
 

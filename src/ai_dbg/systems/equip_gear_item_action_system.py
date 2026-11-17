@@ -1,7 +1,7 @@
 """装备转化系统模块：将 GearItem 的 cards 直接物化为多张 Card 放入当前行动者手牌。"""
 
 from dataclasses import dataclass
-from typing import Dict, Final, List, final
+from typing import Dict, List, final
 from uuid import uuid4
 
 from overrides import override
@@ -12,7 +12,6 @@ from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
-    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -36,6 +35,7 @@ from ..models import (
     apply_stats_to_card,
 )
 from ..utils import prompt_builder
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
@@ -62,12 +62,12 @@ class _EquipContext:
 
 #######################################################################################################################################
 @final
-class EquipGearItemActionSystem(ReactiveProcessor):
+class EquipGearItemActionSystem(CombatPassContextMixin, ReactiveProcessor):
     """装备转化系统：把团队背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -107,9 +107,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
         if not latest_round.draw_completed:
             raise ValueError("装备使用失败：抽牌阶段尚未完成")
 
-        current_turn_entity = current_combat_turn_entity(self._game)
-        if current_turn_entity is None:
-            raise ValueError("装备使用失败：当前没有行动角色")
+        current_turn_entity = self._pass_turn()
         turn_comp = current_turn_entity.get(CombatTurnComponent)
 
         actor_entity = get_actor_entity(self._game, turn_comp.actor_name)

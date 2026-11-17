@@ -25,6 +25,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.combat_init_stage_system import CombatInitStageSystem
     from ...systems.combat_loot_system import CombatLootSystem
     from ...systems.combat_outcome_system import CombatOutcomeSystem
+    from ...systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
     from ...systems.combat_pile_teardown_system import CombatPileTeardownSystem
     from ...systems.combat_post_combat_transition_system import (
         CombatPostCombatTransitionSystem,
@@ -102,6 +103,8 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # 前者监听 DrawCardsAction 开启新回合，后者抓牌，顺序即因果链。
     # ---------------------------------------------------------------------
     pipeline.add(CombatRoundStartSystem(dbg_game, strategy=ActionOrderStrategy.SPEED))
+    # 动作阶段入口：在回合/行动槽确定后、抽牌与决策前冻结本 pass 的行动者。
+    pipeline.add(CombatPassSnapshotSystem(dbg_game))
     pipeline.add(DrawCardsActionSystem(dbg_game))
     pipeline.add(MonsterCombatDecisionSystem(dbg_game))
     pipeline.add(PartyCombatDecisionSystem(dbg_game))

@@ -80,7 +80,11 @@ def game(context: ECSContext) -> Any:
     mock.ecs = context
     mock.world.agent_memories = {}
     mock.events = MagicMock()
-    install_combat(mock)
+    install_combat(
+        mock,
+        action_order=["角色.无名"],
+        current_actor="角色.无名",
+    )
     return mock
 
 

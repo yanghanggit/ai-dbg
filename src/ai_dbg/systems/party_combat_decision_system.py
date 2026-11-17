@@ -5,7 +5,7 @@
 """
 
 import json
-from typing import Dict, Final, List, final, override
+from typing import Dict, List, final, override
 
 from loguru import logger
 
@@ -35,16 +35,17 @@ from .combat_decision_common import (
     build_combat_decision_tag,
     play_blocked_cause,
 )
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
 @final
-class PartyCombatDecisionSystem(ReactiveProcessor):
+class PartyCombatDecisionSystem(CombatPassContextMixin, ReactiveProcessor):
     """为队员的出牌 / 过牌决策补一条决策记录（无推理、原因为占位句）。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     #######################################################################################################################################
     @override
@@ -75,8 +76,8 @@ class PartyCombatDecisionSystem(ReactiveProcessor):
             return
 
         round_number = len(current_dungeon_combat(self._game).rounds or [])
-
         for entity in entities:
+            self._assert_pass_actor(entity.name)
             if entity.has(PlayCardsAction):
                 self._record_play(entity, round_number)
             elif self._played_this_round(entity, round_number):

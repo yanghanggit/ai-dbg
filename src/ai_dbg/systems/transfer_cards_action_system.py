@@ -1,7 +1,7 @@
 """传递卡牌系统：按命中分配投递副本，只传一跳、落地即失去传递性。"""
 
 import json
-from typing import Dict, Final, List, Tuple, final
+from typing import Dict, List, Tuple, final
 from uuid import uuid4
 
 from loguru import logger
@@ -29,6 +29,7 @@ from ..models import (
 )
 from ..utils import prompt_builder
 from .card_common import build_received_card_tag
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
@@ -90,12 +91,12 @@ def _build_received_card_prompt(
 
 #######################################################################################################################################
 @final
-class TransferCardsActionSystem(ReactiveProcessor):
+class TransferCardsActionSystem(CombatPassContextMixin, ReactiveProcessor):
     """可传递卡牌转移系统。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -133,6 +134,7 @@ class TransferCardsActionSystem(ReactiveProcessor):
             return
 
         for entity in entities:
+            self._assert_pass_actor(entity.name)
             play_cards_action = entity.get(PlayCardsAction)
             card = play_cards_action.card
 

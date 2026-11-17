@@ -64,7 +64,11 @@ def mock_game(context: ECSContext) -> Any:
     game.ecs = context
     game.world.agent_memories = {}
     game.events = MagicMock()
-    install_combat(game)
+    install_combat(
+        game,
+        action_order=["角色.无名"],
+        current_actor="角色.无名",
+    )
     return game
 
 

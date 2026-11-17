@@ -1,6 +1,6 @@
 """过牌系统：交出行动权并清空剩余能量，是回合推进的唯一依据。"""
 
-from typing import Dict, Final, List, final
+from typing import Dict, List, final
 
 from loguru import logger
 from overrides import override
@@ -13,8 +13,6 @@ from ..game.combat import (
 from ..game.combat.state import advance_current_turn
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_combat_round_entity,
-    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -33,6 +31,7 @@ from ..models import (
     PassTurnAction,
 )
 from ..utils import prompt_builder
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
@@ -44,12 +43,12 @@ def _build_pass_turn_notice(actor_name: str, round_number: int) -> str:
 
 #######################################################################################################################################
 @final
-class PassTurnActionSystem(ReactiveProcessor):
+class PassTurnActionSystem(CombatPassContextMixin, ReactiveProcessor):
     """过牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -97,20 +96,15 @@ class PassTurnActionSystem(ReactiveProcessor):
 
         assert len(entities) == 1, "PassTurnActionSystem: 一次只能处理一个过牌动作实体"
         entity = entities[0]
+        self._assert_pass_actor(entity.name)
 
         current_rounds = current_dungeon_combat(self._game).rounds
         assert (
             current_rounds is not None
         ), "PassTurnActionSystem: current_rounds is None"
 
-        last_round_entity = current_combat_round_entity(self._game)
-        current_turn_entity = current_combat_turn_entity(self._game)
-        assert (
-            last_round_entity is not None
-        ), "PassTurnActionSystem: latest_round_entity is None"
-        assert (
-            current_turn_entity is not None
-        ), "PassTurnActionSystem: current_turn_entity is None"
+        last_round_entity = self._pass_round()
+        current_turn_entity = self._pass_turn()
         last_round = current_dungeon_combat(self._game).latest_round
         assert last_round is not None, "PassTurnActionSystem: latest_round is None"
 

@@ -74,8 +74,8 @@ def _arm_combat(game: Any, *, draw_completed: bool = True) -> None:
     install_combat(
         game,
         room_name="场景.河湾芦苇丛",
-        action_order=[],
-        current_actor=None,
+        action_order=["角色.无名"],
+        current_actor="角色.无名",
         draw_completed=draw_completed,
     )
 

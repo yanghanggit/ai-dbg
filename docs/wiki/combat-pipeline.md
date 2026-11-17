@@ -32,6 +32,8 @@
 - `CurrentCombatTurnComponent`：只标记当前行动槽，是行动权的唯一来源；同一战斗最多一个，最后一个槽交出行动权后移除。
 - `CombatRoundEntryComponent`：每条操作记录独立成实体，记录种类、数据日志、叙事与所属行动槽；实体序号决定跨种类操作的全局先后顺序。
 
+`CombatPassSnapshotComponent` 是运行期 pass 快照：在动作阶段入口冻结当前行动槽，让决策与动作系统在同一次 pass 内共享同一个行动者。它不是行动权的来源，不注册、不参与快照持久化，并由 pipeline 的 cleanup 阶段兜底清除；过牌或死亡推进行动权后，后续系统不再消费该快照。`CurrentCombatTurnComponent` 仍是行动权的唯一权威。
+
 回合内的最小单位是**行动（turn）**：轮到某角色时，它可连续出牌、用消耗品、物化装备，直到它**过牌（pass turn）**。过牌是角色级动作——把当前行动槽标记为已完成，并把当前标记推进到下一个可用槽，只结束「这一个角色的行动窗口」。`CombatRoundView` 仍以 `action_order`、`completed_actors`、`current_actor` 暴露投影，调用方无需改变读取方式。
 
 ## 过牌与回合结束是两个粒度

@@ -1,6 +1,6 @@
 """出牌系统：消耗能量、拦截不可出牌、广播行动预告，效果结算交给仲裁。"""
 
-from typing import Dict, Final, List, final
+from typing import Dict, List, final
 
 from loguru import logger
 from overrides import override
@@ -9,7 +9,6 @@ from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import consume_turn_energy
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -31,6 +30,7 @@ from ..models import (
 )
 from ..utils import prompt_builder
 from .combat_decision_common import play_blocked_cause
+from .combat_pass_context import CombatPassContextMixin
 
 
 #######################################################################################################################################
@@ -51,12 +51,12 @@ def _build_unplayable_card_error_message(actor_name: str, card_name: str) -> str
 
 #######################################################################################################################################
 @final
-class PlayCardsActionSystem(ReactiveProcessor):
+class PlayCardsActionSystem(CombatPassContextMixin, ReactiveProcessor):
     """出牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -103,6 +103,8 @@ class PlayCardsActionSystem(ReactiveProcessor):
 
         for entity in entities:
 
+            self._assert_pass_actor(entity.name)
+
             # 输出出牌信息日志，包含角色名、卡牌名、卡牌属性（治疗/攻击/防御）和目标
             play_cards_action = entity.get(PlayCardsAction)
 
@@ -135,10 +137,7 @@ class PlayCardsActionSystem(ReactiveProcessor):
             # 每出一张牌消耗当前行动槽的 energy 点数（出牌本身不视为"完成行动"，
             # 仅 pass turn 才会把行动槽标记为 completed 并真正交出行动权，
             # 见 PassTurnActionSystem；因此这里不推进当前行动槽。）
-            current_turn_entity = current_combat_turn_entity(self._game)
-            assert (
-                current_turn_entity is not None
-            ), "PlayCardsActionSystem: 当前行动槽不存在"
+            current_turn_entity = self._pass_turn()
             consume_turn_energy(current_turn_entity, play_cards_action.card.cost)
 
             logger.debug(

@@ -21,7 +21,6 @@ from ..game.combat import (
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -61,6 +60,7 @@ from .combat_decision_common import (
     format_targets,
     play_blocked_cause,
 )
+from .combat_pass_context import CombatPassContextMixin
 
 #######################################################################################################################################
 # 单次决策 loop 的轮次上限：首轮提交 + 若干次「被工具回错后改正」的机会。
@@ -383,6 +383,7 @@ class _DecisionContext:
 #######################################################################################################################################
 def _handle_submit_decision(
     game: DBGGame,
+    current_turn_entity: Entity,
     entity: Entity,
     ctx: _DecisionContext,
     pass_turn: bool,
@@ -411,8 +412,6 @@ def _handle_submit_decision(
         ctx.blocked_card, ctx.blocked_cause = selected_card, blocked_cause
         return f"错误：「{selected_card.name}」{blocked_cause}（playable=False），只能留在手牌中。请换一张，或提交 pass_turn=true。"
 
-    current_turn_entity = current_combat_turn_entity(game)
-    assert current_turn_entity is not None, "当前怪物行动槽不存在"
     energy = get_turn_energy(current_turn_entity)
     if energy < selected_card.cost:
         ctx.blocked_card = selected_card
@@ -442,12 +441,12 @@ def _handle_submit_decision(
 
 #######################################################################################################################################
 @final
-class MonsterCombatDecisionSystem(ReactiveProcessor):
+class MonsterCombatDecisionSystem(CombatPassContextMixin, ReactiveProcessor):
     """怪物出牌决策系统：工具化决策，落库后整段过程压缩成一条决策记录。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ####################################################################################################################################
     @override
@@ -486,6 +485,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
         # 行动权由 `Round.current_actor` 唯一决定，决策天然串行：一个怪物一段 loop + 一次落库。
         # 不并发（并发会让同一回合的多个决策互相看不见对方的结算结果），也不做批量提交。
         for entity in entities:
+            self._assert_pass_actor(entity.name)
             ctx = _DecisionContext(len(get_agent_memory(self._game, entity).messages))
             await self._run_decision(entity, ctx, round_number)
             self._apply_decision(entity, ctx, round_number)
@@ -497,6 +497,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
         """驱动单个怪物的工具化出牌决策（原地写记忆，事后整段压缩成一条记录）。"""
         memory = get_agent_memory(self._game, entity)
         loop_id = make_loop_id(memory.messages, LOOP_KIND, round_number, entity.name)
+        current_turn_entity = self._pass_turn()
 
         try:
 
@@ -509,7 +510,11 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
                 handlers={
                     READ_PILES_TOOL_NAME: partial(handle_read_piles, entity),
                     SUBMIT_DECISION_TOOL_NAME: partial(
-                        _handle_submit_decision, self._game, entity, ctx
+                        _handle_submit_decision,
+                        self._game,
+                        current_turn_entity,
+                        entity,
+                        ctx,
                     ),
                 },
                 terminal_tools=[SUBMIT_DECISION_TOOL],
@@ -554,8 +559,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor):
             latest_round.completed_actors if latest_round else []
         )
 
-        current_turn_entity = current_combat_turn_entity(self._game)
-        assert current_turn_entity is not None, "当前怪物行动槽不存在"
+        current_turn_entity = self._pass_turn()
         return _build_monster_decision_prompt(
             monster_name=entity.name,
             monster_stats=compute_character_stats(entity),

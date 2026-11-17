@@ -121,9 +121,7 @@ class ExitDungeonActionSystem(ReactiveProcessor):
                 self._game,
                 party_member_entity,
                 HumanMessage(
-                    content=_build_dungeon_exit_message(
-                        dungeon_name, dest_stage.name
-                    ),
+                    content=_build_dungeon_exit_message(dungeon_name, dest_stage.name),
                     dungeon_lifecycle_completion=dungeon_name,
                 ),
             )
