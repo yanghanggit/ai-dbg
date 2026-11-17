@@ -55,7 +55,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.pass_turn_action_system import PassTurnActionSystem
     from ...systems.play_cards_action_system import PlayCardsActionSystem
     from ...systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
-    from ...systems.pre_combat_outcome_system import PreCombatOutcomeSystem
     from ...systems.prologue_system import PrologueSystem
     from ...systems.retreat_action_system import RetreatActionSystem
     from ...systems.room_init_system import RoomInitSystem
@@ -109,6 +108,8 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(DiscardCardsActionSystem(dbg_game))
     pipeline.add(ExhaustCardsActionSystem(dbg_game))
     pipeline.add(ExhaustEtherealCardsSystem(dbg_game))
+
+    # ----
     pipeline.add(PlayCardsArbitrationSystem(dbg_game))
     # pipeline.add(CardOperationSystem(dbg_game))
     # pipeline.add(ArtifactPostArbitrationSystem(dbg_game))
@@ -116,11 +117,8 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
 
     # ---------------------------------------------------------------------
     # 回合完成、战斗胜负与战后处理
-    # PreCombatOutcomeSystem 必须在 CombatOutcomeSystem 之前：
-    # 超时强制判负的死亡标记先于胜负判定。
     # ---------------------------------------------------------------------
     pipeline.add(CombatRoundCompletionSystem(dbg_game))
-    pipeline.add(PreCombatOutcomeSystem(dbg_game))
     pipeline.add(CombatOutcomeSystem(dbg_game))
     # 手牌清理必须在 CombatOutcomeSystem 之后：既覆盖正常回合结束，也覆盖战斗提前结束。
     # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入掉落与战后处理。

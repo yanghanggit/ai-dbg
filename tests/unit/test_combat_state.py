@@ -26,13 +26,13 @@ from ai_dbg.models import (
     CurrentCombatTurnComponent,
     DeathComponent,
 )
-from ai_dbg.systems.combat_init_stage_system import CombatInitStageSystem
 from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
 from ai_dbg.systems.combat_post_combat_transition_system import (
     CombatPostCombatTransitionSystem,
 )
 from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
 from ai_dbg.systems.retreat_action_system import RetreatActionSystem
+from ai_dbg.systems.room_init_system import RoomInitSystem
 from ai_dbg.systems.teardown_dungeon_action_system import (
     TeardownDungeonActionSystem,
 )
@@ -200,7 +200,7 @@ def test_advance_current_turn_skips_dead_and_clears_after_last(
 def test_combat_state_transitions_update_the_single_component(sample_game: Any) -> None:
     _, combat = _room_and_combat(sample_game)
 
-    CombatInitStageSystem(sample_game)._transition_to_ongoing(combat)
+    RoomInitSystem(sample_game)._transition_to_ongoing(combat)
     assert combat.get(CombatStateComponent).state == CombatState.ONGOING
 
     RetreatActionSystem(sample_game)._mark_combat_retreated(combat)

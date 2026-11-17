@@ -56,7 +56,7 @@ def set_character_hp(entity: Entity, hp: int) -> CharacterStats:
 def mark_dead(entity: Entity) -> CharacterStats:
     """将角色标记为战败：挂载 DeathComponent。
 
-    战死 / 超时判负 / 撤退均视为一次战败，统一走此入口。
+    战死 / 撤退均视为一次战败，统一走此入口。
     """
     assert entity.has(ActorComponent), f"{entity.name} 缺少 ActorComponent"
     assert entity.has(
