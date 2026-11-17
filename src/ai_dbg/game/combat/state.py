@@ -1,4 +1,4 @@
-"""战斗/回合/行动槽/回合记录实体的创建、查询、状态迁移与清理。"""
+"""战斗/回合/行动槽/回合记录实体的创建与查询。"""
 
 from typing import List, Optional
 
@@ -13,18 +13,15 @@ from ...models import (
     CombatState,
     CombatStateComponent,
     CombatTurnComponent,
-    CombatTurnStatus,
     CombatTurnView,
     CombatView,
     CurrentCombatRoundComponent,
     CurrentCombatTurnComponent,
-    DeathComponent,
     RoundEntryKind,
 )
 from ..context import DBGGame
 from ..entities import (
     create_entity,
-    get_actor_entity,
     get_entity_by_name,
 )
 
@@ -123,9 +120,7 @@ def current_combat_turn(dbg_game: DBGGame, combat_entity: Entity) -> Optional[En
 
 
 ###############################################################################################################################################
-def _current_turn_for_round(
-    dbg_game: DBGGame, round_entity: Entity
-) -> Optional[Entity]:
+def current_turn_for_round(dbg_game: DBGGame, round_entity: Entity) -> Optional[Entity]:
     """返回指定回合当前标记的行动槽；没有时返回 None。"""
     current_turns = [
         turn_entity
@@ -141,7 +136,7 @@ def turn_name_for_actor(
     dbg_game: DBGGame, round_entity: Entity, actor_name: str
 ) -> Optional[str]:
     """返回该角色在当前回合对应的行动槽名；优先当前槽，否则取最后一个槽。"""
-    current_turn = _current_turn_for_round(dbg_game, round_entity)
+    current_turn = current_turn_for_round(dbg_game, round_entity)
     if (
         current_turn is not None
         and current_turn.get(CombatTurnComponent).actor_name == actor_name
@@ -290,52 +285,6 @@ def create_combat(
 
 
 ###############################################################################################################################################
-def set_current_combat_turn(dbg_game: DBGGame, turn_entity: Entity) -> None:
-    """把指定行动槽设为当前行动槽；同一战斗只保留一个当前槽。"""
-    turn_comp = turn_entity.get(CombatTurnComponent)
-    assert (
-        turn_comp.status == CombatTurnStatus.PENDING
-    ), f"已结束的行动槽不能成为当前行动槽: {turn_entity.name}"
-
-    combat_entity = get_entity_by_name(dbg_game, turn_comp.combat_name)
-    assert combat_entity is not None, f"找不到战斗实体: {turn_comp.combat_name}"
-    for round_entity in combat_rounds(dbg_game, combat_entity):
-        for existing_turn in combat_turns(dbg_game, round_entity):
-            if existing_turn.has(CurrentCombatTurnComponent):
-                existing_turn.remove(CurrentCombatTurnComponent)
-
-    turn_entity.replace(CurrentCombatTurnComponent, turn_entity.name)
-
-
-###############################################################################################################################################
-def advance_current_turn(dbg_game: DBGGame, round_entity: Entity) -> Optional[Entity]:
-    """把当前行动槽推进到下一个可用槽；没有可用槽时移除当前标记。"""
-    turn_entities = combat_turns(dbg_game, round_entity)
-    current_turn = _current_turn_for_round(dbg_game, round_entity)
-    start_index = 0
-    if current_turn is not None:
-        start_index = turn_entities.index(current_turn) + 1
-
-    for turn_entity in turn_entities[start_index:]:
-        turn_comp = turn_entity.get(CombatTurnComponent)
-        if turn_comp.status != CombatTurnStatus.PENDING:
-            continue
-
-        actor_entity = get_actor_entity(dbg_game, turn_comp.actor_name)
-        assert actor_entity is not None, f"找不到行动槽角色实体: {turn_comp.actor_name}"
-        if actor_entity.has(DeathComponent):
-            mark_turn_dead(turn_entity)
-            continue
-
-        set_current_combat_turn(dbg_game, turn_entity)
-        return turn_entity
-
-    if current_turn is not None:
-        current_turn.remove(CurrentCombatTurnComponent)
-    return None
-
-
-###############################################################################################################################################
 def _create_combat_round_entry(
     dbg_game: DBGGame,
     round_entity: Entity,
@@ -352,7 +301,7 @@ def _create_combat_round_entry(
     entry_name = _combat_round_entry_entity_name(round_entity.name, index)
 
     if turn_name is None:
-        current_turn = _current_turn_for_round(dbg_game, round_entity)
+        current_turn = current_turn_for_round(dbg_game, round_entity)
         turn_name = current_turn.name if current_turn is not None else None
 
     entry_entity = create_entity(dbg_game, entry_name)
@@ -388,20 +337,4 @@ def record_round_entry(
         log=log,
         narrative=narrative,
         turn_name=turn_name,
-    )
-
-
-###############################################################################################################################################
-def mark_turn_dead(turn_entity: Entity) -> None:
-    """标记行动槽对应的角色已死亡，后续推进应跳过它。"""
-    turn_comp = turn_entity.get(CombatTurnComponent)
-    turn_entity.replace(
-        CombatTurnComponent,
-        turn_comp.name,
-        turn_comp.combat_name,
-        turn_comp.round_name,
-        turn_comp.actor_name,
-        turn_comp.order_index,
-        CombatTurnStatus.DEAD,
-        turn_comp.energy,
     )

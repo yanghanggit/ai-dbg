@@ -32,6 +32,7 @@ from ai_dbg.models import (
 )
 from ai_dbg.systems.combat_round_completion_system import CombatRoundCompletionSystem
 from ai_dbg.systems.combat_round_start_system import CombatRoundStartSystem
+from ai_dbg.systems.combat_turn_state import CombatTurnStateMixin
 from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
 
 
@@ -79,6 +80,18 @@ def make_room_entity(
 def set_current_room(game: Any, room: Entity) -> None:
     """把 room 标记为当前房间。"""
     room.replace(CurrentDungeonRoomComponent, room.name)
+
+
+class _TurnStateAccess(CombatTurnStateMixin):
+    """测试用迁移入口：直接复用 system 层 mixin。"""
+
+    def __init__(self, game: Any) -> None:
+        self._game = game
+
+
+def advance_current_turn(game: Any, round_entity: Entity) -> Optional[Entity]:
+    """测试辅助：复用生产 system 的行动槽推进逻辑。"""
+    return _TurnStateAccess(game)._advance_current_turn(round_entity)
 
 
 def create_combat_round(

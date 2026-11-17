@@ -10,7 +10,6 @@ from ..game.combat import (
     consume_turn_energy,
     get_turn_energy,
 )
-from ..game.combat.state import advance_current_turn
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_dungeon_combat,
@@ -32,6 +31,7 @@ from ..models import (
 )
 from ..utils import prompt_builder
 from .combat_pass_context import CombatPassContextMixin
+from .combat_turn_state import CombatTurnStateMixin
 
 
 #######################################################################################################################################
@@ -43,7 +43,9 @@ def _build_pass_turn_notice(actor_name: str, round_number: int) -> str:
 
 #######################################################################################################################################
 @final
-class PassTurnActionSystem(CombatPassContextMixin, ReactiveProcessor):
+class PassTurnActionSystem(
+    CombatPassContextMixin, CombatTurnStateMixin, ReactiveProcessor
+):
     """过牌动作系统。"""
 
     def __init__(self, game: DBGGame) -> None:
@@ -119,7 +121,7 @@ class PassTurnActionSystem(CombatPassContextMixin, ReactiveProcessor):
 
         # 标记当前行动槽完成，并把行动权推进到下一个可用槽。
         self._mark_turn_completed(current_turn_entity)
-        next_turn_entity = advance_current_turn(self._game, last_round_entity)
+        next_turn_entity = self._advance_current_turn(last_round_entity)
         next_actor = (
             next_turn_entity.get(CombatTurnComponent).actor_name
             if next_turn_entity is not None

@@ -1,6 +1,6 @@
 """死亡处理系统：HP 归零即标记死亡；若死者是当前行动者则重算回合指针。"""
 
-from typing import Final, final, override
+from typing import final, override
 
 from loguru import logger
 
@@ -9,7 +9,6 @@ from ..game.combat import (
     compute_character_stats,
     mark_dead,
 )
-from ..game.combat.state import advance_current_turn, mark_turn_dead
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
@@ -27,6 +26,7 @@ from ..models import (
     HumanMessage,
 )
 from ..utils import prompt_builder
+from .combat_turn_state import CombatTurnStateMixin
 
 
 ###############################################################################################################################################
@@ -38,14 +38,14 @@ def _build_death_notification() -> str:
 
 ###############################################################################################################################################
 @final
-class DeathSystem(ExecuteProcessor):
+class DeathSystem(CombatTurnStateMixin, ExecuteProcessor):
     """
     死亡处理系统：将 HP 归零且尚未标记死亡的实体标记为死亡。
     """
 
     ############################################################################################################
     def __init__(self, game: DBGGame) -> None:
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
 
     ############################################################################################################
     @override
@@ -75,7 +75,7 @@ class DeathSystem(ExecuteProcessor):
 
         回合指针只在过牌时推进，而过牌会拒绝死亡角色；因此「当前行动者在自己回合内死亡」
         （反伤自杀 / 神器后仲裁等）会导致无人能推进。此处补一次重算，让
-        `advance_current_turn` 的「跳过死人」逻辑生效。
+        行动槽推进的「跳过死人」逻辑生效。
         """
         if not is_current_room_dungeon_combat(self._game):
             return
@@ -88,8 +88,8 @@ class DeathSystem(ExecuteProcessor):
         if current_turn_entity.get(CombatTurnComponent).actor_name != entity.name:
             return
 
-        mark_turn_dead(current_turn_entity)
-        next_turn_entity = advance_current_turn(self._game, latest_round_entity)
+        self._mark_turn_dead(current_turn_entity)
+        next_turn_entity = self._advance_current_turn(latest_round_entity)
         next_actor = (
             next_turn_entity.get(CombatTurnComponent).actor_name
             if next_turn_entity is not None

@@ -5,7 +5,6 @@ from typing import Any
 
 import pytest
 
-from ai_dbg.game.combat.state import advance_current_turn
 from ai_dbg.game.dungeon import current_combat_entity
 from ai_dbg.game.entities import create_entity
 from ai_dbg.game.entities.serialization import serialize_context
@@ -21,6 +20,7 @@ from ai_dbg.systems.combat_pass_context import CombatPassContextMixin
 from ai_dbg.systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
 from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
 from dungeon_support import (
+    advance_current_turn,
     current_round_entity,
     current_turn_entity,
     install_combat,

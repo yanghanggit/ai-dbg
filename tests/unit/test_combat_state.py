@@ -5,7 +5,6 @@ from typing import Any
 from ai_dbg.entitas import Matcher
 from ai_dbg.game.combat import consume_turn_energy, get_turn_energy
 from ai_dbg.game.combat.state import (
-    advance_current_turn,
     combat_rounds,
     combat_turns,
     combat_view,
@@ -41,6 +40,7 @@ from ai_dbg.systems.teardown_dungeon_action_system import (
     TeardownDungeonActionSystem,
 )
 from dungeon_support import (
+    advance_current_turn,
     create_combat_round,
     make_dungeon_entity,
     make_room_entity,

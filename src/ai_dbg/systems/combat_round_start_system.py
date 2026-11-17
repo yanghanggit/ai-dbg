@@ -16,7 +16,6 @@ from ..game.combat.state import (
     combat_turns,
     current_combat_round,
     latest_combat_round,
-    set_current_combat_turn,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
@@ -41,6 +40,7 @@ from ..models import (
     DungeonComponent,
     IdentityComponent,
 )
+from .combat_turn_state import CombatTurnStateMixin
 
 
 ###############################################################################################################################################
@@ -69,7 +69,7 @@ def _combat_turn_entity_name(round_name: str, order_index: int) -> str:
 
 ############################################################################################################
 @final
-class CombatRoundStartSystem(ReactiveProcessor):
+class CombatRoundStartSystem(CombatTurnStateMixin, ReactiveProcessor):
     """
     战斗回合开始系统：监听 DrawCardsAction，在需要时创建并开启新回合。
 
@@ -83,7 +83,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
         strategy: ActionOrderStrategy = ActionOrderStrategy.SPEED,
     ) -> None:
         super().__init__(game.ecs)
-        self._game: Final[DBGGame] = game
+        self._game: DBGGame = game
         self._strategy: Final[ActionOrderStrategy] = strategy
 
     ############################################################################################################
@@ -149,7 +149,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
             assert (
                 current_turn is not None
             ), f"行动顺序中没有当前行动者: {current_actor}"
-            set_current_combat_turn(self._game, current_turn)
+            self._set_current_turn(current_turn)
 
         return round_entity
 
