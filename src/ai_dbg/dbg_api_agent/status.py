@@ -9,7 +9,7 @@
 - 玩家角色名（player_actor）可通过 PlayerComponent 反查，因此调用方无需预先登录态。
 """
 
-from typing import Any, Dict, List, NotRequired, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, NotRequired, Optional, TypedDict
 
 from ..entitas import ComponentData, EntityData
 from ..models import (
@@ -17,7 +17,6 @@ from ..models import (
     CharacterStatsComponent,
     CombatView,
     DeathComponent,
-    DungeonRoomType,
     EnvironmentComponent,
     EquippedGearComponent,
     HandComponent,
@@ -25,7 +24,6 @@ from ..models import (
     MonsterComponent,
     NPCComponent,
     PlayerComponent,
-    SpoilsComponent,
     compute_effective_stats,
     compute_hand_block,
 )
@@ -183,38 +181,6 @@ def _player_extras(components: EntityData) -> Dict[str, Any]:
 
 
 ########################################################################################################################
-def _spoils_info(
-    party_entities: List[Tuple[str, EntityData]],
-) -> Dict[str, Any]:
-    """非战斗房间：奖励候选/已领取队列。"""
-    candidate_cards: List[Dict[str, Any]] = []
-    claimed_cards: List[Dict[str, Any]] = []
-    by_actor: List[Dict[str, Any]] = []
-    for actor_name, components in party_entities:
-        spoils_data = component_data(components, SpoilsComponent.__name__)
-        if spoils_data is None:
-            continue
-        spoils = SpoilsComponent(**spoils_data)
-        candidates = [card.model_dump(mode="json") for card in spoils.candidate_cards]
-        claimed = [card.model_dump(mode="json") for card in spoils.claimed_cards]
-        candidate_cards.extend(candidates)
-        claimed_cards.extend(claimed)
-        by_actor.append(
-            {
-                "actor": actor_name,
-                "candidate_cards": candidates,
-                "claimed_cards": claimed,
-            }
-        )
-    return {
-        "spoils_generated": len(by_actor) > 0,
-        "candidate_cards": candidate_cards,
-        "claimed_cards": claimed_cards,
-        "by_actor": by_actor,
-    }
-
-
-########################################################################################################################
 def _combat_info(combat: CombatView) -> Dict[str, Any]:
     return {
         "name": combat.name,
@@ -288,12 +254,6 @@ async def build_status(
         "room_type": room.type if room is not None else None,
     }
 
-    party_entities = [
-        (name, entities_by_name[name])
-        for name in actor_names
-        if name in entities_by_name
-    ]
-
     if room is not None and room.combat is not None:
         status["combat"] = _combat_info(room.combat)
         latest_round = room.combat.latest_round
@@ -305,9 +265,6 @@ async def build_status(
                 energy = energy_by_actor.get(summary["name"])
                 if energy is not None:
                     summary["energy"] = energy
-    elif room is not None and room.type == DungeonRoomType.OPENING:
-        status["dungeon"]["spoils"] = _spoils_info(party_entities)
-
     # 玩家随身背包
     player_entity = entities_by_name.get(player_actor)
     if player_entity is not None:

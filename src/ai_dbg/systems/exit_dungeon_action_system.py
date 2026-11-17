@@ -27,7 +27,6 @@ from ..models import (
     HumanMessage,
     LobbyComponent,
     PartyMemberComponent,
-    SpoilsComponent,
     TeardownDungeonAction,
 )
 from ..utils import prompt_builder
@@ -136,9 +135,6 @@ class ExitDungeonActionSystem(ReactiveProcessor):
 
             assert party_member_entity.has(PartyMemberComponent)
             party_member_entity.remove(PartyMemberComponent)
-
-            if party_member_entity.has(SpoilsComponent):
-                party_member_entity.remove(SpoilsComponent)
 
         if is_current_room_dungeon_combat(self._game):
             assert_no_residual_combat_state(self._game)

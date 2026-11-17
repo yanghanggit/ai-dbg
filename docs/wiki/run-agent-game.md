@@ -16,15 +16,15 @@
 
 新局由 `new` 直接进入副本首间，不再经过非副本场景。副本结束后 `exit-dungeon` 把角色送回极简大厅 `场景.营地`；大厅没有社交、合成、队伍或储物玩法，只作为下一次 `enter-dungeon` 的入口。
 
-副本内部按房间类型推进：开场房间执行 `opening-init`、生成并领取奖励；战斗房间执行 `combat-init`、抽牌与回合循环。`next-dungeon` 只推进房间，不初始化新房间；初始化始终由代理显式选择 `opening-init` 或 `combat-init`。
+副本内部按房间类型推进：开场房间执行 `opening-init`；战斗房间执行 `combat-init`、抽牌与回合循环。`next-dungeon` 只推进房间，不初始化新房间；初始化始终由代理显式选择 `opening-init` 或 `combat-init`。
 
 ## 命令面
 
-顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`、`generate-spoils`、`pick-card`、`remove-spoils`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。卡牌调测命令 `card-prototypes`、`design-cards`、`rebuild-deck` 只读或只改副本文件，不写对局状态。
+顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。卡牌调测命令 `card-prototypes`、`design-cards`、`rebuild-deck` 只读或只改副本文件，不写对局状态。
 
 ## 职责分层
 
-Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 与 `spoils.py` 负责开场与奖励，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩，`cards.py` 负责卡牌调测。
+Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 负责开场，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩，`cards.py` 负责卡牌调测。
 
 真正的规则校验与 ECS 动作触发在 `ai_dbg/services/`。这一层与 CLI 解耦，同时被服务端 API 与测试复用；CLI 不是规则实现处，只是快照读写与动作选择的薄壳。
 

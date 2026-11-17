@@ -2,7 +2,6 @@
 副本开场房间 API 路由模块
 
 提供开场房间的初始化接口（叙事 + 环境初始化，无战斗）。
-奖励（Spoils）相关接口已迁至 dungeon_spoils_api.py，与开场房间解耦。
 """
 
 from fastapi import APIRouter, HTTPException, status

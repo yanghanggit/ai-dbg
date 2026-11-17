@@ -36,7 +36,6 @@ from ..models import (
     PartyMemberComponent,
 )
 from ..utils import prompt_builder
-from .dungeon_spoils_actions import clear_party_spoils
 
 
 ###################################################################################################################################################################
@@ -147,11 +146,5 @@ async def advance_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
     # 进入战斗房间时创建战斗实体并初始化
     if next_room_component.room_type == DungeonRoomType.COMBAT:
         create_combat(dbg_game, next_room)
-    else:
-        # 进入非战斗房间时，清理上一轮残留的奖励状态（奖励与房间生命周期绑定）
-        cleared = clear_party_spoils(dbg_game)
-        if cleared:
-            logger.info(f"advance_dungeon: 已清理残留奖励状态: {cleared}")
-
     logger.info(f"advance_dungeon 完成: {dungeon_name}，进入第 {next_room_index} 关")
     return True, f"已前进到第 {next_room_index} 关"

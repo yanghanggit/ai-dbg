@@ -6,10 +6,10 @@
   各自开放哪些槽，解决「想指定某个原型却不知道 id」；
 - `resolve_prototype_ids` / `resolve_candidate_ids`：把 CLI 的三种指定方式
   （具体 id / 槽位选择器 / 关键词）解析成**具体 id 列表**，再交给
-  `GenerateSpoilsAction.prototype_ids` 或 `GenerateDungeonAction.spec.deck_prototype_ids`；
+  `GenerateDungeonAction.spec.deck_prototype_ids` 或卡牌调测入口；
   系统侧因此只需理解「显式 id 列表」这一件事；
 - `design_cards_preview`：直接对指定原型跑设计会话并读回结果，**不写游戏状态**，
-  用于迭代人设 / 艺术锚点 / 提示词（比 generate-spoils → pick-card 快得多）；
+  用于迭代人设 / 艺术锚点 / 提示词；
 - `rebuild_deck_in_dungeon`：对**已生成副本**里的某只怪物重做牌库，直接改写
   `.dungeons/<副本>.json`——生成期的怪物名是 LLM 之后才产出的，所以「按名字精确控制」
   只能在生成之后做。两种语义：整副重建（用系统的牌库张数）与定点替换（只换指定的几张，
@@ -161,7 +161,7 @@ def resolve_candidate_ids(
     card_type: str = DEFAULT_CARD_TYPE,
     index: Optional[List[CardPrototypeIndexEntry]] = None,
 ) -> List[str]:
-    """解析一批候选规格（spoils 候选 / 怪物牌库 / 定点重做）。
+    """解析一批候选规格（怪物牌库 / 定点重做 / 卡牌调测）。
 
     `count` 是**可选的目标张数**：不给就「指定了几张就是几张」——游戏常量（如一副牌的张数）
     只用于未指定时的默认路径，不构成约束。给了 `count` 才做严格数量校验，`fill_random`
@@ -240,7 +240,7 @@ async def design_cards_preview(
     """对指定原型跑 `repeat` 次设计会话，返回每次的候选卡（**不写游戏状态**）。
 
     走的是与生产完全相同的入口（`design_cards_for_actor`：世界契约 + 角色设定 +
-    艺术锚点），只是不落 `SpoilsComponent` / `DeckComponent`，方便反复调人设与提示词。
+    艺术锚点），只是不落 `DeckComponent`，方便反复调人设与提示词。
     """
     if not prototype_ids:
         raise ValueError("design-cards 至少需要一个原型 id")

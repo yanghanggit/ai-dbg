@@ -18,7 +18,7 @@ HTTPS / JWT（连接层集中在一处）：
     --token <jwt>          （或 AI_DBG_API_TOKEN，注入 Authorization: Bearer）
 
 日志：``logs/run_agent_api_<timestamp>.log``（DEBUG；控制台级别由 AI_DBG_API_LOG_LEVEL 决定）。
-命令分组：dungeon / opening / spoils / combat；`status` 会同时给出 suggested_actions；`job` 用于查看单个执行的状态与事件。
+命令分组：dungeon / opening / combat；`status` 会同时给出 suggested_actions；`job` 用于查看单个执行的状态与事件。
 """
 
 import asyncio
@@ -48,9 +48,6 @@ from ai_dbg.dbg_api_agent.server_client import (
     dungeon_combat_use_consumable,
     dungeon_exit,
     dungeon_opening_init,
-    dungeon_spoils_generate,
-    dungeon_spoils_pick_card,
-    dungeon_spoils_remove,
     fetch_blueprint_list,
     fetch_dungeon_list,
     fetch_job_detail,
@@ -420,51 +417,6 @@ def opening_init_cmd(user: str, game: str) -> None:
         return await _await_job(await dungeon_opening_init(user, game))
 
     _run("opening init", go())
-
-
-########################################################################################################################
-# 奖励（Spoils）命令组
-########################################################################################################################
-@main.group("spoils")
-def spoils_group() -> None:
-    """副本奖励动作（非战斗房间）。"""
-
-
-@spoils_group.command("generate")
-@identity_options
-def spoils_generate_cmd(user: str, game: str) -> None:
-    """生成奖励候选（Spoils）。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_job(await dungeon_spoils_generate(user, game))
-
-    _run("spoils generate", go())
-
-
-@spoils_group.command("pick-card")
-@identity_options
-@click.option("--actor", "actor_name", required=True, help="领卡角色名")
-@click.option("--card", "card_name", required=True, help="要领取的卡名")
-def spoils_pick_card_cmd(user: str, game: str, actor_name: str, card_name: str) -> None:
-    """从角色的 Spoils 领取一张卡加入其牌库。"""
-
-    async def go() -> Dict[str, Any]:
-        return await _await_job(
-            await dungeon_spoils_pick_card(user, game, actor_name, card_name)
-        )
-
-    _run("spoils pick-card", go())
-
-
-@spoils_group.command("remove")
-@identity_options
-def spoils_remove_cmd(user: str, game: str) -> None:
-    """清理当前副本队伍成员的奖励状态（SpoilsComponent）。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(await dungeon_spoils_remove(user, game))
-
-    _run("spoils remove", go())
 
 
 ########################################################################################################################

@@ -24,10 +24,6 @@
   collect-loot    --snapshot PATH                               收战利品（胜利后）
   next-dungeon    --snapshot PATH                               下一关（仅推进，不初始化新房间）
   exit-dungeon    --snapshot PATH                               退出副本 → 大厅（无论胜负）
-  generate-spoils --snapshot PATH [--prototype ID ...] [--slot SLOT] [--keyword K] [--count N] [--fill-random] [--seed N]
-                                     生成候选奖励（默认随机；可选显式规格）
-  pick-card       --snapshot PATH --actor A --card C            从 Spoils 领取一张卡加入牌库
-  remove-spoils   --snapshot PATH                               清理当前副本队伍成员的奖励状态
 
 ==== 卡牌调测命令（只读 / 不落存档） ====
   card-prototypes [--card-type 手牌] [--slot SLOT] [--keyword K]   列出原型（id / 分类 / 摘要 / 开放槽）
@@ -46,15 +42,14 @@
         胜利 → collect-loot → next-dungeon → combat-init（或 opening-init，视新房间类型）
         失败 → exit-dungeon
         战斗中途撤退 → retreat → exit-dungeon
-  副本（开场房间）：opening-init → generate-spoils → pick-card → next-dungeon
-  任意非战斗房间：generate-spoils → pick-card（可选 remove-spoils 复位）
+  副本（开场房间）：opening-init → next-dungeon
   退出副本：exit-dungeon → 回到大厅；再从大厅 enter-dungeon 开下一局"""
 
 import asyncio
 import datetime
 import sys
 from pathlib import Path
-from typing import Final, List, Tuple
+from typing import Final, Tuple
 
 import click
 from loguru import logger
@@ -127,12 +122,6 @@ from ai_dbg.dbg_game_agent.dungeon import (
 from ai_dbg.dbg_game_agent.opening import (
     init_opening_game,
 )
-from ai_dbg.dbg_game_agent.spoils import (
-    generate_spoils_game,
-    pick_spoils_card_game,
-    remove_spoils_game,
-)
-from ai_dbg.systems.generate_spoils_action_system import SPOILS_CARD_COUNT
 
 
 ###############################################################################################################################################
@@ -680,179 +669,6 @@ def opening_init(snapshot: str) -> None:
     logger.info(f"本次存档目录：{_save_dir}")
 
     asyncio.run(init_opening_game(world, player_session, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("generate-spoils")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--prototype",
-    "-p",
-    "prototype_ids",
-    multiple=True,
-    help="显式指定候选原型 id（可重复，如 -p proto.summon -p proto.burst）。未加 --fill-random 时必须凑满候选数。",
-)
-@click.option(
-    "--slot",
-    default=None,
-    help="按开放槽选择候选原型（如 on_autonomous_affixes）",
-)
-@click.option(
-    "--keyword",
-    default=None,
-    help="按关键词选择候选原型（匹配 name / summary / 分类 / keywords）",
-)
-@click.option(
-    "--fill-random",
-    is_flag=True,
-    help="指定不足候选数时，剩余随机补足（默认严格：必须凑满）",
-)
-@click.option(
-    "--count",
-    type=int,
-    default=None,
-    help="候选张数（不指定 = 给几个就是几个；--fill-random 需要它作为补足目标）",
-)
-@click.option(
-    "--seed",
-    type=int,
-    default=None,
-    help="随机补足的随机种子（仅 --fill-random 生效）",
-)
-def generate_spoils(
-    snapshot: str,
-    prototype_ids: Tuple[str, ...],
-    slot: str,
-    keyword: str,
-    count: int,
-    fill_random: bool,
-    seed: int,
-) -> None:
-    """为当前非战斗房间内的队伍成员生成候选奖励（Spoils）并归档。
-
-    不给任何规格时从原型库随机抽取；给了 --prototype / --slot / --keyword 就按规格物化。
-    """
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = _restore_snapshot(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    # 显式规格（可空）：默认严格，必须凑满候选数
-    resolved: List[str] = []
-    if prototype_ids or slot or keyword:
-        try:
-            resolved = resolve_candidate_ids(
-                count=count,
-                prototype_ids=prototype_ids,
-                slot=slot,
-                keyword=keyword,
-                fill_random=fill_random,
-                seed=seed,
-            )
-        except ValueError as e:
-            raise click.BadParameter(str(e))
-        click.echo(f"显式候选规格（{len(resolved)} 张）: {resolved}")
-    else:
-        click.echo(f"未指定候选规格：从原型库随机抽取 {SPOILS_CARD_COUNT} 张")
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(
-        generate_spoils_game(
-            world, player_session, _save_dir, resolved if resolved else None
-        )
-    )
-
-
-###############################################################################################################################################
-@main.command("pick-card")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-@click.option(
-    "--actor",
-    required=True,
-    help="领卡角色全名（如 角色.某某）",
-)
-@click.option(
-    "--card",
-    required=True,
-    help="要选的卡牌名称（须存在于该角色 Spoils 中）",
-)
-def pick_spoils_card(snapshot: str, actor: str, card: str) -> None:
-    """从 Spoils 领取一张卡加入牌库并归档。需当前在非战斗房间且已生成奖励。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = _restore_snapshot(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(pick_spoils_card_game(world, player_session, actor, card, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("remove-spoils")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-def remove_spoils(snapshot: str) -> None:
-    """清理当前副本队伍成员的奖励状态（SpoilsComponent）并归档。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = _restore_snapshot(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(remove_spoils_game(world, player_session, _save_dir))
 
 
 ###############################################################################################################################################

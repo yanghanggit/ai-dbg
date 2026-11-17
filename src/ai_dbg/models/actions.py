@@ -1,7 +1,6 @@
 """游戏动作组件。添加到实体后由对应系统处理执行。"""
 
-from enum import StrEnum, unique
-from typing import List, Optional, final
+from typing import List, final
 
 from ..entitas.components import Component
 from .card import Card
@@ -124,49 +123,6 @@ class TeardownDungeonAction(Component):
     """退出副本成功后，请求销毁副本相关实体；由 TeardownDungeonActionSystem 响应。"""
 
     name: str
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class GenerateSpoilsAction(Component):
-    """触发为角色生成候选奖励（SpoilsComponent），当前生成候选卡牌。
-
-    ``prototype_ids`` 为外部入口的**显式候选规格**（调测 / 脚本用）：非空时
-    ``GenerateSpoilsActionSystem`` 只物化这些原型（顺序、重复均照给），不再随机抽取。
-    空列表 = 默认随机抽取，与旧行为完全一致。
-
-    动作组件由 ``ActionCleanupSystem`` 在 pipeline 收尾阶段清理，不随着存档持久化，仅用于本次传递。
-    """
-
-    name: str
-    prototype_ids: List[str] = []  # 显式指定的原型 id（可重复；空 = 随机抽取）
-
-
-############################################################################################################
-@final
-@unique
-class SpoilRewardKind(StrEnum):
-    """Spoils 奖励类型；用于区分 PickSpoilsAction 的领取子操作。"""
-
-    CARD = "card"  # 卡牌（当前唯一实现；未来可扩展 ITEM / ARTIFACT）
-
-
-############################################################################################################
-@final
-@register_action_component_type
-@register_component_type
-class PickSpoilsAction(Component):
-    """触发角色从 SpoilsComponent 领取一项奖励（umbrella）。
-
-    当前仅实现卡牌子操作（reward_kind=CARD），由 activate_pick_spoils_card
-    检索后填入 card；未来可扩展 item / artifact 等子操作。
-    """
-
-    name: str
-    reward_kind: SpoilRewardKind = SpoilRewardKind.CARD  # 领取的奖励类型
-    card: Optional[Card] = None  # reward_kind == CARD 时有效
 
 
 ############################################################################################################

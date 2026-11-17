@@ -318,43 +318,6 @@ class DungeonOpeningInitResponse(BaseModel):
     message: str
 
 
-@final
-class DungeonSpoilsGenerateRequest(BaseModel):
-    user_name: str
-    game_name: str
-
-
-@final
-class DungeonSpoilsGenerateResponse(BaseModel):
-    job_id: int
-    message: str
-
-
-@final
-class DungeonSpoilsPickCardRequest(BaseModel):
-    user_name: str
-    game_name: str
-    actor_name: str
-    card_name: str
-
-
-@final
-class DungeonSpoilsPickCardResponse(BaseModel):
-    job_id: int
-    message: str
-
-
-@final
-class DungeonSpoilsRemoveRequest(BaseModel):
-    user_name: str
-    game_name: str
-
-
-@final
-class DungeonSpoilsRemoveResponse(BaseModel):
-    message: str
-
-
 ################################################################################################################
 ################################################################################################################
 ################################################################################################################

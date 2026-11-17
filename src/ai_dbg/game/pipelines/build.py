@@ -19,9 +19,8 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # )
     # from ...systems.card_operation_system import CardOperationSystem
     from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
-    from ...systems.combat_init_actor_system import CombatInitActorSystem
-    from ...systems.combat_init_stage_system import CombatInitStageSystem
-    from ...systems.combat_loot_system import CombatLootSystem
+
+    # from ...systems.combat_loot_system import CombatLootSystem
     from ...systems.combat_outcome_system import CombatOutcomeSystem
     from ...systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
     from ...systems.combat_pile_teardown_system import CombatPileTeardownSystem
@@ -51,19 +50,15 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.exhaust_ethereal_cards_system import ExhaustEtherealCardsSystem
     from ...systems.exit_dungeon_action_system import ExitDungeonActionSystem
     from ...systems.fill_draw_pile_system import FillDrawPileSystem
-    from ...systems.generate_spoils_action_system import (
-        GenerateSpoilsActionSystem,
-    )
     from ...systems.monster_combat_decision_system import MonsterCombatDecisionSystem
-    from ...systems.opening_init_actor_system import OpeningInitActorSystem
     from ...systems.party_combat_decision_system import PartyCombatDecisionSystem
     from ...systems.pass_turn_action_system import PassTurnActionSystem
-    from ...systems.pick_spoils_action_system import PickSpoilsActionSystem
     from ...systems.play_cards_action_system import PlayCardsActionSystem
     from ...systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
     from ...systems.pre_combat_outcome_system import PreCombatOutcomeSystem
     from ...systems.prologue_system import PrologueSystem
     from ...systems.retreat_action_system import RetreatActionSystem
+    from ...systems.room_init_system import RoomInitSystem
     from ...systems.teardown_dungeon_action_system import (
         TeardownDungeonActionSystem,
     )
@@ -81,17 +76,9 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(EnvironmentInitializationSystem(dbg_game))
 
     # ---------------------------------------------------------------------
-    # 开场房间：开场初始化与奖励生成/领取（非战斗房间生效）
+    # 房间初始化：开场角色感知 / 战斗角色牌堆与场景规则
     # ---------------------------------------------------------------------
-    pipeline.add(OpeningInitActorSystem(dbg_game))
-    pipeline.add(GenerateSpoilsActionSystem(dbg_game))
-    pipeline.add(PickSpoilsActionSystem(dbg_game))
-
-    # ---------------------------------------------------------------------
-    # 战斗初始化
-    # ---------------------------------------------------------------------
-    pipeline.add(CombatInitActorSystem(dbg_game))
-    pipeline.add(CombatInitStageSystem(dbg_game))
+    pipeline.add(RoomInitSystem(dbg_game))
     pipeline.add(FillDrawPileSystem(dbg_game))
 
     # ---------------------------------------------------------------------
@@ -139,7 +126,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入掉落与战后处理。
     pipeline.add(CombatHandCleanupSystem(dbg_game))
     pipeline.add(CombatResultNoticeSystem(dbg_game))
-    pipeline.add(CombatLootSystem(dbg_game))
+    # pipeline.add(CombatLootSystem(dbg_game))
     pipeline.add(CombatPostCombatTransitionSystem(dbg_game))
     pipeline.add(CombatPileTeardownSystem(dbg_game))
 

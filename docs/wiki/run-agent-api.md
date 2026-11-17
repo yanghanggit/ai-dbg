@@ -20,18 +20,18 @@
 - **stdout 只放 JSON**：运行日志写 stderr 与文件，控制台级别由 `AI_DBG_API_LOG_LEVEL` 控制，避免污染代理输出。
 - **身份无状态**：只按 `--user/--game` 寻址，不落盘对局状态；同一身份可在多条命令间复用服务端内存中的房间。
 
-命令面按动作域分组：顶层 `login` / `logout` / `new-game` / `status` / `blueprint-list` / `dungeon-list` / `compact` / `job`，以及 `dungeon`、`opening`、`spoils`、`combat`。命令是服务端 API 的薄映射，参数与校验以服务端为准；`job` 用于单独查看某次执行的状态与增量事件。
+命令面按动作域分组：顶层 `login` / `logout` / `new-game` / `status` / `blueprint-list` / `dungeon-list` / `compact` / `job`，以及 `dungeon`、`opening`、`combat`。命令是服务端 API 的薄映射，参数与校验以服务端为准；`job` 用于单独查看某次执行的状态与增量事件。
 
 ## 启动与状态
 
 `new-game --dungeon <name>` 创建世界并直接进入副本首间，不再经过非副本玩法。退出副本后进入极简大厅 `场景.营地`；从大厅用 `dungeon start --dungeon <name>` 开下一局。`login` 会清除该 user 已有房间，只应在开新局时调用一次。
 
-`status` 是走查的核心：它把跨接口取数收拢为一次只读快照，覆盖当前模式（`lobby` / `dungeon`）、场景与角色、属性/手牌、副本房间与开场奖励、战斗状态与最近回合、玩家随身背包、会话消息；`--actor` 可显式指定玩家角色，`--messages-since` 只拉增量消息。
+`status` 是走查的核心：它把跨接口取数收拢为一次只读快照，覆盖当前模式（`lobby` / `dungeon`）、场景与角色、属性/手牌、副本房间、战斗状态与最近回合、玩家随身背包、会话消息；`--actor` 可显式指定玩家角色，`--messages-since` 只拉增量消息。
 
 快照同时附带 `suggested_actions`，沉淀的是流程推进知识，而非固定脚本：
 
 - **大厅**：`dungeon-list` / `dungeon start --dungeon <name>` / `blueprint-list` / `compact`。
-- **开场房间**：未初始化 → `opening init`；未生成奖励 → `spoils generate`；已生成 → 逐角色 `spoils pick-card`，随后 `dungeon advance-stage`；`spoils remove` 用于复位，`dungeon exit` 离开。
+- **开场房间**：未初始化 → `opening init`；随后 `dungeon advance-stage` 推进，`dungeon exit` 离开。
 - **战斗房间**：`NONE` / `INITIALIZATION` → `combat init`；`ONGOING` 未抓牌或回合已结束 → `combat draw-cards`；轮到角色 → `combat play-cards` / `combat pass-turn` / `combat use-consumable` / `combat equip-gear`（怪物回合由服务端决策），也可 `combat retreat`；`COMPLETE` / `POST_COMBAT` 胜利 → `combat collect-loot`，有下一关再 `dungeon advance-stage`；其余结束态 → `dungeon exit`。
 
 建议字符串已带命令组前缀，可直接作为 CLI 参数；它只是提示，最终以服务端校验为准。

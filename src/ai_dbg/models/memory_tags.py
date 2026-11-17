@@ -39,7 +39,6 @@ MEMORY_TAGS: Final[FrozenSet[str]] = frozenset(
         "opening_initialization",  # 副本开场场景感知
         "environment_initialization",  # 场景环境描述生成
         # ---- 物品与状态 ----
-        "spoils_pick",  # 从战利品中领取卡牌（值 = 卡牌名）
         "card_pile_change",  # 牌堆变更说明（值 = {change, deltas}，只写给容器主人）
         # ---- 记忆自身维护 ----
         "loop_id",  # agent_loop 起止标记

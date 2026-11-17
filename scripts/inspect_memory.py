@@ -38,8 +38,6 @@ PILE_FIELDS: Tuple[Tuple[str, str], ...] = (
     ("HandComponent", "cards"),
     ("DiscardPileComponent", "cards"),
     ("ExhaustPileComponent", "cards"),
-    ("SpoilsComponent", "candidate_cards"),
-    ("SpoilsComponent", "claimed_cards"),
 )
 
 

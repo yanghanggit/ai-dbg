@@ -126,13 +126,13 @@ def test_filter_entries_keeps_index_order() -> None:
 
 
 #######################################################################################################################################
-def test_spoils_strict_requires_exact_count() -> None:
+def test_candidate_strict_requires_exact_count() -> None:
     """默认严格：指定不足候选数直接报错，提示加 --fill-random。"""
     with pytest.raises(ValueError, match="--fill-random"):
         resolve_candidate_ids(count=3, prototype_ids=["proto.summon"], index=_INDEX)
 
 
-def test_spoils_rejects_more_than_count() -> None:
+def test_candidate_rejects_more_than_count() -> None:
     with pytest.raises(ValueError, match="候选最多 3 张"):
         resolve_candidate_ids(
             count=3,
@@ -146,7 +146,7 @@ def test_spoils_rejects_more_than_count() -> None:
         )
 
 
-def test_spoils_fill_random_keeps_explicit_prefix_and_is_seeded() -> None:
+def test_candidate_fill_random_keeps_explicit_prefix_and_is_seeded() -> None:
     """--fill-random：显式 id 保留在前，剩余按 seed 确定性补足，且不重复已选项。"""
     first = resolve_candidate_ids(
         count=3,
@@ -169,7 +169,7 @@ def test_spoils_fill_random_keeps_explicit_prefix_and_is_seeded() -> None:
     assert len(set(first)) == 3
 
 
-def test_spoils_fill_random_reports_insufficient_pool() -> None:
+def test_candidate_fill_random_reports_insufficient_pool() -> None:
     with pytest.raises(ValueError, match="原型库不足以补足候选"):
         resolve_candidate_ids(
             count=4,

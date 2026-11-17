@@ -38,12 +38,6 @@ from ..models import (
     DungeonOpeningInitRequest,
     DungeonOpeningInitResponse,
     DungeonRoomResponse,
-    DungeonSpoilsGenerateRequest,
-    DungeonSpoilsGenerateResponse,
-    DungeonSpoilsPickCardRequest,
-    DungeonSpoilsPickCardResponse,
-    DungeonSpoilsRemoveRequest,
-    DungeonSpoilsRemoveResponse,
     DungeonStartRequest,
     DungeonStartResponse,
     DungeonStateResponse,
@@ -380,56 +374,6 @@ async def dungeon_opening_init(
         )
         response.raise_for_status()
         return DungeonOpeningInitResponse.model_validate(response.json())
-
-
-async def dungeon_spoils_generate(
-    user_name: str, game_name: str
-) -> DungeonSpoilsGenerateResponse:
-    """触发副本奖励生成（外部显式触发 GenerateSpoilsAction），返回 job id。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/dungeon/spoils/generate/v1/",
-            json=DungeonSpoilsGenerateRequest(
-                user_name=user_name,
-                game_name=game_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return DungeonSpoilsGenerateResponse.model_validate(response.json())
-
-
-async def dungeon_spoils_pick_card(
-    user_name: str, game_name: str, actor_name: str, card_name: str
-) -> DungeonSpoilsPickCardResponse:
-    """触发副本领卡（Spoils 子操作 pick_card，外部显式触发 PickSpoilsAction），返回 job id。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/dungeon/spoils/pick_card/v1/",
-            json=DungeonSpoilsPickCardRequest(
-                user_name=user_name,
-                game_name=game_name,
-                actor_name=actor_name,
-                card_name=card_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return DungeonSpoilsPickCardResponse.model_validate(response.json())
-
-
-async def dungeon_spoils_remove(
-    user_name: str, game_name: str
-) -> DungeonSpoilsRemoveResponse:
-    """清理当前副本队伍成员的奖励状态（SpoilsComponent）。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/dungeon/spoils/remove/v1/",
-            json=DungeonSpoilsRemoveRequest(
-                user_name=user_name,
-                game_name=game_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return DungeonSpoilsRemoveResponse.model_validate(response.json())
 
 
 async def dungeon_combat_collect_loot(

@@ -96,7 +96,7 @@ def delete_card_prototypes(prototype_ids: List[str]) -> int:
     """删除指定的卡牌原型，返回实际删除行数（开发 / 测试用）。
 
     与 `save_card_prototype` 配套：`flush_card_prototypes` 用它把库里不在目标集合中的
-    原型清掉，从而让 `generate-spoils` 的随机抽样退化为确定抽样（定点测试）。
+    原型清掉，便于定点测试。
     """
 
     if not prototype_ids:

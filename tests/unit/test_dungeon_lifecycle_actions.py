@@ -26,7 +26,6 @@ from ai_dbg.models import (
     LobbyComponent,
     PartyMemberComponent,
     PlayerComponent,
-    SpoilsComponent,
     StageComponent,
     TeardownDungeonAction,
 )
@@ -124,22 +123,6 @@ class TestAdvanceDungeonGuards:
         assert ok is True
         assert member.get(ActorComponent).current_stage == "room1"
 
-    async def test_advancing_into_non_combat_room_clears_stale_spoils(
-        self, sample_game: Any
-    ) -> None:
-        """进入非战斗房间时自动清理上一轮残留的奖励状态。"""
-        make_dungeon_entity(sample_game)
-        room0 = _make_opening_room(sample_game, "room0", 0)
-        _make_opening_room(sample_game, "room1", 1)
-        set_current_room(sample_game, room0)
-        member = _make_party_member(sample_game, "hero", "room0")
-        member.add(SpoilsComponent, "hero", [], [])
-
-        ok, _ = await advance_dungeon(sample_game)
-
-        assert ok is True
-        assert not member.has(SpoilsComponent)
-
 
 # ---------------------------------------------------------------------------
 # ExitDungeonActionSystem
@@ -172,7 +155,6 @@ class TestExitDungeonActions:
         _make_lobby_entity(sample_game, "lobby")
         member = _make_party_member(sample_game, "hero", "room0", is_player=True)
         member.add(DeathComponent, "hero")
-        member.add(SpoilsComponent, "hero", [], [])
 
         ok, _ = activate_exit_dungeon(sample_game)
         assert ok is True
@@ -181,7 +163,6 @@ class TestExitDungeonActions:
 
         assert not member.has(PartyMemberComponent)
         assert not member.has(DeathComponent)
-        assert not member.has(SpoilsComponent)
         assert member.has(TeardownDungeonAction)
         actor_comp = member.get(ActorComponent)
         assert actor_comp.current_stage == "lobby"

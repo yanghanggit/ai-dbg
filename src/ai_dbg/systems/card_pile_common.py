@@ -44,7 +44,6 @@ class Pile(StrEnum):
     """牌堆 / 容器标识。值即审计用的英文键，`PILE_LABELS` 提供中文名。"""
 
     DECK = "deck"
-    SPOILS = "spoils"
     DRAW = "draw_pile"
     RETAINED = "retained"
     HAND = "hand"
@@ -53,7 +52,6 @@ class Pile(StrEnum):
 
 
 PILE_DECK: Final[str] = Pile.DECK
-PILE_SPOILS: Final[str] = Pile.SPOILS
 PILE_DRAW: Final[str] = Pile.DRAW
 PILE_RETAINED: Final[str] = Pile.RETAINED
 PILE_HAND: Final[str] = Pile.HAND
@@ -62,7 +60,6 @@ PILE_EXHAUST: Final[str] = Pile.EXHAUST
 
 PILE_LABELS: Final[Dict[str, str]] = {
     PILE_DECK: "牌库",
-    PILE_SPOILS: "待领取",
     PILE_DRAW: "抽牌堆",
     PILE_RETAINED: "保留队列",
     PILE_HAND: "手牌",

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """卡牌原型快刷脚本（开发 / 测试用）。
 
-把 `demo/card_prototypes.py` 的原型刷进 PostgreSQL，供 `generate-spoils`、怪物牌库重建
-与调测检索使用。**不** drop 数据库、**不**重刷蓝图 / 副本 / 用户，因此比
-`scripts/setup_demo.py` 快得多，适合改完原型或词缀规范后，反复跑
-「刷原型 → generate-spoils → 看设计」这条开发循环。
+把 `demo/card_prototypes.py` 的原型刷进 PostgreSQL，供怪物牌库重建与调测检索使用。
+**不** drop 数据库、**不**重刷蓝图 / 副本 / 用户，因此比 `scripts/setup_demo.py` 快得多，
+适合改完原型或词缀规范后反复刷新。
 
 用法：
   uv run python -m scripts.flush_card_prototypes
@@ -20,16 +19,13 @@
       只刷某个 card_type（手牌 / 装备）。
 
   uv run python -m scripts.flush_card_prototypes --only proto.pierce --prune
-      库中只留这些，其余删除；`generate-spoils` 的随机抽样随即退化为确定抽样，
-      适合定点测试单个原型的词缀设计。
+      库中只留这些，其余删除，适合定点测试单个原型。
 
   uv run python -m scripts.flush_card_prototypes --only proto.pierce --dry-run
       只显示将发生的变化，不写库。
 
 注意：`--prune` 会删除库中不在本次集合里的**所有**原型（含 手牌 / 装备 两类）。
-      它只影响其它仍从库里读原型的流程；对
-      「已停在开场房间的存档 → generate-spoils」这条循环是安全的。要恢复全部，
-      重跑一次不带 `--only/--prune` 的全量刷即可。
+      要恢复全部，重跑一次不带 `--only/--prune` 的全量刷即可。
 """
 
 import json
@@ -141,7 +137,7 @@ def _flush_one(proto: CardPrototype, dry_run: bool) -> Tuple[str, List[str]]:
 @click.option(
     "--prune",
     is_flag=True,
-    help="删除库中不在本次集合里的原型（清场，让 generate-spoils 定点抽样）",
+    help="删除库中不在本次集合里的原型（清场，便于定点测试）",
 )
 @click.option("--list", "list_only", is_flag=True, help="只列出当前库中的原型后退出")
 @click.option("--dry-run", is_flag=True, help="只显示将发生的变化，不写库")
