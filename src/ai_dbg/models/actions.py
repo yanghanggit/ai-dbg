@@ -5,7 +5,7 @@ from typing import List, Optional, final
 
 from ..entitas.components import Component
 from .card import Card
-from .items import ConsumableItem, GearItem
+from .items import ConsumableItem
 from .registry import register_action_component_type, register_component_type
 
 ############################################################################################################
@@ -96,10 +96,14 @@ class UseConsumableItemAction(Component):
 @register_action_component_type
 @register_component_type
 class EquipGearItemAction(Component):
-    """触发当前行动者（我方）将团队背包内的装备转化为手牌。"""
+    """发起使用团队背包内指定装备的意图。
+
+    action 只携带原始意图（装备名）；当前行动者、手牌、背包与装备实例
+    全部由 ``EquipGearItemActionSystem`` 解析和校验。
+    """
 
     name: str
-    item: GearItem  # 使用的装备对象（从 InventoryComponent 检索后填入）
+    item_name: str
 
 
 ############################################################################################################

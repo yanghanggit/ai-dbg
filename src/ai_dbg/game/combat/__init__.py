@@ -3,7 +3,6 @@
 from .rounds import (
     assert_no_residual_combat_state,
     clear_round_state,
-    get_current_turn_actor,
 )
 from .stats import (
     compute_character_hand_block,
@@ -29,7 +28,6 @@ __all__ = [
     "get_alive_actors_in_stage",
     "get_alive_monsters_in_stage",
     "get_alive_party_members_in_stage",
-    "get_current_turn_actor",
     "get_turn_energy",
     "mark_dead",
     "resolve_targets",

@@ -10,7 +10,6 @@ from ..entitas import Entity, Matcher
 from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
-    get_current_turn_actor,
     get_turn_energy,
     resolve_targets,
 )
@@ -23,7 +22,6 @@ from ..game.dungeon import (
 )
 from ..game.entities import (
     get_actor_entity,
-    get_entity_by_name,
     get_player_entity,
 )
 from ..models import (
@@ -31,7 +29,6 @@ from ..models import (
     DeathComponent,
     DrawCardsAction,
     EquipGearItemAction,
-    GearItem,
     HandComponent,
     InventoryComponent,
     LootComponent,
@@ -436,92 +433,14 @@ def activate_equip_gear(
     dbg_game: DBGGame,
     item_name: str,
 ) -> Tuple[bool, str]:
-    """将团队背包内的指定装备转化为当前行动者（我方）的手牌。装备是队伍级行为。"""
+    """发起使用装备：只把意图挂到玩家实体，查找与守卫交给 ECS system。"""
 
-    # 检查玩家是否在副本场景中，如果不在则无法使用装备。
-    if not is_player_in_dungeon_stage(dbg_game):
-        msg = "使用装备失败：玩家不在副本场景中"
-        logger.error(msg)
-        return False, msg
-
-    # 检查当前副本房间是否为战斗房间
-    if not is_current_room_dungeon_combat(dbg_game):
-        msg = "当前副本房间不是战斗房间，无法使用装备"
-        logger.error(msg)
-        return False, msg
-
-    # 检查当前副本是否处于进行中状态，如果不是则无法使用装备。
-    if not current_dungeon_combat(dbg_game).is_ongoing:
-        msg = "使用装备失败：战斗未在进行中"
-        logger.error(msg)
-        return False, msg
-
-    # 获取当前副本的最新回合，如果没有进行中的回合，则无法使用装备。
-    latest_round = current_dungeon_combat(dbg_game).latest_round
-    if latest_round is None:
-        msg = "使用装备失败：当前没有进行中的回合"
-        logger.error(msg)
-        return False, msg
-
-    # 检查当前回合的抽牌阶段是否已完成，如果尚未完成，则无法使用装备。
-    if not latest_round.draw_completed:
-        msg = "使用装备失败：抽牌阶段尚未完成"
-        logger.error(msg)
-        return False, msg
-
-    # 装备权：必须是当前行动者，且为我方角色
-    current_turn_actor_name = get_current_turn_actor(dbg_game, latest_round)
-    if current_turn_actor_name is None:
-        msg = "使用装备失败：当前没有行动角色"
-        logger.error(msg)
-        return False, msg
-
-    actor_entity = get_entity_by_name(dbg_game, current_turn_actor_name)
-    assert (
-        actor_entity is not None
-    ), f"activate_equip_gear: 无法找到当前行动者 {current_turn_actor_name}"
-
-    if not actor_entity.has(PartyMemberComponent):
-        msg = f"使用装备失败：当前行动角色 {current_turn_actor_name} 不是我方角色"
-        logger.error(msg)
-        return False, msg
-
-    if not actor_entity.has(HandComponent):
-        msg = f"使用装备失败：当前行动角色 {current_turn_actor_name} 缺少手牌组件（HandComponent）"
-        logger.error(msg)
-        return False, msg
-
-    # 团队背包：装备统一由 player 持有
     player_entity = get_player_entity(dbg_game)
-    assert player_entity is not None, "activate_equip_gear: player_entity is None"
-    assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
+    if player_entity is None:
+        return False, "使用装备失败：玩家实体不存在"
 
-    inventory_comp = player_entity.get(InventoryComponent)
-    selected_item = next((i for i in inventory_comp.items if i.name == item_name), None)
-    if selected_item is None:
-        msg = f"玩家背包中找不到装备 '{item_name}'，当前背包: {[i.name for i in inventory_comp.items]}"
-        logger.error(msg)
-        return False, msg
-
-    # 检查选中的物品是否为装备，如果不是则无法使用。
-    if not isinstance(selected_item, GearItem):
-        msg = f"物品 '{item_name}' 不是装备（类型: {type(selected_item).__name__}）"
-        logger.error(msg)
-        return False, msg
-
-    logger.debug(
-        f"为当前行动者 {actor_entity.name} 激活装备使用，物品: {selected_item.name}"
-    )
-
-    # 将装备使用动作挂载到当前行动者实体上，以便在游戏逻辑中处理该动作。
-    actor_entity.replace(
-        EquipGearItemAction,
-        actor_entity.name,
-        selected_item,
-    )
-
-    # 返回成功消息，表示装备使用动作已成功激活。
-    return True, f"成功激活装备使用（物品: {item_name}）"
+    player_entity.replace(EquipGearItemAction, player_entity.name, item_name)
+    return True, f"已发起装备使用：{item_name}"
 
 
 ###################################################################################################################################################################

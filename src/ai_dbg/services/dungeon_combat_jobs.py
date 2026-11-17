@@ -389,15 +389,7 @@ async def execute_equip_gear_job(
                 raise ValueError(f"游戏实例不存在: user={user_name}")
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
-            # 验证当前副本房间是否为战斗房间
-            if not is_current_room_dungeon_combat(rpg_game):
-                raise ValueError("当前副本房间不是战斗房间")
-
-            # 验证战斗状态
-            if not current_dungeon_combat(rpg_game).is_ongoing:
-                raise ValueError("战斗未在进行中")
-
-            # 激活使用装备动作
+            # 只发起请求；房间、回合、当前行动者、背包与装备查找由 ECS system 处理
             success, message = activate_equip_gear(rpg_game, item_name)
             if not success:
                 raise ValueError(message)

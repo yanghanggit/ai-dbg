@@ -1,27 +1,18 @@
 """回合行动者、回合清理与战斗残留校验。"""
 
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from loguru import logger
 
 from ...entitas import Entity, Matcher
 from ...models import (
     Card,
-    CombatRoundView,
     DiscardPileComponent,
     DrawPileComponent,
     ExhaustPileComponent,
     HandComponent,
 )
 from ..context import DBGGame
-
-
-def get_current_turn_actor(
-    game: DBGGame,
-    round: CombatRoundView,
-) -> Optional[str]:
-    """返回当前行动槽对应的角色名；没有当前行动槽时返回 None。"""
-    return round.current_actor
 
 
 def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card]]]:

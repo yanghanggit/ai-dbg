@@ -1,4 +1,4 @@
-"""EquipGearItemActionSystem 单元测试：验证 GearItem 转化为手牌的流程。"""
+"""EquipGearItemActionSystem 单元测试：验证装备请求的解析、守卫与转化流程。"""
 
 from typing import Any, List
 from unittest.mock import MagicMock, patch
@@ -11,6 +11,8 @@ from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
     Card,
+    CharacterStats,
+    CharacterStatsComponent,
     CombatState,
     EquipGearItemAction,
     EquippedGearComponent,
@@ -45,19 +47,25 @@ def _make_gear(name: str) -> GearItem:
 def _make_actor_entity(
     context: ECSContext,
     name: str,
-    action_item: GearItem,
+    *,
+    party: bool = True,
+    hand: bool = True,
 ) -> Entity:
-    """创建携带 HandComponent + PartyMemberComponent + EquipGearItemAction 的当前行动者。"""
+    """创建当前行动者；请求本身挂在 player 上，不在 actor 上。"""
     if not any(e.name == "测试场景" for e in context.entities):
-        stage = context.create_entity()
-        stage._name = "测试场景"
+        stage = context.create_entity("测试场景")
         stage.add(StageComponent, "测试场景")
-    entity = context.create_entity()
-    entity._name = name
-    entity.add(HandComponent, name, [])
+    entity = context.create_entity(name)
     entity.add(ActorComponent, name, "测试场景")
-    entity.add(PartyMemberComponent, name)
-    entity.add(EquipGearItemAction, name, action_item)
+    entity.add(
+        CharacterStatsComponent,
+        name,
+        CharacterStats(hp=10, max_hp=10, attack=1, defense=0, speed=0),
+    )
+    if party:
+        entity.add(PartyMemberComponent, name)
+    if hand:
+        entity.add(HandComponent, name, [])
     return entity
 
 
@@ -65,16 +73,14 @@ def _make_player_entity(
     context: ECSContext, name: str, items: List[GearItem]
 ) -> Entity:
     """创建持有团队背包（InventoryComponent）的 player 实体。"""
-    entity = context.create_entity()
-    entity._name = name
+    entity = context.create_entity(name)
     entity.add(InventoryComponent, name, list(items))
     entity.add(PlayerComponent, name)
     return entity
 
 
-def _setup_mock_game(mock_game: Any, player: Entity) -> Entity:
-    del player
-    return current_round_entity(mock_game)
+def _attach_request(player: Entity, item_name: str) -> None:
+    player.add(EquipGearItemAction, player.name, item_name)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +99,11 @@ def mock_game(context: ECSContext) -> Any:
     game.ecs = context
     game.world.agent_memories = {}
     game.events = MagicMock()
-    install_combat(game)
+    install_combat(
+        game,
+        action_order=["角色.测试"],
+        current_actor="角色.测试",
+    )
     return game
 
 
@@ -109,34 +119,102 @@ def system(mock_game: Any) -> EquipGearItemActionSystem:
 
 class TestReact:
     @pytest.mark.asyncio
-    async def test_skips_when_not_ongoing(
+    async def test_rejects_when_combat_not_ongoing(
         self,
         context: ECSContext,
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
         set_combat_state(mock_game, CombatState.COMPLETE)
-        gear = _make_gear("装备.测试")
-        actor = _make_actor_entity(context, "角色.测试", gear)
+        actor = _make_actor_entity(context, "角色.测试")
+        player = _make_player_entity(context, "player", [_make_gear("装备.测试")])
+        _attach_request(player, "装备.测试")
 
-        await system.react([actor])
+        with pytest.raises(ValueError, match="战斗未在进行中"):
+            await system.react([player])
 
-        mock_game.get_player_entity.assert_not_called()
+        assert actor.has(HandComponent)
 
     @pytest.mark.asyncio
-    async def test_converts_gear_to_hand_card(
+    async def test_rejects_non_party_current_actor(
+        self,
+        context: ECSContext,
+        mock_game: Any,
+        system: EquipGearItemActionSystem,
+    ) -> None:
+        _make_actor_entity(context, "角色.测试", party=False, hand=True)
+        player = _make_player_entity(context, "player", [_make_gear("装备.测试")])
+        _attach_request(player, "装备.测试")
+
+        with pytest.raises(ValueError, match="不是我方角色"):
+            await system.react([player])
+
+    @pytest.mark.asyncio
+    async def test_rejects_current_actor_without_hand(
+        self,
+        context: ECSContext,
+        mock_game: Any,
+        system: EquipGearItemActionSystem,
+    ) -> None:
+        _make_actor_entity(context, "角色.测试", party=True, hand=False)
+        player = _make_player_entity(context, "player", [_make_gear("装备.测试")])
+        _attach_request(player, "装备.测试")
+
+        with pytest.raises(ValueError, match="缺少手牌组件"):
+            await system.react([player])
+
+    @pytest.mark.asyncio
+    async def test_rejects_missing_gear_in_inventory(
+        self,
+        context: ECSContext,
+        mock_game: Any,
+        system: EquipGearItemActionSystem,
+    ) -> None:
+        _make_actor_entity(context, "角色.测试")
+        player = _make_player_entity(context, "player", [])
+        _attach_request(player, "装备.测试")
+
+        with pytest.raises(ValueError, match="找不到装备"):
+            await system.react([player])
+
+    @pytest.mark.asyncio
+    async def test_processes_multiple_requests_in_one_batch(
+        self,
+        context: ECSContext,
+        mock_game: Any,
+        system: EquipGearItemActionSystem,
+    ) -> None:
+        """react 接收列表时用显式循环逐个处理，不依赖 entities[0]。"""
+        actor = _make_actor_entity(context, "角色.测试")
+        gear_a = _make_gear("装备.甲")
+        gear_b = _make_gear("装备.乙")
+        player = _make_player_entity(context, "player", [gear_a, gear_b])
+        request_a = context.create_entity("请求.甲")
+        request_b = context.create_entity("请求.乙")
+        request_a.add(EquipGearItemAction, request_a.name, gear_a.name)
+        request_b.add(EquipGearItemAction, request_b.name, gear_b.name)
+
+        await system.react([request_a, request_b])
+
+        assert player.get(InventoryComponent).items == []
+        equipped_names = [item.name for item in actor.get(EquippedGearComponent).items]
+        assert equipped_names == ["装备.甲", "装备.乙"]
+
+    @pytest.mark.asyncio
+    async def test_converts_gear_to_current_actor_hand(
         self,
         context: ECSContext,
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
         gear = _make_gear("装备.测试")
-        actor = _make_actor_entity(context, "角色.测试", gear)
+        actor = _make_actor_entity(context, "角色.测试")
         player = _make_player_entity(context, "player", [gear])
-        latest_round_entity = _setup_mock_game(mock_game, player)
+        _attach_request(player, "装备.测试")
+        latest_round_entity = current_round_entity(mock_game)
         generated = Card(name="斩击", description="x")
         with patch.object(system, "_materialize_cards", return_value=[generated]):
-            await system.react([actor])
+            await system.react([player])
 
         # 移动语义：gear 从团队背包移除
         assert gear not in player.get(InventoryComponent).items

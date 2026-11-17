@@ -6,10 +6,7 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.combat import (
-    consume_turn_energy,
-    get_current_turn_actor,
-)
+from ..game.combat import consume_turn_energy
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_turn_entity,
@@ -134,11 +131,6 @@ class PlayCardsActionSystem(ReactiveProcessor):
             logger.debug(
                 f"  [{play_cards_action.name}] 出牌 → 卡牌: {play_cards_action.card.name} | damage={play_cards_action.card.damage} | 目标: {play_cards_action.targets}"
             )
-
-            # 写一个assert 要求 entity.name 必须是当前回合的行动者
-            assert entity.name == get_current_turn_actor(
-                self._game, last_round
-            ), f"PlayCardsActionSystem: 出牌角色 {entity.name} 不是当前 turn 的行动者！ current_turn_actor={get_current_turn_actor(self._game, last_round)}"
 
             # 每出一张牌消耗当前行动槽的 energy 点数（出牌本身不视为"完成行动"，
             # 仅 pass turn 才会把行动槽标记为 completed 并真正交出行动权，

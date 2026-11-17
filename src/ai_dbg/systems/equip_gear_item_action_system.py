@@ -1,9 +1,9 @@
 """装备转化系统模块：将 GearItem 的 cards 直接物化为多张 Card 放入当前行动者手牌。"""
 
+from dataclasses import dataclass
 from typing import Dict, Final, List, final
 from uuid import uuid4
 
-from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
@@ -12,18 +12,19 @@ from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
+    current_combat_turn_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
+    get_actor_entity,
     get_player_entity,
     resolve_stage_entity,
 )
-from ..game.messaging import (
-    broadcast_to_stage,
-)
+from ..game.messaging import broadcast_to_stage
 from ..models import (
     Card,
+    CombatTurnComponent,
     EquipGearItemAction,
     EquippedGearComponent,
     GearItem,
@@ -51,6 +52,15 @@ def _build_gear_notice(
 
 
 #######################################################################################################################################
+@dataclass(frozen=True)
+class _EquipContext:
+    """一次装备使用请求所需的战斗上下文。"""
+
+    actor: Entity
+    player: Entity
+
+
+#######################################################################################################################################
 @final
 class EquipGearItemActionSystem(ReactiveProcessor):
     """装备转化系统：把团队背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
@@ -67,98 +77,174 @@ class EquipGearItemActionSystem(ReactiveProcessor):
     ####################################################################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        return entity.has(EquipGearItemAction) and entity.has(HandComponent)
+        return entity.has(EquipGearItemAction)
 
     ####################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
+        context = self._resolve_context()
+
+        for request_entity in entities:
+            action = request_entity.get(EquipGearItemAction)
+            self._execute_request(context, action)
+
+    ####################################################################################################################################
+    def _resolve_context(self) -> _EquipContext:
+        """校验战斗阶段与当前行动者，并定位团队背包持有者。"""
 
         if not is_current_room_dungeon_combat(self._game):
-            return
-        if not current_dungeon_combat(self._game).is_ongoing:
-            logger.debug("EquipGearItemActionSystem: 战斗未进行中，跳过")
-            return
+            raise ValueError("装备使用失败：当前副本房间不是战斗房间")
 
-        assert (
-            len(entities) == 1
-        ), f"EquipGearItemActionSystem: 同一时间不应有多个实体触发 EquipGearItemAction，当前数量: {len(entities)}"
+        combat = current_dungeon_combat(self._game)
+        if not combat.is_ongoing:
+            raise ValueError("装备使用失败：战斗未在进行中")
 
-        entity = entities[0]
-        action = entity.get(EquipGearItemAction)
-        item = action.item
-        assert isinstance(
-            item, GearItem
-        ), f"EquipGearItemActionSystem: action.item 应为 GearItem，但实际类型为 {type(item)}"
+        latest_round = combat.latest_round
+        if latest_round is None:
+            raise ValueError("装备使用失败：当前没有进行中的回合")
+        if latest_round.is_completed:
+            raise ValueError("装备使用失败：当前回合已结束")
+        if not latest_round.draw_completed:
+            raise ValueError("装备使用失败：抽牌阶段尚未完成")
 
-        assert entity.has(HandComponent), f"{entity.name} 缺少 HandComponent"
-        assert entity.has(PartyMemberComponent), f"{entity.name} 不是友方角色"
+        current_turn_entity = current_combat_turn_entity(self._game)
+        if current_turn_entity is None:
+            raise ValueError("装备使用失败：当前没有行动角色")
+        turn_comp = current_turn_entity.get(CombatTurnComponent)
 
-        # 直接复制 GearItem.cards 物化为多张 Card，无需再调用 LLM
-        cards = self._materialize_cards(entity, item)
+        actor_entity = get_actor_entity(self._game, turn_comp.actor_name)
+        if actor_entity is None:
+            raise ValueError(
+                f"装备使用失败：找不到当前行动角色 {turn_comp.actor_name}"
+            )
+        if not actor_entity.has(PartyMemberComponent):
+            raise ValueError(
+                f"装备使用失败：当前行动角色 {actor_entity.name} 不是我方角色"
+            )
+        if not actor_entity.has(HandComponent):
+            raise ValueError(
+                f"装备使用失败：当前行动角色 {actor_entity.name} 缺少手牌组件（HandComponent）"
+            )
+
+        player_entity = get_player_entity(self._game)
+        if player_entity is None:
+            raise ValueError("装备使用失败：玩家实体不存在")
+        if not player_entity.has(InventoryComponent):
+            raise ValueError("装备使用失败：玩家实体缺少 InventoryComponent")
+
+        return _EquipContext(actor=actor_entity, player=player_entity)
+
+    ####################################################################################################################################
+    def _execute_request(
+        self,
+        context: _EquipContext,
+        action: EquipGearItemAction,
+    ) -> None:
+        """执行一次装备使用请求。"""
+
+        gear = self._find_gear(context.player, action.item_name)
+        cards = self._materialize_cards(context.actor, gear)
         if not cards:
-            logger.error(f"[EquipGearItemActionSystem] {entity.name} 转化装备失败")
+            raise ValueError(f"装备使用失败：装备 '{gear.name}' 没有可转化卡牌")
+
+        self._move_gear_to_actor(context, gear)
+        self._add_cards_to_hand(context.actor, cards)
+        self._record_gear_use(context.actor, gear, cards)
+        self._broadcast_gear_use(context.actor, gear, cards)
+
+    ####################################################################################################################################
+    def _find_gear(self, player: Entity, item_name: str) -> GearItem:
+        """从团队背包中查找并校验指定装备。"""
+
+        inventory = player.get(InventoryComponent)
+        selected_item = next(
+            (item for item in inventory.items if item.name == item_name),
+            None,
+        )
+        if selected_item is None:
+            raise ValueError(f"装备使用失败：玩家背包中找不到装备 '{item_name}'")
+        if not isinstance(selected_item, GearItem):
+            raise ValueError(
+                f"装备使用失败：物品 '{item_name}' 不是装备（类型: {type(selected_item).__name__}）"
+            )
+        return selected_item
+
+    ####################################################################################################################################
+    def _move_gear_to_actor(self, context: _EquipContext, gear: GearItem) -> None:
+        """把装备从团队背包移动到当前行动者的已装备列表。"""
+
+        player = context.player
+        actor = context.actor
+
+        inventory = player.get(InventoryComponent)
+        player.replace(
+            InventoryComponent,
+            inventory.name,
+            [item for item in inventory.items if item is not gear],
+        )
+
+        if actor.has(EquippedGearComponent):
+            equipped = actor.get(EquippedGearComponent)
+            actor.replace(
+                EquippedGearComponent,
+                equipped.name,
+                [*equipped.items, gear],
+            )
+        else:
+            actor.replace(EquippedGearComponent, actor.name, [gear])
+
+    ####################################################################################################################################
+    def _add_cards_to_hand(self, actor: Entity, cards: List[Card]) -> None:
+        """把物化出的卡牌追加到当前行动者手牌。"""
+
+        hand_comp = actor.get(HandComponent)
+        actor.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
+
+    ####################################################################################################################################
+    def _record_gear_use(
+        self,
+        actor: Entity,
+        gear: GearItem,
+        cards: List[Card],
+    ) -> None:
+        """记录本回合的装备使用结果。"""
+
+        round_entity = current_combat_round_entity(self._game)
+        if round_entity is None:
             return
 
         card_names = [card.name for card in cards]
-
-        # 团队背包：装备统一由 player 持有，从 player 背包移除（移动语义）
-        player_entity = get_player_entity(self._game)
-        assert player_entity is not None, "玩家实体不存在！"
-        assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
-        inventory = player_entity.get(InventoryComponent)
-        player_entity.replace(
-            InventoryComponent,
-            inventory.name,
-            [
-                inventory_item
-                for inventory_item in inventory.items
-                if inventory_item is not item
-            ],
+        record_round_entry(
+            self._game,
+            round_entity,
+            RoundEntryKind.GEAR,
+            f"[{actor.name} 装备 {gear.name}] 生成手牌「{'、'.join(card_names)}」",
+            "；".join(card.description for card in cards),
         )
 
-        # 登记到当前行动者：战斗结束后由 CombatPileTeardownSystem 归还玩家背包
-        if entity.has(EquippedGearComponent):
-            equipped = entity.get(EquippedGearComponent)
-            entity.replace(
-                EquippedGearComponent,
-                equipped.name,
-                [*equipped.items, item],
-            )
-        else:
-            entity.replace(EquippedGearComponent, entity.name, [item])
+    ####################################################################################################################################
+    def _broadcast_gear_use(
+        self,
+        actor: Entity,
+        gear: GearItem,
+        cards: List[Card],
+    ) -> None:
+        """向场景内其他角色广播装备转化结果。"""
 
-        # 将生成的多张卡牌放入当前行动者手牌
-        hand_comp = entity.get(HandComponent)
-        entity.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
-        logger.debug(
-            f"EquipGearItemActionSystem: [{entity.name}] 将 '{item.name}' 转化为手牌 '{'、'.join(card_names)}'"
-        )
-
-        # 记录本回合装备使用结果
-        round_entity = current_combat_round_entity(self._game)
-        if round_entity is not None:
-            record_round_entry(
-                self._game,
-                round_entity,
-                RoundEntryKind.GEAR,
-                f"[{entity.name} 装备 {item.name}] 生成手牌「{'、'.join(card_names)}」",
-                "；".join(card.description for card in cards),
-            )
-
-        # 向场景内其他角色广播装备转化通知
         round_number = len(current_dungeon_combat(self._game).rounds)
-        stage_entity = resolve_stage_entity(self._game, entity)
+        stage_entity = resolve_stage_entity(self._game, actor)
         assert (
             stage_entity is not None
-        ), f"EquipGearItemActionSystem: 无法找到 {entity.name} 所在的场景实体"
+        ), f"EquipGearItemActionSystem: 无法找到 {actor.name} 所在的场景实体"
+
         broadcast_to_stage(
             self._game,
-            entity=entity,
+            entity=actor,
             agent_event=NoneEvent(
                 message=_build_gear_notice(
-                    entity.name,
-                    item.name,
-                    card_names,
+                    actor.name,
+                    gear.name,
+                    [card.name for card in cards],
                     round_number,
                 )
             ),

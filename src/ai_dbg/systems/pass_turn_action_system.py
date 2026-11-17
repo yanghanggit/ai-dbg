@@ -8,7 +8,6 @@ from overrides import override
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
     consume_turn_energy,
-    get_current_turn_actor,
     get_turn_energy,
 )
 from ..game.combat.state import (
@@ -101,10 +100,6 @@ class PassTurnActionSystem(ReactiveProcessor):
 
         pass_turn_action = entity.get(PassTurnAction)
         logger.debug(f"  [{pass_turn_action.name}] 选择过牌（跳过出牌机会）")
-
-        assert entity.name == get_current_turn_actor(
-            self._game, last_round
-        ), f"PassTurnActionSystem: 过牌角色 {entity.name} 不是当前 turn 的行动者！ current_turn_actor={get_current_turn_actor(self._game, last_round)}"
 
         # 消耗过牌角色的剩余全部行动能量（若有）；是否轮到下一角色完全由行动槽状态决定。
         cur_energy = get_turn_energy(current_turn_entity)

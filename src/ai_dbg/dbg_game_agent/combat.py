@@ -192,19 +192,7 @@ async def equip_gear_game(
     """将 GearItem 转化为当前行动者（我方）的手牌并归档。需战斗进行中且当前回合未完成。"""
     terminal_game = await restore_game(world, player_session)
 
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("equip-gear 只能在战斗房间中使用")
-        return terminal_game
-
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("equip-gear 只能在战斗进行中使用")
-        return terminal_game
-
-    last_round = current_dungeon_combat(terminal_game).latest_round
-    if last_round is None or last_round.is_completed or not last_round.draw_completed:
-        logger.error("equip-gear 当前没有未完成且已抽牌的回合可供装备")
-        return terminal_game
-
+    # 只发起请求；房间、回合、当前行动者、背包与装备查找由 ECS system 处理
     success, message = activate_equip_gear(terminal_game, item)
     if not success:
         logger.error(f"equip-gear 失败: {message}")
