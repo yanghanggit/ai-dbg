@@ -320,6 +320,7 @@ class TestBothSidesCardless:
         self._setup(mock_game, context, {ally, monster})
         assert system._is_both_sides_cardless() is False
 
+
 class TestExecute:
     """CombatOutcomeSystem.execute() 的单元测试。"""
 

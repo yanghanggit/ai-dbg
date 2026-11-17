@@ -10,6 +10,7 @@ from ..entitas import Entity, ExecuteProcessor, Matcher
 from ..game.combat import get_alive_actors_in_stage
 from ..game.context import DBGGame
 from ..game.entities import (
+    get_actors_in_stage,
     get_entity_by_name,
 )
 from ..game.memory import (
@@ -17,9 +18,9 @@ from ..game.memory import (
     add_human_message,
     get_agent_memory,
 )
-from ..game.stage.appearance import get_actor_appearances_in_stage
 from ..llm import ChatCompletionRequest, ChatCompletionResult
 from ..models import (
+    AppearanceComponent,
     EnvironmentComponent,
     HumanMessage,
     LobbyComponent,
@@ -154,15 +155,24 @@ class EnvironmentInitializationSystem(ExecuteProcessor):
     def _build_request(self, stage_entity: Entity) -> ChatCompletionRequest:
         """为场景实体构建对话请求。"""
 
-        actor_appearances: Dict[str, str] = get_actor_appearances_in_stage(
-            self._game, stage_entity
-        )
+        actor_appearances = self._actor_appearances_in_stage(stage_entity)
 
         return ChatCompletionRequest(
             label=stage_entity.name,
             input_message=_build_environment_prompt(actor_appearances),
             messages=get_agent_memory(self._game, stage_entity).messages,
         )
+
+    #######################################################################################################################################
+    def _actor_appearances_in_stage(self, stage_entity: Entity) -> Dict[str, str]:
+        """获取场景内 Actor 的外观映射。"""
+        appearances: Dict[str, str] = {}
+        for actor in get_actors_in_stage(
+            self._game, stage_entity, Matcher(all_of=[AppearanceComponent])
+        ):
+            comp = actor.get(AppearanceComponent)
+            appearances.setdefault(comp.name, comp.appearance)
+        return appearances
 
     #######################################################################################################################################
     def _process_environment_response(self, result: ChatCompletionResult) -> bool:

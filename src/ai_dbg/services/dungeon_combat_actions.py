@@ -304,12 +304,8 @@ def activate_retreat(
         return False, error_msg
 
     # 获取当前副本中所有玩家实体，用于为他们添加撤退动作组件。
-    player_entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[PlayerComponent])
-    ).entities
-    assert (
-        len(player_entities) > 0
-    ), "激活撤退动作失败: 没有找到玩家, 至少有一个player"
+    player_entities = dbg_game.ecs.get_group(Matcher(all_of=[PlayerComponent])).entities
+    assert len(player_entities) > 0, "激活撤退动作失败: 没有找到玩家, 至少有一个player"
 
     # 为每个玩家添加撤退动作组件
     for player_entity in player_entities:

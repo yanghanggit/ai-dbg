@@ -27,7 +27,6 @@ from ..game.memory import (
     add_human_message,
     filter_messages,
 )
-from ..game.stage.environment import get_stage_environment
 from ..models import (
     AIMessage,
     AppearanceComponent,
@@ -38,6 +37,7 @@ from ..models import (
     DeckComponent,
     DiscardPileComponent,
     DrawPileComponent,
+    EnvironmentComponent,
     ExhaustPileComponent,
     FillDrawPileAction,
     HumanMessage,
@@ -45,6 +45,9 @@ from ..models import (
     PlayerComponent,
 )
 from ..utils import prompt_builder
+
+###################################################################################################################################################################
+_MISSING_ENVIRONMENT_NARRATIVE: Final[str] = "（暂无环境描述）"
 
 
 ###################################################################################################################################################################
@@ -172,7 +175,7 @@ class RoomInitSystem(ExecuteProcessor):
         current_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert current_stage_entity is not None, "无法找到当前场景实体！"
 
-        environment = get_stage_environment(current_stage_entity)
+        environment = self._stage_environment(current_stage_entity)
         actor_entities = get_alive_actors_in_stage(self._game, player_entity)
         assert len(actor_entities) > 0, "开场场景内不可能没有玩家！"
 
@@ -200,7 +203,7 @@ class RoomInitSystem(ExecuteProcessor):
         current_stage_entity = resolve_stage_entity(self._game, player_entity)
         assert current_stage_entity is not None, "无法找到当前场景实体！"
 
-        environment = get_stage_environment(current_stage_entity)
+        environment = self._stage_environment(current_stage_entity)
         actor_entities = get_alive_actors_in_stage(self._game, player_entity)
         assert len(actor_entities) > 0, "不可能出现没人参与战斗的情况！"
 
@@ -220,6 +223,13 @@ class RoomInitSystem(ExecuteProcessor):
         assert current_dungeon_combat(
             self._game
         ).is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"
+
+    ###################################################################################################################################################################
+    def _stage_environment(self, stage_entity: Entity) -> str:
+        """安全读取场景环境叙事；未生成时返回占位文案。"""
+        if stage_entity.has(EnvironmentComponent):
+            return stage_entity.get(EnvironmentComponent).narrative
+        return _MISSING_ENVIRONMENT_NARRATIVE
 
     ###################################################################################################################################################################
     def _initialize_piles(self, actor_entities: Set[Entity]) -> None:
