@@ -277,7 +277,7 @@ async def retreat_game(
 
     logger.info(f"撤退动作激活成功: {message}")
 
-    await terminal_game.pipeline.execute(None)
+    await terminal_game.pipeline.process(None)
 
     # 与 API 对齐：撤退流程执行后必须已进入 post_combat 状态
     if not current_dungeon_combat(terminal_game).is_post_combat:

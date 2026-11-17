@@ -119,7 +119,7 @@ async def execute_retreat_job(
                 raise ValueError(message)
 
             # 执行战斗流程让 CombatOutcomeSystem 检测到角色死亡并判定失败
-            await rpg_game.pipeline.execute(get_current_job())
+            await rpg_game.pipeline.process(get_current_job())
 
             # 确认已进入 post_combat 状态
             if not current_dungeon_combat(rpg_game).is_post_combat:

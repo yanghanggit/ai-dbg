@@ -113,7 +113,7 @@ class GenerateSpoilsAction(Component):
     ``GenerateSpoilsActionSystem`` 只物化这些原型（顺序、重复均照给），不再随机抽取。
     空列表 = 默认随机抽取，与旧行为完全一致。
 
-    动作组件由 ``ActionCleanupSystem`` 每帧清理，不随着存档持久化，仅用于本次传递。
+    动作组件由 ``ActionCleanupSystem`` 在 pipeline 收尾阶段清理，不随着存档持久化，仅用于本次传递。
     """
 
     name: str

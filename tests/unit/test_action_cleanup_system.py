@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from ai_dbg.entitas import CleanupProcessor, ExecuteProcessor
 from ai_dbg.game.context import ECSContext
 from ai_dbg.models import DrawCardsAction, FillDrawPileAction, PassTurnAction
 from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
@@ -54,18 +55,20 @@ _ANNOUNCE_ARGS = ("alice",)
 
 
 class TestActionCleanupSystem:
-    """ActionCleanupSystem.execute() 和 _verify_actions_cleanup() 的单元测试。"""
+    """ActionCleanupSystem 的 execute/cleanup 双入口测试。"""
+
+    def test_implements_execute_and_cleanup_phases(
+        self, system: ActionCleanupSystem
+    ) -> None:
+        """正常路径走 execute，异常兜底走 cleanup，两个接口都要实现。"""
+        assert isinstance(system, ExecuteProcessor)
+        assert isinstance(system, CleanupProcessor)
 
     @pytest.mark.asyncio
-    async def test_execute_empty_world(self, system: ActionCleanupSystem) -> None:
-        """无实体时 execute() 应正常完成，不抛出任何异常。"""
-        await system.execute()
-
-    @pytest.mark.asyncio
-    async def test_execute_removes_single_action_component(
+    async def test_execute_clears_actions(
         self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
-        """单实体持有一个动作组件，执行后该组件应被移除。"""
+        """正常 execute 路径也应清理动作组件。"""
         entity = context.create_entity()
         entity.add(DrawCardsAction, *_SPEAK_ARGS)
 
@@ -73,8 +76,22 @@ class TestActionCleanupSystem:
 
         assert not entity.has(DrawCardsAction)
 
-    @pytest.mark.asyncio
-    async def test_execute_removes_multiple_actions_from_same_entity(
+    def test_cleanup_empty_world(self, system: ActionCleanupSystem) -> None:
+        """无实体时 cleanup() 应正常完成，不抛出任何异常。"""
+        system.cleanup()
+
+    def test_cleanup_removes_single_action_component(
+        self, context: ECSContext, system: ActionCleanupSystem
+    ) -> None:
+        """单实体持有一个动作组件，执行后该组件应被移除。"""
+        entity = context.create_entity()
+        entity.add(DrawCardsAction, *_SPEAK_ARGS)
+
+        system.cleanup()
+
+        assert not entity.has(DrawCardsAction)
+
+    def test_cleanup_removes_multiple_actions_from_same_entity(
         self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """单实体同时持有多个动作组件，执行后应全部被移除。"""
@@ -83,14 +100,13 @@ class TestActionCleanupSystem:
         entity.add(PassTurnAction, *_WHISPER_ARGS)
         entity.add(FillDrawPileAction, *_ANNOUNCE_ARGS)
 
-        await system.execute()
+        system.cleanup()
 
         assert not entity.has(DrawCardsAction)
         assert not entity.has(PassTurnAction)
         assert not entity.has(FillDrawPileAction)
 
-    @pytest.mark.asyncio
-    async def test_execute_removes_actions_from_multiple_entities(
+    def test_cleanup_removes_actions_from_multiple_entities(
         self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """多个实体各持不同动作组件，执行后应全部被清除。"""
@@ -103,14 +119,13 @@ class TestActionCleanupSystem:
         entity_c = context.create_entity()
         entity_c.add(FillDrawPileAction, *_ANNOUNCE_ARGS)
 
-        await system.execute()
+        system.cleanup()
 
         assert not entity_a.has(DrawCardsAction)
         assert not entity_b.has(PassTurnAction)
         assert not entity_c.has(FillDrawPileAction)
 
-    @pytest.mark.asyncio
-    async def test_execute_preserves_non_action_components(
+    def test_cleanup_preserves_non_action_components(
         self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
         """实体同时持有动作组件与非动作组件，执行后非动作组件应保留。"""
@@ -118,7 +133,7 @@ class TestActionCleanupSystem:
         entity.add(DrawCardsAction, *_SPEAK_ARGS)
         entity.add(Position, 1.0, 2.0)
 
-        await system.execute()
+        system.cleanup()
 
         assert not entity.has(DrawCardsAction)
         assert entity.has(Position)
