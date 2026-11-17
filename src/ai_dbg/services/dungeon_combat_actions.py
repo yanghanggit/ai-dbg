@@ -9,7 +9,7 @@ from loguru import logger
 from ..entitas import Entity, Matcher
 from ..game.combat import (
     get_alive_monsters_in_stage,
-    get_alive_party_members_in_stage,
+    get_alive_players_in_stage,
     get_turn_energy,
     resolve_targets,
 )
@@ -33,9 +33,9 @@ from ..models import (
     InventoryComponent,
     MonsterComponent,
     MonsterTurnAction,
-    PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
+    PlayerComponent,
     RetreatAction,
     UseConsumableItemAction,
 )
@@ -76,12 +76,12 @@ def _validate_play_turn(
     if next_actor != actor_name:
         return None, f"现在不是 {actor_name} 的回合，当前应由 {next_actor} 出牌"
 
-    # 获取该角色的实体，确保其存在，并且是战斗角色（PartyMember 或 Monster），且未死亡且拥有手牌组件。
+    # 获取该角色的实体，确保其存在，并且是战斗角色（Player 或 Monster），且未死亡且拥有手牌组件。
     entity = get_actor_entity(dbg_game, actor_name)
     assert entity is not None, f"找不到角色 {actor_name}"
-    assert entity.has(PartyMemberComponent) or entity.has(
+    assert entity.has(PlayerComponent) or entity.has(
         MonsterComponent
-    ), f"角色 {actor_name} 不是战斗角色（非 PartyMember 或 Monster）"
+    ), f"角色 {actor_name} 不是战斗角色（非 Player 或 Monster）"
 
     # 检查该角色是否已死亡，如果已死亡则无法出牌。
     if entity.has(DeathComponent):
@@ -99,7 +99,7 @@ def activate_all_card_draws(
     dbg_game: DBGGame,
 ) -> Tuple[bool, str]:
     """
-    为当前场景中所有存活的战斗角色（队伍成员 + 敌方）激活抽牌动作。
+    为当前场景中所有存活的战斗角色（玩家 + 敌方）激活抽牌动作。
     """
 
     # 检查当前是否在玩家所在的副本场景中
@@ -135,8 +135,8 @@ def activate_all_card_draws(
     player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "activate_all_card_draws: player_entity is None"
 
-    # 获取当前场景中所有存活的战斗角色，包括队伍成员和怪物
-    all_entities = get_alive_party_members_in_stage(
+    # 获取当前场景中所有存活的战斗角色，包括玩家和怪物
+    all_entities = get_alive_players_in_stage(
         player_entity, dbg_game
     ) + get_alive_monsters_in_stage(player_entity, dbg_game)
 
@@ -166,7 +166,7 @@ async def activate_play_cards_specified(
     targets: List[str],
 ) -> Tuple[bool, str]:
     """
-    让指定队伍成员打出指定名称的手牌。
+    让指定玩家打出指定名称的手牌。
     """
 
     # 检查当前是否在副本阶段，如果不在则无法出牌。
@@ -187,7 +187,7 @@ async def activate_play_cards_specified(
         logger.error(f"activate_play_cards_specified: {error_msg}")
         return False, error_msg
 
-    assert entity.has(PartyMemberComponent), f"角色 {actor_name} 不是队伍成员"
+    assert entity.has(PlayerComponent), f"角色 {actor_name} 不是玩家"
 
     # 获取角色的手牌组件，并尝试在手牌中找到指定名称的卡牌。
     hand_comp = entity.get(HandComponent)
@@ -282,7 +282,7 @@ def activate_retreat(
     dbg_game: DBGGame,
 ) -> Tuple[bool, str]:
     """
-    为所有队伍成员激活撤退动作。
+    为所有玩家激活撤退动作。
     """
 
     # 检查当前是否处于玩家的副本阶段，如果不是则无法激活撤退动作。
@@ -303,30 +303,30 @@ def activate_retreat(
         logger.error(error_msg)
         return False, error_msg
 
-    # 获取当前副本中所有队伍成员实体，用于为他们添加撤退动作组件。
-    party_member_entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[PartyMemberComponent])
+    # 获取当前副本中所有玩家实体，用于为他们添加撤退动作组件。
+    player_entities = dbg_game.ecs.get_group(
+        Matcher(all_of=[PlayerComponent])
     ).entities
     assert (
-        len(party_member_entities) > 0
-    ), "激活撤退动作失败: 没有找到队伍成员, 至少有一个player"
+        len(player_entities) > 0
+    ), "激活撤退动作失败: 没有找到玩家, 至少有一个player"
 
-    # 为每个队伍成员添加撤退动作组件
-    for party_member_entity in party_member_entities:
-        assert party_member_entity.has(
-            PartyMemberComponent
-        ), f"Entity {party_member_entity.name} must have PartyMemberComponent"
+    # 为每个玩家添加撤退动作组件
+    for player_entity in player_entities:
+        assert player_entity.has(
+            PlayerComponent
+        ), f"Entity {player_entity.name} must have PlayerComponent"
 
-        # 为每个队伍成员添加撤退动作组件，触发 RetreatActionSystem 的处理逻辑
-        party_member_entity.replace(
+        # 为每个玩家添加撤退动作组件，触发 RetreatActionSystem 的处理逻辑
+        player_entity.replace(
             RetreatAction,
-            party_member_entity.name,
+            player_entity.name,
         )
-        logger.debug(f"为角色 {party_member_entity.name} 添加撤退动作组件")
+        logger.debug(f"为角色 {player_entity.name} 添加撤退动作组件")
 
     return (
         True,
-        f"成功为 {len(party_member_entities)} 个队伍成员激活撤退动作",
+        f"成功为 {len(player_entities)} 个玩家激活撤退动作",
     )
 
 
@@ -335,7 +335,7 @@ def activate_use_consumable(
     dbg_game: DBGGame,
     item_name: str,
 ) -> Tuple[bool, str]:
-    """使用队伍背包内的指定消耗品：扣减库存并把其内置卡牌物化进当前行动者手牌。"""
+    """使用玩家背包内的指定消耗品：扣减库存并把其内置卡牌物化进当前行动者手牌。"""
 
     # 检查玩家是否在副本阶段，如果不是则无法使用消耗品。
     if not is_player_in_dungeon_stage(dbg_game):
@@ -368,7 +368,7 @@ def activate_use_consumable(
         logger.error(msg)
         return False, msg
 
-    # 发起人 = 当前行动者，且必须是我方角色（消耗品是队伍级行为，仅友方使用）。
+    # 发起人 = 当前行动者，且必须是我方角色（消耗品是玩家级行为，仅友方使用）。
     current_actor_name = latest_round.current_actor
     if current_actor_name is None:
         msg = "使用消耗品失败：当前没有行动角色"
@@ -381,7 +381,7 @@ def activate_use_consumable(
         logger.error(msg)
         return False, msg
 
-    if not current_actor_entity.has(PartyMemberComponent):
+    if not current_actor_entity.has(PlayerComponent):
         msg = f"使用消耗品失败：当前行动角色 {current_actor_name} 不是我方角色"
         logger.error(msg)
         return False, msg
@@ -391,12 +391,12 @@ def activate_use_consumable(
         logger.error(msg)
         return False, msg
 
-    # 队伍背包：消耗品统一由 player 持有。
+    # 玩家背包：消耗品统一由 player 持有。
     player_entity = get_player_entity(dbg_game)
     assert player_entity is not None, "activate_use_consumable: player_entity is None"
     assert player_entity.has(InventoryComponent), "玩家实体缺少 InventoryComponent"
 
-    # 从队伍背包中查找指定消耗品。
+    # 从玩家背包中查找指定消耗品。
     inventory_comp = player_entity.get(InventoryComponent)
     selected_item = next((i for i in inventory_comp.items if i.name == item_name), None)
     if selected_item is None:

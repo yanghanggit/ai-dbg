@@ -1,4 +1,4 @@
-"""队员出牌决策系统：把玩家已决定的出牌 / 过牌记成一条决策记录（无推理，原因留白）。
+"""玩家出牌决策系统：把玩家已决定的出牌 / 过牌记成一条决策记录（无推理，原因留白）。
 
 记录形状与 `MonsterCombatDecisionSystem` 一致，合法性判定复用 `play_blocked_cause`，
 因此记录不会与结算层的拦截结论矛盾。设计取舍见 docs/wiki/combat-pipeline.md。
@@ -23,9 +23,9 @@ from ..models import (
     DeathComponent,
     HandComponent,
     HumanMessage,
-    PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
+    PlayerComponent,
 )
 from .combat_decision_common import (
     ACTION_PASS,
@@ -40,8 +40,8 @@ from .combat_pass_context import CombatPassContextMixin
 
 #######################################################################################################################################
 @final
-class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
-    """为队员的出牌 / 过牌决策补一条决策记录（无推理、原因为占位句）。"""
+class PlayerCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
+    """为玩家的出牌 / 过牌决策补一条决策记录（无推理、原因为占位句）。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
@@ -62,7 +62,7 @@ class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
         return (
             (entity.has(PlayCardsAction) or entity.has(PassTurnAction))
             and entity.has(HandComponent)
-            and entity.has(PartyMemberComponent)
+            and entity.has(PlayerComponent)
             and not entity.has(DeathComponent)
         )
 
@@ -72,7 +72,7 @@ class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
         if not is_current_room_dungeon_combat(self._game):
             return
         if not current_dungeon_combat(self._game).is_ongoing:
-            logger.debug("PartyCombatDecisionSystem: 战斗未进行中，跳过")
+            logger.debug("PlayerCombatDecisionSystem: 战斗未进行中，跳过")
             return
 
         round_number = len(current_dungeon_combat(self._game).rounds or [])
@@ -83,7 +83,7 @@ class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
             elif self._played_this_round(entity, round_number):
                 # 出完牌后交出行动权是机械步骤，不是第二次决策：不写记录（与怪物侧同形）。
                 logger.debug(
-                    f"PartyCombatDecisionSystem: [{entity.name}] 本回合已出牌，交权不另记录"
+                    f"PlayerCombatDecisionSystem: [{entity.name}] 本回合已出牌，交权不另记录"
                 )
             else:
                 self._record_pass(entity, round_number)
@@ -121,19 +121,19 @@ class PartyCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
                 forced_outcome="这次出牌没有发生",
             )
             logger.debug(
-                f"PartyCombatDecisionSystem: [{entity.name}] 记录被拦下的出牌决策 '{card.name}'（{blocked_cause}）"
+                f"PlayerCombatDecisionSystem: [{entity.name}] 记录被拦下的出牌决策 '{card.name}'（{blocked_cause}）"
             )
             return
 
         self._write(entity, round_number, ACTION_PLAY, card.name, targets)
         logger.debug(
-            f"PartyCombatDecisionSystem: [{entity.name}] 记录出牌决策 '{card.name}'，目标：{targets}"
+            f"PlayerCombatDecisionSystem: [{entity.name}] 记录出牌决策 '{card.name}'，目标：{targets}"
         )
 
     #######################################################################################################################################
     def _record_pass(self, entity: Entity, round_number: int) -> None:
         self._write(entity, round_number, ACTION_PASS, "", [])
-        logger.debug(f"PartyCombatDecisionSystem: [{entity.name}] 记录过牌决策")
+        logger.debug(f"PlayerCombatDecisionSystem: [{entity.name}] 记录过牌决策")
 
     #######################################################################################################################################
     def _write(

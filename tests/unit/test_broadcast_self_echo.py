@@ -19,8 +19,8 @@ from ai_dbg.models import (
     ActorComponent,
     Card,
     HandComponent,
-    PartyMemberComponent,
     PlayCardsAction,
+    PlayerComponent,
     StageComponent,
     TargetType,
 )
@@ -48,7 +48,7 @@ def _make_actor(context: ECSContext, name: str, card: Card) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.河湾芦苇丛")
-    entity.add(PartyMemberComponent, name)
+    entity.add(PlayerComponent, name)
     entity.add(HandComponent, name, [card])
     return entity
 
@@ -91,7 +91,7 @@ async def test_play_cards_broadcast_excludes_actor(context: ECSContext) -> None:
     ):
         await PlayCardsActionSystem(game).react([actor])
 
-    # 出牌事实不再由本系统写（已折进 `combat_decision` 决策记录，见 PartyCombatDecisionSystem），
+    # 出牌事实不再由本系统写（已折进 `combat_decision` 决策记录，见 PlayerCombatDecisionSystem），
     # 因此这里只断言广播口径。
     # 广播：排除出牌者与场景实体
     broadcast_kwargs = mock_broadcast.call_args.kwargs

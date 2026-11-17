@@ -20,7 +20,7 @@ from ai_dbg.models import (
     DrawPileComponent,
     ExhaustPileComponent,
     MonsterComponent,
-    PartyMemberComponent,
+    PlayerComponent,
 )
 from ai_dbg.systems.room_init_system import (
     OtherActorInfo,
@@ -44,7 +44,7 @@ def _make_actor(
     entity.add(AppearanceComponent, name, "base_body", appearance)
     entity.add(DeckComponent, name, [])
     if is_ally:
-        entity.add(PartyMemberComponent, name)
+        entity.add(PlayerComponent, name)
     if is_monster:
         entity.add(MonsterComponent, name)
     return entity

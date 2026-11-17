@@ -18,7 +18,6 @@ from ai_dbg.models import (
     GearItem,
     HandComponent,
     InventoryComponent,
-    PartyMemberComponent,
     PlayerComponent,
     StageComponent,
 )
@@ -45,7 +44,7 @@ def _make_actor_entity(
     context: ECSContext,
     name: str,
     *,
-    party: bool = True,
+    player: bool = True,
     hand: bool = True,
 ) -> Entity:
     """创建当前行动者；请求本身挂在 player 上，不在 actor 上。"""
@@ -59,8 +58,8 @@ def _make_actor_entity(
         name,
         CharacterStats(hp=10, max_hp=10, attack=1, defense=0, speed=0),
     )
-    if party:
-        entity.add(PartyMemberComponent, name)
+    if player:
+        entity.add(PlayerComponent, name)
     if hand:
         entity.add(HandComponent, name, [])
     return entity
@@ -69,10 +68,9 @@ def _make_actor_entity(
 def _make_player_entity(
     context: ECSContext, name: str, items: List[GearItem]
 ) -> Entity:
-    """创建持有团队背包（InventoryComponent）的 player 实体。"""
-    entity = context.create_entity(name)
-    entity.add(InventoryComponent, name, list(items))
-    entity.add(PlayerComponent, name)
+    """给当前行动者挂上背包；玩家与当前行动者现在是同一个实体。"""
+    entity = next(e for e in context.entities if e.name == "角色.测试")
+    entity.add(InventoryComponent, entity.name, list(items))
     return entity
 
 
@@ -133,13 +131,13 @@ class TestReact:
         assert actor.has(HandComponent)
 
     @pytest.mark.asyncio
-    async def test_rejects_non_party_current_actor(
+    async def test_rejects_non_player_current_actor(
         self,
         context: ECSContext,
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
-        _make_actor_entity(context, "角色.测试", party=False, hand=True)
+        _make_actor_entity(context, "角色.测试", player=False, hand=True)
         player = _make_player_entity(context, "player", [_make_gear("装备.测试")])
         _attach_request(player, "装备.测试")
 
@@ -153,7 +151,7 @@ class TestReact:
         mock_game: Any,
         system: EquipGearItemActionSystem,
     ) -> None:
-        _make_actor_entity(context, "角色.测试", party=True, hand=False)
+        _make_actor_entity(context, "角色.测试", player=True, hand=False)
         player = _make_player_entity(context, "player", [_make_gear("装备.测试")])
         _attach_request(player, "装备.测试")
 
@@ -212,7 +210,7 @@ class TestReact:
         with patch.object(system, "_materialize_cards", return_value=[generated]):
             await system.react([player])
 
-        # 移动语义：gear 从团队背包移除
+        # 移动语义：gear 从玩家背包移除
         assert gear not in player.get(InventoryComponent).items
         # 装备登记到当前行动者
         assert actor.has(EquippedGearComponent)

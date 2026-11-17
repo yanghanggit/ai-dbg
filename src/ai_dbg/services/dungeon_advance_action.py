@@ -8,7 +8,6 @@ from typing import Tuple
 
 from loguru import logger
 
-from ..entitas import Matcher
 from ..game.combat import (
     assert_no_residual_combat_state,
     set_character_hp,
@@ -22,6 +21,7 @@ from ..game.dungeon import (
     get_dungeon_entity,
     get_dungeon_room_by_index,
 )
+from ..game.entities import get_player_entity
 from ..game.memory import (
     add_human_message,
 )
@@ -33,7 +33,6 @@ from ..models import (
     DungeonRoomComponent,
     DungeonRoomType,
     HumanMessage,
-    PartyMemberComponent,
 )
 from ..utils import prompt_builder
 
@@ -87,11 +86,8 @@ async def advance_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
         DungeonComponent
     ), f"{next_room.name} 没有 DungeonComponent 组件！"
 
-    # 确保存在队伍成员
-    party_member_entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[PartyMemberComponent])
-    ).entities.copy()
-    assert len(party_member_entities) > 0, "没有找到队伍成员"
+    player_entity = get_player_entity(dbg_game)
+    assert player_entity is not None, "没有找到玩家实体"
 
     # 当前房间若是战斗房间，必须处于战斗后且已胜利
     leaving_combat = current_room_component.room_type == DungeonRoomType.COMBAT
@@ -117,27 +113,26 @@ async def advance_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
 
     # 生成并发送传送提示消息
     trans_message = _build_dungeon_advance_message(dungeon_name, next_room.name)
-    for party_member in party_member_entities:
-        add_human_message(
-            dbg_game,
-            party_member,
-            HumanMessage(
-                content=trans_message,
-                dungeon_lifecycle_stage_advance=f"{dungeon_name}:{next_room.name}",
-            ),
+    add_human_message(
+        dbg_game,
+        player_entity,
+        HumanMessage(
+            content=trans_message,
+            dungeon_lifecycle_stage_advance=f"{dungeon_name}:{next_room.name}",
+        ),
+    )
+
+    # 战斗中可能死亡，推进关卡时复活并恢复 1 点生命值
+    if player_entity.has(DeathComponent):
+        logger.info(f"移除死亡组件: {player_entity.name}")
+        player_entity.remove(DeathComponent)
+        revived_stats = set_character_hp(player_entity, 1)
+        logger.info(
+            f"恢复生命值: {player_entity.name} 生命值 = {revived_stats.hp}/{revived_stats.max_hp}"
         )
 
-        # 战斗中可能死亡，推进关卡时复活并恢复 1 点生命值
-        if party_member.has(DeathComponent):
-            logger.info(f"移除死亡组件: {party_member.name}")
-            party_member.remove(DeathComponent)
-            revived_stats = set_character_hp(party_member, 1)
-            logger.info(
-                f"恢复生命值: {party_member.name} 生命值 = {revived_stats.hp}/{revived_stats.max_hp}"
-            )
-
     # 执行场景传送
-    stage_transition(dbg_game, party_member_entities, next_room)
+    stage_transition(dbg_game, {player_entity}, next_room)
 
     # 离开战斗房间：保底断言 pipeline 已清理完毕，不应存在残留战斗临时组件
     if leaving_combat:

@@ -22,7 +22,6 @@ from ..models import (
     DrawCardsAction,
     DrawPileComponent,
     HandComponent,
-    PartyMemberComponent,
 )
 from .card_pile_common import (
     PILE_DISCARD,
@@ -165,8 +164,8 @@ class DrawCardsActionSystem(ReactiveProcessor):
 
     ####################################################################################################################################
     def _draw_target_count(self, entity: Entity) -> int:
-        """每次尝试从牌堆抓取的目标张数（PartyMember 与非 PartyMember 均为 3 张）。"""
-        return 3 if entity.has(PartyMemberComponent) else 3
+        """每次尝试从牌堆抓取的目标张数。"""
+        return 3
 
     ####################################################################################################################################
     def _mark_round_draw_completed(self, round_entity: Entity) -> None:

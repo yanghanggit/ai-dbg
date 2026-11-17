@@ -44,10 +44,10 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.exit_dungeon_action_system import ExitDungeonActionSystem
     from ...systems.fill_draw_pile_system import FillDrawPileSystem
     from ...systems.monster_combat_decision_system import MonsterCombatDecisionSystem
-    from ...systems.party_combat_decision_system import PartyCombatDecisionSystem
     from ...systems.pass_turn_action_system import PassTurnActionSystem
     from ...systems.play_cards_action_system import PlayCardsActionSystem
     from ...systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
+    from ...systems.player_combat_decision_system import PlayerCombatDecisionSystem
     from ...systems.prologue_system import PrologueSystem
     from ...systems.retreat_action_system import RetreatActionSystem
     from ...systems.room_init_system import RoomInitSystem
@@ -83,7 +83,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(CombatPassSnapshotSystem(dbg_game))
     pipeline.add(DrawCardsActionSystem(dbg_game))
     pipeline.add(MonsterCombatDecisionSystem(dbg_game))
-    pipeline.add(PartyCombatDecisionSystem(dbg_game))
+    pipeline.add(PlayerCombatDecisionSystem(dbg_game))
     pipeline.add(RetreatActionSystem(dbg_game))
 
     # ---------------------------------------------------------------------

@@ -154,7 +154,7 @@ async def use_consumable_game(
     item: str,
     save_dir: Path,
 ) -> DBGGame:
-    """让当前行动者使用队伍背包内的消耗品并归档。需战斗进行中且当前回合未完成。"""
+    """让当前行动者使用玩家背包内的消耗品并归档。需战斗进行中且当前回合未完成。"""
     terminal_game = await restore_game(world, player_session)
 
     if not is_current_room_dungeon_combat(terminal_game):

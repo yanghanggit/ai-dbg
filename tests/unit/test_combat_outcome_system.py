@@ -23,7 +23,6 @@ from ai_dbg.models import (
     ExhaustPileComponent,
     HandComponent,
     MonsterComponent,
-    PartyMemberComponent,
     PlayerComponent,
     StageComponent,
 )
@@ -52,7 +51,7 @@ def _make_actor(
     entity._name = name
     entity.add(ActorComponent, name, "stage")
     if is_ally:
-        entity.add(PartyMemberComponent, name)
+        entity.add(PlayerComponent, name)
     if is_monster:
         entity.add(MonsterComponent, name)
     if is_dead:
@@ -181,10 +180,11 @@ class TestIsEnemySideEliminated:
     """_is_enemy_side_eliminated 的单元测试。"""
 
     def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
-        player = context.create_entity()
-        player._name = "player"
-        player.add(ActorComponent, "player", "stage")
-        player.add(PlayerComponent, "player")
+        if not any(actor.has(PlayerComponent) for actor in actors):
+            player = context.create_entity()
+            player._name = "player"
+            player.add(ActorComponent, "player", "stage")
+            player.add(PlayerComponent, "player")
         stage = context.create_entity()
         stage._name = "stage"
         stage.add(StageComponent, "stage")
@@ -233,51 +233,41 @@ class TestIsPlayerSideEliminated:
     """_is_player_side_eliminated 的单元测试。"""
 
     def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
-        player = context.create_entity()
-        player._name = "player"
-        player.add(ActorComponent, "player", "stage")
-        player.add(PlayerComponent, "player")
+        if not any(actor.has(PlayerComponent) for actor in actors):
+            player = context.create_entity()
+            player._name = "player"
+            player.add(ActorComponent, "player", "stage")
+            player.add(PlayerComponent, "player")
         stage = context.create_entity()
         stage._name = "stage"
         stage.add(StageComponent, "stage")
         for actor in actors:
             actor.replace(ActorComponent, actor.name, "stage")
 
-    def test_no_allies_returns_false(
+    def test_no_player_anchor_returns_false(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """场景内无友方时应返回 False。"""
+        """场景内没有玩家时应返回 False。"""
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {monster})
         assert system._is_player_side_eliminated() is False
 
-    def test_alive_ally_returns_false(
+    def test_alive_player_returns_false(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """有存活友方时应返回 False。"""
-        ally = _make_actor(context, "英雄", is_ally=True)
+        """玩家存活时应返回 False。"""
+        player = _make_actor(context, "英雄", is_ally=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
-        self._setup(mock_game, context, {ally, monster})
+        self._setup(mock_game, context, {player, monster})
         assert system._is_player_side_eliminated() is False
 
-    def test_partial_elimination_returns_false(
+    def test_dead_player_returns_true(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """部分友方死亡时应返回 False。"""
-        dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
-        alive_ally = _make_actor(context, "同伴", is_ally=True)
+        """玩家死亡时应返回 True。"""
+        player = _make_actor(context, "英雄", is_ally=True, is_dead=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
-        self._setup(mock_game, context, {dead_ally, alive_ally, monster})
-        assert system._is_player_side_eliminated() is False
-
-    def test_all_allies_dead_returns_true(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
-    ) -> None:
-        """全部友方死亡时应返回 True。"""
-        dead1 = _make_actor(context, "英雄", is_ally=True, is_dead=True)
-        dead2 = _make_actor(context, "同伴", is_ally=True, is_dead=True)
-        monster = _make_actor(context, "哥布林", is_monster=True)
-        self._setup(mock_game, context, {dead1, dead2, monster})
+        self._setup(mock_game, context, {player, monster})
         assert system._is_player_side_eliminated() is True
 
 
@@ -290,10 +280,11 @@ class TestBothSidesCardless:
     """_is_both_sides_cardless 的单元测试。"""
 
     def _setup(self, mock_game: Any, context: ECSContext, actors: set[Entity]) -> None:
-        player = context.create_entity()
-        player._name = "player"
-        player.add(ActorComponent, "player", "stage")
-        player.add(PlayerComponent, "player")
+        if not any(actor.has(PlayerComponent) for actor in actors):
+            player = context.create_entity()
+            player._name = "player"
+            player.add(ActorComponent, "player", "stage")
+            player.add(PlayerComponent, "player")
         stage = context.create_entity()
         stage._name = "stage"
         stage.add(StageComponent, "stage")
@@ -329,18 +320,6 @@ class TestBothSidesCardless:
         self._setup(mock_game, context, {ally, monster})
         assert system._is_both_sides_cardless() is False
 
-    def test_dead_member_cards_ignored(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
-    ) -> None:
-        """死亡成员的牌堆不计入可用卡牌：死亡友方仍有牌，但存活双方均无牌时应返回 True。"""
-        dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
-        _add_cards(dead_ally, hand=3)
-        alive_ally = _make_actor(context, "同伴", is_ally=True)
-        monster = _make_actor(context, "哥布林", is_monster=True)
-        self._setup(mock_game, context, {dead_ally, alive_ally, monster})
-        assert system._is_both_sides_cardless() is True
-
-
 class TestExecute:
     """CombatOutcomeSystem.execute() 的单元测试。"""
 
@@ -351,10 +330,11 @@ class TestExecute:
         actors: set[Entity],
     ) -> Entity:
         """配置 mock_game 所需返回值，返回 stage_entity。"""
-        player = context.create_entity()
-        player._name = "player"
-        player.add(ActorComponent, "player", "测试场景")
-        player.add(PlayerComponent, "player")
+        if not any(actor.has(PlayerComponent) for actor in actors):
+            player = context.create_entity()
+            player._name = "player"
+            player.add(ActorComponent, "player", "测试场景")
+            player.add(PlayerComponent, "player")
         stage = _make_stage(context, "测试场景")
         for actor in actors:
             actor.replace(ActorComponent, actor.name, "测试场景")
@@ -454,10 +434,11 @@ class TestCombatOutcomeNotice:
     """胜负通知发给全部参战者，文本按各自视角生成。"""
 
     def _setup(self, context: ECSContext, mock_game: Any, actors: set[Entity]) -> None:
-        player = context.create_entity()
-        player._name = "player"
-        player.add(ActorComponent, "player", "测试场景")
-        player.add(PlayerComponent, "player")
+        if not any(actor.has(PlayerComponent) for actor in actors):
+            player = context.create_entity()
+            player._name = "player"
+            player.add(ActorComponent, "player", "测试场景")
+            player.add(PlayerComponent, "player")
         _make_stage(context, "测试场景")
         for actor in actors:
             actor.replace(ActorComponent, actor.name, "测试场景")
@@ -478,10 +459,10 @@ class TestCombatOutcomeNotice:
         }
 
     @pytest.mark.asyncio
-    async def test_win_gives_party_victory_and_monster_defeat(
+    async def test_win_gives_player_victory_and_monster_defeat(
         self, context: ECSContext, mock_game: Any
     ) -> None:
-        """队伍全胜：友方读「胜利」，怪物读「失败」，两侧都带 combat_outcome。"""
+        """玩家胜利：友方读「胜利」，怪物读「失败」，两侧都带 combat_outcome。"""
         ally = _make_actor(context, "英雄", is_ally=True)
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
         contents = await self._collect(context, mock_game, {ally, dead_monster})
@@ -494,10 +475,10 @@ class TestCombatOutcomeNotice:
             assert message.combat_outcome == "测试场景"
 
     @pytest.mark.asyncio
-    async def test_lose_gives_party_defeat_and_monster_victory(
+    async def test_lose_gives_player_defeat_and_monster_victory(
         self, context: ECSContext, mock_game: Any
     ) -> None:
-        """队伍全灭：友方读「失败」，怪物读「胜利」。"""
+        """玩家阵亡：友方读「失败」，怪物读「胜利」。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
         contents = await self._collect(context, mock_game, {dead_ally, monster})

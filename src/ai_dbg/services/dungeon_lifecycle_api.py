@@ -291,7 +291,7 @@ async def dungeon_start(
                 detail="副本实体创建 失败",
             )
 
-        # 第二步：组建队伍并进入第一关
+        # 第二步：传送玩家并进入第一关
         success, error_detail = enter_dungeon(rpg_game)
         if not success:
             logger.error(f"玩家 {payload.user_name} 进入副本失败: {error_detail}")

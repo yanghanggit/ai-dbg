@@ -84,10 +84,10 @@ class MonsterTurnAction(Component):
 @register_action_component_type
 @register_component_type
 class UseConsumableItemAction(Component):
-    """触发当前行动者使用队伍背包内的消耗品：扣减库存并把其内置卡牌物化进手牌。"""
+    """触发当前行动者使用玩家背包内的消耗品：扣减库存并把其内置卡牌物化进手牌。"""
 
     name: str
-    item: ConsumableItem  # 使用的消耗品对象（从队伍背包 InventoryComponent 检索后填入）
+    item: ConsumableItem  # 使用的消耗品对象（从玩家背包 InventoryComponent 检索后填入）
 
 
 ############################################################################################################
@@ -95,7 +95,7 @@ class UseConsumableItemAction(Component):
 @register_action_component_type
 @register_component_type
 class EquipGearItemAction(Component):
-    """发起使用团队背包内指定装备的意图。
+    """发起使用玩家背包内指定装备的意图。
 
     action 只携带原始意图（装备名）；当前行动者、手牌、背包与装备实例
     全部由 ``EquipGearItemActionSystem`` 解析和校验。

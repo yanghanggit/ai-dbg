@@ -5,7 +5,7 @@
   - 没有当前房间时拒绝推进 / 退出
   - 没有下一房间时拒绝推进
   - 非战斗房间（opening）可直接推进 / 退出
-  - 退出动作恢复队伍并触发 teardown
+  - 退出动作恢复玩家并触发 teardown
 """
 
 from typing import Any
@@ -24,7 +24,6 @@ from ai_dbg.models import (
     DungeonRoomType,
     ExitDungeonAction,
     LobbyComponent,
-    PartyMemberComponent,
     PlayerComponent,
     StageComponent,
     TeardownDungeonAction,
@@ -54,9 +53,7 @@ def _make_lobby_entity(game: Any, name: str) -> Entity:
     return entity
 
 
-def _make_party_member(
-    game: Any, name: str, stage_name: str, *, is_player: bool = False
-) -> Entity:
+def _make_player(game: Any, name: str, stage_name: str) -> Entity:
     entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
     entity.add(
@@ -64,9 +61,7 @@ def _make_party_member(
         name,
         CharacterStats(hp=3, max_hp=10, attack=1, defense=1),
     )
-    entity.add(PartyMemberComponent, name)
-    if is_player:
-        entity.add(PlayerComponent, game.player_name)
+    entity.add(PlayerComponent, game.player_name)
     return entity
 
 
@@ -100,7 +95,7 @@ class TestAdvanceDungeonGuards:
         make_dungeon_entity(sample_game)
         room0 = _make_opening_room(sample_game, "room0", 0)
         set_current_room(sample_game, room0)
-        member = _make_party_member(sample_game, "hero", "room0")
+        member = _make_player(sample_game, "hero", "room0")
 
         ok, msg = await advance_dungeon(sample_game)
 
@@ -116,7 +111,7 @@ class TestAdvanceDungeonGuards:
         room0 = _make_opening_room(sample_game, "room0", 0)
         _make_opening_room(sample_game, "room1", 1)
         set_current_room(sample_game, room0)
-        member = _make_party_member(sample_game, "hero", "room0")
+        member = _make_player(sample_game, "hero", "room0")
 
         ok, _ = await advance_dungeon(sample_game)
 
@@ -135,7 +130,7 @@ class TestExitDungeonActions:
         """没有当前房间标记时，退出 system 拒绝执行。"""
         make_dungeon_entity(sample_game)
         _make_opening_room(sample_game, "room0", 0)
-        member = _make_party_member(sample_game, "hero", "room0", is_player=True)
+        member = _make_player(sample_game, "hero", "room0")
 
         ok, _ = activate_exit_dungeon(sample_game)
 
@@ -148,12 +143,12 @@ class TestExitDungeonActions:
     async def test_exits_opening_room_and_requests_teardown(
         self, sample_game: Any
     ) -> None:
-        """非战斗房间可直接退出、恢复队伍，并生成 teardown 动作。"""
+        """非战斗房间可直接退出、恢复玩家，并生成 teardown 动作。"""
         make_dungeon_entity(sample_game)
         room0 = _make_opening_room(sample_game, "room0", 0)
         set_current_room(sample_game, room0)
         _make_lobby_entity(sample_game, "lobby")
-        member = _make_party_member(sample_game, "hero", "room0", is_player=True)
+        member = _make_player(sample_game, "hero", "room0")
         member.add(DeathComponent, "hero")
 
         ok, _ = activate_exit_dungeon(sample_game)
@@ -161,7 +156,7 @@ class TestExitDungeonActions:
 
         await ExitDungeonActionSystem(sample_game).react([member])
 
-        assert not member.has(PartyMemberComponent)
+        assert member.has(PlayerComponent)
         assert not member.has(DeathComponent)
         assert member.has(TeardownDungeonAction)
         actor_comp = member.get(ActorComponent)
@@ -182,7 +177,7 @@ class TestExitDungeonActions:
         room0 = _make_opening_room(sample_game, "room0", 0)
         set_current_room(sample_game, room0)
         _make_lobby_entity(sample_game, "lobby")
-        member = _make_party_member(sample_game, "hero", "room0", is_player=True)
+        member = _make_player(sample_game, "hero", "room0")
 
         pipeline = RPGGameProcessPipeline()
         pipeline.add(ExitDungeonActionSystem(sample_game))

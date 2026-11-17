@@ -1,4 +1,4 @@
-"""使用消耗品动作系统模块：先扣减队伍背包库存，再把消耗品的内置卡牌物化为手牌。
+"""使用消耗品动作系统模块：先扣减玩家背包库存，再把消耗品的内置卡牌物化为手牌。
 
 与装备的区别是消耗品一次性（物化出的卡不可回收），且一次使用消耗整条选定库存，
 扣库存成功后才物化；物化数量 = 每个内置牌 × 本次消耗的份数。
@@ -52,7 +52,7 @@ def _build_consumable_notice(
 #######################################################################################################################################
 @final
 class UseConsumableItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
-    """消耗品使用系统：先扣减队伍背包库存，再把消耗品内置卡牌物化进当前行动者手牌。"""
+    """消耗品使用系统：先扣减玩家背包库存，再把消耗品内置卡牌物化进当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
@@ -112,7 +112,7 @@ class UseConsumableItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
         )
         if removed_item is None:
             logger.warning(
-                f"UseConsumableItemActionSystem: [{entity.name}] 队伍背包中未找到 '{item.name}'，跳过本次使用（不物化）"
+                f"UseConsumableItemActionSystem: [{entity.name}] 玩家背包中未找到 '{item.name}'，跳过本次使用（不物化）"
             )
             return
         assert isinstance(

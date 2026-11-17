@@ -1,4 +1,4 @@
-"""退出副本动作系统：校验退出条件、传送队伍回大厅，并挂载后续 teardown 请求。"""
+"""退出副本动作系统：校验退出条件、传送玩家回大厅，并挂载后续 teardown 请求。"""
 
 from typing import Dict, Final, List, Tuple, final
 
@@ -26,7 +26,7 @@ from ..models import (
     ExitDungeonAction,
     HumanMessage,
     LobbyComponent,
-    PartyMemberComponent,
+    PlayerComponent,
     TeardownDungeonAction,
 )
 from ..utils import prompt_builder
@@ -42,7 +42,7 @@ def _build_dungeon_exit_message(dungeon_name: str, lobby_stage_name: str) -> str
 ###################################################################################################################################################################
 @final
 class ExitDungeonActionSystem(ReactiveProcessor):
-    """响应 ExitDungeonAction：退出副本、恢复队伍，并请求 teardown。"""
+    """响应 ExitDungeonAction：退出副本、恢复玩家，并请求 teardown。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
@@ -64,8 +64,8 @@ class ExitDungeonActionSystem(ReactiveProcessor):
         if not entities:
             return
 
-        dungeon_name, party_members, dest_stage = self._resolve_context()
-        self._execute_exit(dungeon_name, party_members, dest_stage)
+        dungeon_name, players, dest_stage = self._resolve_context()
+        self._execute_exit(dungeon_name, players, dest_stage)
 
         player_entity = get_player_entity(self._game)
         if player_entity is None:
@@ -74,7 +74,7 @@ class ExitDungeonActionSystem(ReactiveProcessor):
 
     ####################################################################################################################################
     def _resolve_context(self) -> Tuple[str, List[Entity], Entity]:
-        """校验退出条件并返回副本名、队伍成员和大厅场景。"""
+        """校验退出条件并返回副本名、玩家和大厅场景。"""
 
         dungeon_entity = get_dungeon_entity(self._game)
         if dungeon_entity is None:
@@ -88,11 +88,11 @@ class ExitDungeonActionSystem(ReactiveProcessor):
             if not current_dungeon_combat(self._game).is_post_combat:
                 raise ValueError("退出副本失败：战斗未结束，无法退出")
 
-        party_members = self._game.ecs.get_group(
-            Matcher(all_of=[PartyMemberComponent])
+        player_entities = self._game.ecs.get_group(
+            Matcher(all_of=[PlayerComponent])
         ).entities.copy()
-        if not party_members:
-            raise ValueError("退出副本失败：当前没有队伍成员")
+        if not player_entities:
+            raise ValueError("退出副本失败：当前没有玩家实体")
 
         lobby_stages = self._game.ecs.get_group(
             Matcher(all_of=[LobbyComponent])
@@ -102,7 +102,7 @@ class ExitDungeonActionSystem(ReactiveProcessor):
 
         return (
             current_dungeon_name(self._game),
-            list(party_members),
+            list(player_entities),
             next(iter(lobby_stages)),
         )
 
@@ -110,31 +110,28 @@ class ExitDungeonActionSystem(ReactiveProcessor):
     def _execute_exit(
         self,
         dungeon_name: str,
-        party_members: List[Entity],
+        player_entities: List[Entity],
         dest_stage: Entity,
     ) -> None:
-        """传送队伍回大厅并恢复队伍状态。"""
+        """传送玩家回大厅并恢复状态。"""
 
-        for party_member_entity in party_members:
+        for player_entity in player_entities:
             add_human_message(
                 self._game,
-                party_member_entity,
+                player_entity,
                 HumanMessage(
                     content=_build_dungeon_exit_message(dungeon_name, dest_stage.name),
                     dungeon_lifecycle_completion=dungeon_name,
                 ),
             )
-            stage_transition(self._game, {party_member_entity}, dest_stage)
+            stage_transition(self._game, {player_entity}, dest_stage)
 
-        for party_member_entity in party_members:
-            if party_member_entity.has(DeathComponent):
-                party_member_entity.remove(DeathComponent)
+        for player_entity in player_entities:
+            if player_entity.has(DeathComponent):
+                player_entity.remove(DeathComponent)
 
-            full_stats = compute_character_stats(party_member_entity)
-            set_character_hp(party_member_entity, full_stats.max_hp)
-
-            assert party_member_entity.has(PartyMemberComponent)
-            party_member_entity.remove(PartyMemberComponent)
+            full_stats = compute_character_stats(player_entity)
+            set_character_hp(player_entity, full_stats.max_hp)
 
         if is_current_room_dungeon_combat(self._game):
             assert_no_residual_combat_state(self._game)

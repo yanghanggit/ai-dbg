@@ -11,7 +11,7 @@ from ..models import ExitDungeonAction
 
 ###################################################################################################################################################################
 def activate_exit_dungeon(dbg_game: DBGGame) -> Tuple[bool, str]:
-    """挂载 ExitDungeonAction；房间、战斗、队伍与大厅校验由 system 负责。"""
+    """挂载 ExitDungeonAction；房间、战斗、玩家与大厅校验由 system 负责。"""
 
     player_entity = get_player_entity(dbg_game)
     if player_entity is None:

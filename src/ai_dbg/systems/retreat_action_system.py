@@ -22,7 +22,7 @@ from ..game.memory import (
 from ..models import (
     CombatStateComponent,
     HumanMessage,
-    PartyMemberComponent,
+    PlayerComponent,
     RetreatAction,
 )
 from ..utils import prompt_builder
@@ -55,8 +55,8 @@ class RetreatActionSystem(ReactiveProcessor):
     ####################################################################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """过滤条件：必须有 RetreatAction 和 PartyMemberComponent"""
-        return entity.has(RetreatAction) and entity.has(PartyMemberComponent)
+        """过滤条件：必须有 RetreatAction 和 PlayerComponent"""
+        return entity.has(RetreatAction) and entity.has(PlayerComponent)
 
     ####################################################################################################################################
     @override
@@ -97,8 +97,8 @@ class RetreatActionSystem(ReactiveProcessor):
     def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:
         """处理单个实体的撤退动作"""
         assert entity.has(
-            PartyMemberComponent
-        ), f"Entity {entity.name} must have PartyMemberComponent"
+            PlayerComponent
+        ), f"Entity {entity.name} must have PlayerComponent"
 
         # 标记为死亡，后续 CombatOutcomeSystem 会检测并触发战斗失败流程
         mark_dead(entity)

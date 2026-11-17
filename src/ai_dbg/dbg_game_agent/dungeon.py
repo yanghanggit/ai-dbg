@@ -153,7 +153,7 @@ async def exit_dungeon_game(
     # 创建 DBGGame 实例并从快照恢复游戏状态
     terminal_game = await restore_game(world, player_session)
 
-    # 只发起退出意图；副本、房间、战斗、队伍与大厅校验由 ECS system 处理
+    # 只发起退出意图；副本、房间、战斗、玩家与大厅校验由 ECS system 处理
     success, msg = activate_exit_dungeon(terminal_game)
     if not success:
         logger.error(f"exit-dungeon 失败: {msg}")

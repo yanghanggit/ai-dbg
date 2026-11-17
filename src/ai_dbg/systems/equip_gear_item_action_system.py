@@ -28,7 +28,7 @@ from ..models import (
     HandComponent,
     InventoryComponent,
     NoneEvent,
-    PartyMemberComponent,
+    PlayerComponent,
     apply_stats_to_card,
 )
 from ..utils import prompt_builder
@@ -60,7 +60,7 @@ class _EquipContext:
 #######################################################################################################################################
 @final
 class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
-    """装备转化系统：把团队背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
+    """装备转化系统：把玩家背包内的 GearItem 物化为 Card 放入当前行动者手牌。"""
 
     def __init__(self, game: DBGGame) -> None:
         super().__init__(game.ecs)
@@ -87,7 +87,7 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
 
     ####################################################################################################################################
     def _resolve_context(self) -> _EquipContext:
-        """校验战斗阶段与当前行动者，并定位团队背包持有者。"""
+        """校验战斗阶段与当前行动者，并定位玩家背包持有者。"""
 
         if not is_current_room_dungeon_combat(self._game):
             raise ValueError("装备使用失败：当前副本房间不是战斗房间")
@@ -110,7 +110,7 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
         actor_entity = get_actor_entity(self._game, turn_comp.actor_name)
         if actor_entity is None:
             raise ValueError(f"装备使用失败：找不到当前行动角色 {turn_comp.actor_name}")
-        if not actor_entity.has(PartyMemberComponent):
+        if not actor_entity.has(PlayerComponent):
             raise ValueError(
                 f"装备使用失败：当前行动角色 {actor_entity.name} 不是我方角色"
             )
@@ -146,7 +146,7 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
 
     ####################################################################################################################################
     def _find_gear(self, player: Entity, item_name: str) -> GearItem:
-        """从团队背包中查找并校验指定装备。"""
+        """从玩家背包中查找并校验指定装备。"""
 
         inventory = player.get(InventoryComponent)
         selected_item = next(
@@ -163,7 +163,7 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
 
     ####################################################################################################################################
     def _move_gear_to_actor(self, context: _EquipContext, gear: GearItem) -> None:
-        """把装备从团队背包移动到当前行动者的已装备列表。"""
+        """把装备从玩家背包移动到当前行动者的已装备列表。"""
 
         player = context.player
         actor = context.actor

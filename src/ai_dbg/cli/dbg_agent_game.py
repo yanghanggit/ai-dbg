@@ -427,10 +427,10 @@ def pass_turn(snapshot: str, actor: str) -> None:
 @click.option(
     "--item",
     required=True,
-    help="要使用的消耗品名称（须存在于队伍背包中）",
+    help="要使用的消耗品名称（须存在于玩家背包中）",
 )
 def use_consumable(snapshot: str, item: str) -> None:
-    """由当前行动者使用队伍背包内的消耗品并归档：扣库存并把其内置卡牌物化进手牌，需再出牌才结算。"""
+    """由当前行动者使用玩家背包内的消耗品并归档：扣库存并把其内置卡牌物化进手牌，需再出牌才结算。"""
 
     snapshot_path = Path(snapshot)
     if not snapshot_path.exists():

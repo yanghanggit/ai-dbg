@@ -33,8 +33,8 @@ from ai_dbg.models import (
     HandComponent,
     HumanMessage,
     MonsterComponent,
-    PartyMemberComponent,
     PlayCardsAction,
+    PlayerComponent,
     TargetType,
 )
 from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
@@ -65,7 +65,7 @@ def _make_actor(game: Any, name: str, *, monster: bool = False) -> Entity:
     if monster:
         entity.add(MonsterComponent, name)
     else:
-        entity.add(PartyMemberComponent, name)
+        entity.add(PlayerComponent, name)
     return entity
 
 

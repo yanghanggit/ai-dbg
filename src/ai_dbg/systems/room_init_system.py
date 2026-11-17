@@ -42,7 +42,7 @@ from ..models import (
     FillDrawPileAction,
     HumanMessage,
     MonsterComponent,
-    PartyMemberComponent,
+    PlayerComponent,
 )
 from ..utils import prompt_builder
 
@@ -137,7 +137,7 @@ def _build_combat_init_prompt(
 class RoomInitSystem(ExecuteProcessor):
     """副本房间初始化系统。
 
-    - 开场房间：为队伍注入开场场景感知（按消息标记幂等）。
+    - 开场房间：为玩家注入开场场景感知（按消息标记幂等）。
     - 战斗房间（INITIALIZATION）：初始化参战角色牌堆、注入战场环境、投递
       `FillDrawPileAction`，最后切到 `ONGOING`。
     """
@@ -174,7 +174,7 @@ class RoomInitSystem(ExecuteProcessor):
 
         environment = get_stage_environment(current_stage_entity)
         actor_entities = get_alive_actors_in_stage(self._game, player_entity)
-        assert len(actor_entities) > 0, "开场场景内不可能没有队伍成员！"
+        assert len(actor_entities) > 0, "开场场景内不可能没有玩家！"
 
         self._inject_opening_scene_environment(
             actor_entities=actor_entities,
@@ -249,8 +249,8 @@ class RoomInitSystem(ExecuteProcessor):
             if not actor_entity.has(MonsterComponent):
                 continue
             assert not actor_entity.has(
-                PartyMemberComponent
-            ), f"角色 {actor_entity.name} 同时具有 MonsterComponent 与 PartyMemberComponent，阵营异常！"
+                PlayerComponent
+            ), f"角色 {actor_entity.name} 同时具有 MonsterComponent 与 PlayerComponent，阵营异常！"
             assert actor_entity.has(
                 DeckComponent
             ), f"怪物 {actor_entity.name} 缺少 DeckComponent 组件！"
@@ -344,14 +344,14 @@ class RoomInitSystem(ExecuteProcessor):
         copy_entities = actor_entities.copy()
         copy_entities.remove(actor_entity)
 
-        actor_is_ally = actor_entity.has(PartyMemberComponent)
+        actor_is_ally = actor_entity.has(PlayerComponent)
         actor_is_enemy = actor_entity.has(MonsterComponent)
         infos: List[OtherActorInfo] = []
         for other_entity in copy_entities:
             appearance_comp = other_entity.get(AppearanceComponent)
             assert appearance_comp is not None, "每个在场角色都必须有外观组件！"
 
-            other_is_ally = other_entity.has(PartyMemberComponent)
+            other_is_ally = other_entity.has(PlayerComponent)
             other_is_enemy = other_entity.has(MonsterComponent)
             camp = (
                 "友方"

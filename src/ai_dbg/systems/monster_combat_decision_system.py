@@ -1,7 +1,7 @@
 """怪物出牌决策系统：用工具调用流让怪物自己选牌选目标，只留「做了什么 + 原因」。
 
 `submit_decision` 是唯一提交方式（非法提交由工具回错，模型在同一段 loop 内自纠）；
-loop 后整段过程被替换成一条决策记录（形状与 `PartyCombatDecisionSystem` 一致），
+loop 后整段过程被替换成一条决策记录（形状与 `PlayerCombatDecisionSystem` 一致），
 没提交出可执行结果时兜底过牌。设计取舍见 docs/wiki/combat-pipeline.md。
 """
 
@@ -15,7 +15,7 @@ from ..deepseek import agent_loop
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import (
     compute_character_stats,
-    get_alive_party_members_in_stage,
+    get_alive_players_in_stage,
     get_turn_energy,
     resolve_targets,
 )
@@ -560,10 +560,10 @@ class MonsterCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
             hand_comp is not None
         ), f"MonsterCombatDecisionSystem: HandComponent 不能为空"
 
-        # 获取场上存活的队伍成员（对手），构建决策视角快照（HP / 总格挡 / 来源本怪物的受击牌）
+        # 获取场上存活的玩家（对手），构建决策视角快照（HP / 总格挡 / 来源本怪物的受击牌）
         opponents: List[_OpponentView] = [
             _build_opponent_view(actor, monster_name=entity.name)
-            for actor in get_alive_party_members_in_stage(entity, self._game)
+            for actor in get_alive_players_in_stage(entity, self._game)
         ]
 
         latest_round = current_dungeon_combat(self._game).latest_round

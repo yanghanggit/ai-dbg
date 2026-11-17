@@ -24,7 +24,7 @@ from ..models import (
     DrawPileComponent,
     HandComponent,
     MonsterComponent,
-    PartyMemberComponent,
+    PlayerComponent,
 )
 
 
@@ -124,8 +124,8 @@ class CombatOutcomeSystem(ExecuteProcessor):
 
     ########################################################################################################################################################################
     def _is_player_side_eliminated(self) -> bool:
-        """返回友方阵营（PartyMemberComponent）是否已全员带有 DeathComponent。"""
-        return self._is_side_eliminated(PartyMemberComponent)
+        """返回玩家（PlayerComponent）是否已带有 DeathComponent。"""
+        return self._is_side_eliminated(PlayerComponent)
 
     ########################################################################################################################################################################
     def _is_enemy_side_eliminated(self) -> bool:
@@ -152,7 +152,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
             if entity.has(DeathComponent):
                 continue
 
-            if entity.has(PartyMemberComponent):
+            if entity.has(PlayerComponent):
                 alive_allies.add(entity)
             elif entity.has(MonsterComponent):
                 alive_enemies.add(entity)

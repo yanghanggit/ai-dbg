@@ -12,7 +12,7 @@ from .stats import (
 from .targeting import (
     get_alive_actors_in_stage,
     get_alive_monsters_in_stage,
-    get_alive_party_members_in_stage,
+    get_alive_players_in_stage,
     resolve_targets,
 )
 
@@ -23,7 +23,7 @@ __all__ = [
     "consume_turn_energy",
     "get_alive_actors_in_stage",
     "get_alive_monsters_in_stage",
-    "get_alive_party_members_in_stage",
+    "get_alive_players_in_stage",
     "get_turn_energy",
     "mark_dead",
     "resolve_targets",

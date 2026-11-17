@@ -1,7 +1,7 @@
-"""`PartyCombatDecisionSystem` 单测：队员的决策记录与怪物侧同构，原因用占位句。
+"""`PlayerCombatDecisionSystem` 单测：玩家的决策记录与怪物侧同构，原因用占位句。
 
-队员的决策来自玩家（前端指令），计算端没有决策 LLM，所以本系统只写记录、不做推理：
-形状对齐（做了什么 + 目标 + 原因），原因留占位——与队伍决策的记录形状保持一致。
+玩家的决策来自外部指令，计算端没有决策 LLM，所以本系统只写记录、不做推理：
+形状对齐（做了什么 + 目标 + 原因），原因留占位——与怪物侧决策记录同构。
 """
 
 import json
@@ -22,9 +22,9 @@ from ai_dbg.models import (
     HandComponent,
     HumanMessage,
     MonsterComponent,
-    PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
+    PlayerComponent,
     TargetType,
 )
 from ai_dbg.systems.combat_decision_common import (
@@ -33,7 +33,7 @@ from ai_dbg.systems.combat_decision_common import (
     UNPLAYABLE_CAUSE,
     build_combat_decision_tag,
 )
-from ai_dbg.systems.party_combat_decision_system import PartyCombatDecisionSystem
+from ai_dbg.systems.player_combat_decision_system import PlayerCombatDecisionSystem
 from dungeon_support import (
     append_combat_round,
     install_combat,
@@ -54,14 +54,14 @@ def _make_card() -> Card:
 
 
 def _make_actor(
-    context: ECSContext, name: str, *, party: bool = True, dead: bool = False
+    context: ECSContext, name: str, *, player: bool = True, dead: bool = False
 ) -> Entity:
     entity = context.create_entity()
     entity._name = name
     entity.add(ActorComponent, name, "场景.河湾芦苇丛")
     entity.add(HandComponent, name, [])
-    if party:
-        entity.add(PartyMemberComponent, name)
+    if player:
+        entity.add(PlayerComponent, name)
     else:
         entity.add(MonsterComponent, name)
     if dead:
@@ -97,7 +97,7 @@ def _records(game: Any) -> List[Any]:
     ]
 
 
-class TestPartyDecisionRecord:
+class TestPlayerDecisionRecord:
     async def test_play_writes_same_shape_as_monster(
         self, context: ECSContext, game: Any
     ) -> None:
@@ -106,7 +106,7 @@ class TestPartyDecisionRecord:
         actor.get(HandComponent).cards.append(card)
         actor.add(PlayCardsAction, actor.name, card, ["怪物.渡口野狗"])
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         records = _records(game)
         assert len(records) == 1
@@ -132,7 +132,7 @@ class TestPartyDecisionRecord:
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         records = _records(game)
         assert len(records) == 1
@@ -148,7 +148,7 @@ class TestPartyDecisionRecord:
         actor.get(HandComponent).cards.append(card)
         actor.add(PlayCardsAction, actor.name, card, ["怪物.渡口野狗"])
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         records = _records(game)
         assert len(records) == 1
@@ -186,7 +186,7 @@ class TestPartyDecisionRecord:
             ]
         )
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         assert len(_records(game)) == 1
 
@@ -213,7 +213,7 @@ class TestPartyDecisionRecord:
             ]
         )
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         records = _records(game)
         assert len(records) == 2
@@ -227,29 +227,29 @@ class TestPartyDecisionRecord:
         actor = _make_actor(context, "角色.无名")
         actor.add(PassTurnAction, actor.name)
 
-        await PartyCombatDecisionSystem(game).react([actor])
+        await PlayerCombatDecisionSystem(game).react([actor])
 
         assert len(_records(game)) == 0
 
-    def test_filter_requires_party_member_and_liveness(
+    def test_filter_requires_player_and_liveness(
         self, context: ECSContext, game: Any
     ) -> None:
-        system = PartyCombatDecisionSystem(game)
-        alive_party = _make_actor(context, "角色.无名")
-        alive_party.add(PassTurnAction, alive_party.name)
-        dead_party = _make_actor(context, "角色.坏运气", dead=True)
-        dead_party.add(PassTurnAction, dead_party.name)
-        monster = _make_actor(context, "怪物.渡口野狗", party=False)
+        system = PlayerCombatDecisionSystem(game)
+        alive_player = _make_actor(context, "角色.无名")
+        alive_player.add(PassTurnAction, alive_player.name)
+        dead_player = _make_actor(context, "角色.坏运气", dead=True)
+        dead_player.add(PassTurnAction, dead_player.name)
+        monster = _make_actor(context, "怪物.渡口野狗", player=False)
         monster.add(PassTurnAction, monster.name)
 
-        assert system.filter(alive_party)
-        assert not system.filter(dead_party)
+        assert system.filter(alive_player)
+        assert not system.filter(dead_player)
         assert not system.filter(monster)
 
     def test_triggers_on_both_decision_actions(
         self, context: ECSContext, game: Any
     ) -> None:
         """出牌与过牌共用同一触发集合（怪物侧两种决策都会记录）。"""
-        triggers = PartyCombatDecisionSystem(game).get_trigger()
+        triggers = PlayerCombatDecisionSystem(game).get_trigger()
         assert len(triggers) == 2
         assert set(triggers.values()) == {GroupEvent.ADDED}

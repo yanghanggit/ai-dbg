@@ -12,7 +12,6 @@ from ai_dbg.models import (
     CharacterStatsComponent,
     DrawPileComponent,
     EnvironmentComponent,
-    PartyMemberComponent,
     PlayerComponent,
     WorldState,
 )
@@ -54,7 +53,6 @@ def _make_opening_game() -> Any:
         "角色.玩家",
         CharacterStats(hp=10, max_hp=10),
     )
-    player_entity.add(PartyMemberComponent, "角色.玩家")
     return game
 
 

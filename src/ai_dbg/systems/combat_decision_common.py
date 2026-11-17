@@ -1,7 +1,7 @@
 """战斗决策记录的公共层：为一次决策落一条「做了什么 + 为什么」的记忆。
 
-原因由决策主体自己给出；队员侧没有决策推理（由玩家决定），原因为占位句——
-形状一致、缺的那部分如实留白，与队伍决策的记录形状保持一致。
+原因由决策主体自己给出；玩家侧没有决策推理（由玩家决定），原因为占位句——
+形状一致、缺的那部分如实留白，与玩家决策的记录形状保持一致。
 决策的原始过程不留在记忆里，写完即被这条记录替换。
 """
 
@@ -17,12 +17,12 @@ from ..utils import prompt_builder
 ACTION_PLAY = "play"
 ACTION_PASS = "pass"
 
-# 队伍侧没有真实动机：占位句与空 `mind` 同性质，只为让两侧记忆形状一致。
+# 玩家侧没有真实动机：占位句与空 `mind` 同性质，只为让两侧记忆形状一致。
 REASON_PLACEHOLDER = "（这次行动由你自己决定，没有留下理由）"
 REASON_MISSING = "（没有给出理由）"
 
 # 出牌前的计算端拦截口径：`playable=False` 的牌不进入结算。
-# 决策记录与结算层共用同一判定与同一措辞（`party_combat_decision_system` / `play_cards_action_system` /
+# 决策记录与结算层共用同一判定与同一措辞（`player_combat_decision_system` / `play_cards_action_system` /
 # `monster_combat_decision_system`），否则会出现「记忆说打出了、结算说没打」。
 UNPLAYABLE_CAUSE: Final[str] = "这张牌不可出牌"
 
@@ -63,7 +63,7 @@ def build_combat_decision_record(
     原意图与拦截原因，原因行仍用 ``reason``（模型给的理由）。
 
     ``forced_outcome`` 是「没打出去之后实际发生了什么」，两侧不同：怪物被拦下后会真的过牌；
-    队员的牌在结算层被拦下时只是作废（不交出行动权），故传「这次出牌没有发生」。
+    玩家的牌在结算层被拦下时只是作废（不交出行动权），故传「这次出牌没有发生」。
     """
     lines = [f"# 第 {round_number} 回合 · 你的行动"]
 

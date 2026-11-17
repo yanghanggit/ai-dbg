@@ -17,7 +17,7 @@ from ..game.memory import add_human_message
 from ..models import (
     CombatResult,
     HumanMessage,
-    PartyMemberComponent,
+    PlayerComponent,
 )
 from ..utils import prompt_builder
 
@@ -55,7 +55,7 @@ class CombatResultNoticeSystem(ExecuteProcessor):
     def _notify_combat_result(self, result: CombatResult) -> None:
         """向当前场景内所有参战者（含怪物）写入胜/败通知，附带 combat_outcome 参数。
 
-        文本按各自阵营视角生成：队伍看 `CombatResult`，怪物看其反面。
+        文本按各自阵营视角生成：玩家看 `CombatResult`，怪物看其反面。
         """
 
         player_entity = get_player_entity(self._game)
@@ -72,7 +72,7 @@ class CombatResultNoticeSystem(ExecuteProcessor):
         for entity in actors_in_stage:
             is_victory = (
                 result == CombatResult.WIN
-                if entity.has(PartyMemberComponent)
+                if entity.has(PlayerComponent)
                 else result == CombatResult.LOSE
             )
             add_human_message(

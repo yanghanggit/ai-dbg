@@ -489,7 +489,7 @@ def combat_pass_turn_cmd(user: str, game: str, actor_name: str) -> None:
 @identity_options
 @click.option("--item", "item_name", required=True, help="消耗品名")
 def combat_use_consumable_cmd(user: str, game: str, item_name: str) -> None:
-    """使用背包内消耗品（队伍级，不推进行动权；物化为手牌后需再出牌）。"""
+    """使用背包内消耗品（玩家级，不推进行动权；物化为手牌后需再出牌）。"""
 
     async def go() -> Dict[str, Any]:
         return await _await_job(
@@ -503,7 +503,7 @@ def combat_use_consumable_cmd(user: str, game: str, item_name: str) -> None:
 @identity_options
 @click.option("--item", "item_name", required=True, help="装备名")
 def combat_equip_gear_cmd(user: str, game: str, item_name: str) -> None:
-    """使用背包内装备（队伍级，不推进行动权）。"""
+    """使用背包内装备（玩家级，不推进行动权）。"""
 
     async def go() -> Dict[str, Any]:
         return await _await_job(await dungeon_combat_equip_gear(user, game, item_name))

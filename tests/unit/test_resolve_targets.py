@@ -19,8 +19,8 @@ from ai_dbg.models import (
     DungeonComponent,
     HandComponent,
     MonsterComponent,
-    PartyMemberComponent,
     PlayCardsAction,
+    PlayerComponent,
     StageComponent,
     TargetType,
     WorldState,
@@ -62,7 +62,7 @@ def _make_stage(game: Any, name: str) -> Entity:
 def _make_ally(game: Any, name: str, stage_name: str, dead: bool = False) -> Entity:
     entity: Entity = create_entity(game, name)
     entity.add(ActorComponent, name, stage_name)
-    entity.add(PartyMemberComponent, name)
+    entity.add(PlayerComponent, name)
     if dead:
         entity.add(DeathComponent, name)
     return entity

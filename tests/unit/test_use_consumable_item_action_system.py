@@ -1,6 +1,6 @@
 """UseConsumableItemActionSystem 单元测试。
 
-重构后语义：使用消耗品 = 先移除队伍背包中该条消耗品（消耗其全部 count），
+重构后语义：使用消耗品 = 先移除玩家背包中该条消耗品（消耗其全部 count），
 再把「每个内置卡牌 × count」物化为手牌（0 费、一次性、不叠加角色属性）。
 扣库存失败则不物化、不广播。效果结算交给后续出牌仲裁。
 """
@@ -81,7 +81,7 @@ def _make_actor_entity(
 def _make_player_entity(
     context: ECSContext, name: str, items: List[ConsumableItem]
 ) -> Entity:
-    """创建持有队伍背包（InventoryComponent）的 player 实体。"""
+    """创建持有玩家背包（InventoryComponent）的 player 实体。"""
     entity = context.create_entity()
     entity._name = name
     entity.add(InventoryComponent, name, list(items))

@@ -7,7 +7,7 @@ from ...entitas import Entity, Matcher
 from ...models import (
     DeathComponent,
     MonsterComponent,
-    PartyMemberComponent,
+    PlayerComponent,
     TargetType,
 )
 from ..context import DBGGame
@@ -19,15 +19,15 @@ def get_alive_actors_in_stage(game: DBGGame, entity: Entity) -> Set[Entity]:
     return get_actors_in_stage(game, entity, Matcher(none_of=[DeathComponent]))
 
 
-def get_alive_party_members_in_stage(
+def get_alive_players_in_stage(
     anchor_entity: Entity, dbg_game: DBGGame
 ) -> List[Entity]:
-    """获取锚点实体所在场景中所有存活的队伍成员。"""
+    """获取锚点实体所在场景中所有存活的玩家。"""
     return list(
         get_actors_in_stage(
             dbg_game,
             anchor_entity,
-            Matcher(all_of=[PartyMemberComponent], none_of=[DeathComponent]),
+            Matcher(all_of=[PlayerComponent], none_of=[DeathComponent]),
         )
     )
 
@@ -61,12 +61,12 @@ def _expand_camp_members(
         )
 
     # 根据锚点实体的阵营类型，返回该阵营的全体存活角色。
-    if anchor_entity.has(PartyMemberComponent):
-        return get_alive_party_members_in_stage(anchor_entity, dbg_game), ""
+    if anchor_entity.has(PlayerComponent):
+        return get_alive_players_in_stage(anchor_entity, dbg_game), ""
     if anchor_entity.has(MonsterComponent):
         return get_alive_monsters_in_stage(anchor_entity, dbg_game), ""
 
-    # 如果锚点实体既不属于队伍也不属于怪物阵营，则返回错误。
+    # 如果锚点实体既不属于玩家也不属于怪物阵营，则返回错误。
     return [], f"目标 '{anchor_target_name}' 不属于任何可识别阵营"
 
 
