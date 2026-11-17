@@ -180,7 +180,7 @@ def create_artifact(
 
     神器与 Card 同级：只承载人设意象（description）与修正规则（modifiers），
     由携带它的宿主通过 ReliquaryComponent 声明归属；source 标识以谁的名义生效，
-    运行时作为场景仲裁者的结算参数被注入提示词。
+    当前只保留数据形状，不进入战斗结算。
     """
 
     assert name.strip() != "", "DBG 游戏要求必须有神器名称(name)"

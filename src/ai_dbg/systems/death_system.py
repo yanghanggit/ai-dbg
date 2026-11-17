@@ -74,8 +74,7 @@ class DeathSystem(ExecuteProcessor, CombatTurnStateMixin):
         """若刚死亡的是本回合当前行动者，则重算回合指针以跳过它，避免回合卡死。
 
         回合指针只在过牌时推进，而过牌会拒绝死亡角色；因此「当前行动者在自己回合内死亡」
-        （反伤自杀 / 神器后仲裁等）会导致无人能推进。此处补一次重算，让
-        行动槽推进的「跳过死人」逻辑生效。
+        会导致无人能推进。此处补一次重算，让行动槽推进的「跳过死人」逻辑生效。
         """
         if not is_current_room_dungeon_combat(self._game):
             return

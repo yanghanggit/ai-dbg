@@ -1,4 +1,4 @@
-"""出牌系统：消耗能量、拦截不可出牌、广播行动预告，效果结算交给仲裁。"""
+"""出牌系统：消耗能量、拦截不可出牌、广播行动预告，效果结算交给静态结算。"""
 
 from typing import Dict, List, final
 
@@ -145,7 +145,7 @@ class PlayCardsActionSystem(ReactiveProcessor, CombatPassContextMixin):
             )
 
             # 行动类广播：出牌者已有决策记录（`combat_decision`）作为更精确的自我记录，故排除自己；
-            # 其余人（含场景外？不，仅本场景）在仲裁结算前先感知到出牌事件
+            # 其余人（含场景外？不，仅本场景）在出牌结算前先感知到出牌事件
             stage_entity = resolve_stage_entity(self._game, entity)
             assert (
                 stage_entity is not None

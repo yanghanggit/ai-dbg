@@ -112,12 +112,12 @@ def test_structured_tag_values_have_expected_shape() -> None:
     import json
 
     from ai_dbg.models import Card, TargetType
-    from ai_dbg.systems.card_common import build_received_card_tag
     from ai_dbg.systems.combat_decision_common import (
         ACTION_PLAY,
         build_combat_decision_record,
         build_combat_decision_tag,
     )
+    from ai_dbg.systems.transfer_cards_action_system import _build_received_card_tag
 
     card = Card(
         name="攻击",
@@ -155,7 +155,7 @@ def test_structured_tag_values_have_expected_shape() -> None:
     assert "目标：怪物.渡口野狗 ×2" in text  # SPREAD 重复命中压成 ×N
     assert "原因：压血线" in text
 
-    received = json.loads(build_received_card_tag(card))
+    received = json.loads(_build_received_card_tag(card))
     assert set(received) == {
         "name",
         "uuid",
@@ -182,11 +182,7 @@ def test_stats_update_tag_records_hp_transition() -> None:
         CombatArbitrationEvent,
         StageComponent,
     )
-    from ai_dbg.systems.arbitration_common import (
-        ArbitrationContext,
-        RoundKind,
-        apply_arbitration_result,
-    )
+    from ai_dbg.systems.combat_resolution import apply_combat_resolution
 
     context = ECSContext()
     entity = context.create_entity()
@@ -209,14 +205,13 @@ def test_stats_update_tag_records_hp_transition() -> None:
     install_combat(game)
     assert issubclass(CombatArbitrationEvent, object)
 
-    ctx = ArbitrationContext(hp_changes={"角色.无名": 7}, narrative="被撞了一下")
-    apply_arbitration_result(
+    apply_combat_resolution(
         game,
         stage_entity=stage,
-        ctx=ctx,
-        kind=RoundKind.PLAY_CARDS,
-        title_label="测试仲裁",
+        title_label="测试结算",
+        narrative="被撞了一下",
         combat_log="无",
+        hp_changes={"角色.无名": 7},
     )
 
     stats_messages = [

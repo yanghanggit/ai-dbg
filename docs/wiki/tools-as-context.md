@@ -58,5 +58,4 @@ Agent 一次请求发给模型的内容，不只是任务提示词：全部工�
 
 把「是什么 / 能不能」交给 schema，把「为什么 / 边界」交给 `description`，把「对象专属方向」交给数据本身，把「任务与叙事」留给提示词，并让工具名与调用序列承担流程表达——这就是「工具即上下文」的落地方式。
 
-→ 参见：[卡牌设计指南（Card Design）](card-design.md)（生成契约：选型 + 设计的两段式工具序列）
 → 参见：[上下文窗口管理（Context Window Management）](context-window-management.md)（上下文预算与减量手段）

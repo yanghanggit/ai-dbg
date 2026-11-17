@@ -13,11 +13,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
 
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
     from ...systems.action_cleanup_system import ActionCleanupSystem
-
-    # from ...systems.artifact_post_arbitration_system import (
-    #     ArtifactPostArbitrationSystem,
-    # )
-    # from ...systems.card_operation_system import CardOperationSystem
     from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
 
     # from ...systems.combat_loot_system import CombatLootSystem
@@ -103,7 +98,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(PassTurnActionSystem(dbg_game))
 
     # ---------------------------------------------------------------------
-    # 出牌后的牌堆与词缀结算
+    # 出牌后的牌堆处理与静态结算
     # ---------------------------------------------------------------------
     pipeline.add(DiscardCardsActionSystem(dbg_game))
     pipeline.add(ExhaustCardsActionSystem(dbg_game))
@@ -111,8 +106,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
 
     # ----
     pipeline.add(PlayCardsArbitrationSystem(dbg_game))
-    # pipeline.add(CardOperationSystem(dbg_game))
-    # pipeline.add(ArtifactPostArbitrationSystem(dbg_game))
     pipeline.add(DeathSystem(dbg_game))
 
     # ---------------------------------------------------------------------
@@ -124,7 +117,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入掉落与战后处理。
     pipeline.add(CombatHandCleanupSystem(dbg_game))
     pipeline.add(CombatResultNoticeSystem(dbg_game))
-    # pipeline.add(CombatLootSystem(dbg_game))
     pipeline.add(CombatPostCombatTransitionSystem(dbg_game))
     pipeline.add(CombatPileTeardownSystem(dbg_game))
 

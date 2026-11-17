@@ -9,8 +9,6 @@ from ..entitas import Entity, ExecuteProcessor
 from ..game.combat import (
     compute_character_stats,
     get_alive_actors_in_stage,
-    get_alive_monsters_in_stage,
-    get_alive_party_members_in_stage,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
@@ -135,37 +133,13 @@ def _build_combat_init_prompt(
 
 
 ###################################################################################################################################################################
-@prompt_builder
-def _build_stage_combat_state_prompt(
-    environment: str,
-    party_names: List[str],
-    monster_names: List[str],
-) -> str:
-    """生成场景视角的战斗状态提示词（含当前存活角色的阵营信息）。"""
-    party = "、".join(party_names) if party_names else "无"
-    monsters = "、".join(monster_names) if monster_names else "无"
-    return f"""# 战斗场景状态
-
-## 场景环境
-
-{environment}
-
-## 场上阵营
-
-- 队伍方（队伍成员）：{party}
-- 怪物方（怪物）：{monsters}
-
-（仲裁时凡提到「队伍方/玩家方」，均指上方队伍方阵营全体存活角色。）"""
-
-
-###################################################################################################################################################################
 @final
 class RoomInitSystem(ExecuteProcessor):
     """副本房间初始化系统。
 
     - 开场房间：为队伍注入开场场景感知（按消息标记幂等）。
     - 战斗房间（INITIALIZATION）：初始化参战角色牌堆、注入战场环境、投递
-      `FillDrawPileAction`，最后注入场景侧战斗状态并切到 `ONGOING`。
+      `FillDrawPileAction`，最后切到 `ONGOING`。
     """
 
     def __init__(self, game: DBGGame) -> None:
@@ -242,7 +216,6 @@ class RoomInitSystem(ExecuteProcessor):
             logger.debug(f"[{actor_entity.name}] 已添加 FillDrawPileAction")
 
         self._assert_monster_decks(actor_entities)
-        self._inject_stage_combat_state(current_stage_entity, environment)
         self._transition_to_ongoing(current_combat_entity(self._game))
         assert current_dungeon_combat(
             self._game
@@ -394,31 +367,6 @@ class RoomInitSystem(ExecuteProcessor):
                 )
             )
         return infos
-
-    ###################################################################################################################################################################
-    def _inject_stage_combat_state(
-        self, stage_entity: Entity, environment: str
-    ) -> None:
-        """向场景实体注入战斗状态（存活阵营）。"""
-        party_members = get_alive_party_members_in_stage(stage_entity, self._game)
-        monsters = get_alive_monsters_in_stage(stage_entity, self._game)
-        add_human_message(
-            self._game,
-            stage_entity,
-            HumanMessage(
-                content=_build_stage_combat_state_prompt(
-                    environment=environment,
-                    party_names=[e.name for e in party_members],
-                    monster_names=[e.name for e in monsters],
-                ),
-                combat_initialization=stage_entity.name,
-            ),
-        )
-        add_ai_message(
-            self._game,
-            stage_entity,
-            AIMessage(content="已感知当前战斗场景状态。"),
-        )
 
     ###################################################################################################################################################################
     def _transition_to_ongoing(self, combat_entity: Entity) -> None:

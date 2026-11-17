@@ -313,18 +313,6 @@ class MotifComponent(Component):
 ############################################################################################################
 
 
-@final
-@register_component_type
-class CardDesignComponent(Component):
-    """标记世界实体为卡牌设计器（LLM 驱动）。
-
-    统一承载「为某个 actor 选型 + 设计卡牌」的会话：调用方只传入目标 actor 的
-    system prompt 与若干已物化候选卡，会话在临时上下文里跑完即丢，不在 actor 记忆留痕。
-    """
-
-    name: str
-
-
 ############################################################################################################
 @final
 @register_component_type

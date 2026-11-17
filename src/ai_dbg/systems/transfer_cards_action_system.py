@@ -28,8 +28,28 @@ from ..models import (
     PlayCardsAction,
 )
 from ..utils import prompt_builder
-from .card_common import build_received_card_tag
 from .combat_pass_context import CombatPassContextMixin
+
+
+#######################################################################################################################################
+def _card_audit_fields(card: Card) -> Dict[str, object]:
+    """卡牌的审计字段：身份 + 数值 + 目标类型。"""
+    return {
+        "name": card.name,
+        "uuid": card.uuid,
+        "source": card.source,
+        "cost": card.cost,
+        "damage": card.damage,
+        "hit_count": card.hit_count,
+        "block": card.block,
+        "target_type": card.target_type.value,
+    }
+
+
+#######################################################################################################################################
+def _build_received_card_tag(card: Card) -> str:
+    """生成 `received_card` 标记值。"""
+    return json.dumps(_card_audit_fields(card), ensure_ascii=False)
 
 
 #######################################################################################################################################
@@ -204,7 +224,7 @@ class TransferCardsActionSystem(ReactiveProcessor, CombatPassContextMixin):
                             self_transfer=target_name == play_cards_action.name,
                             count=count,
                         ),
-                        received_card=build_received_card_tag(copied),
+                        received_card=_build_received_card_tag(copied),
                     ),
                 )
 

@@ -6,7 +6,7 @@ loop 后整段过程被替换成一条决策记录（形状与 `PartyCombatDecis
 """
 
 from functools import partial
-from typing import Dict, Final, List, Optional, final, override
+from typing import Dict, Final, List, Optional, Sequence, final, override
 
 from loguru import logger
 from pydantic import BaseModel
@@ -30,10 +30,11 @@ from ..game.memory import (
     replace_span,
     sync_latest_context_usage_ratio,
 )
-from ..llm import ToolDefinition, ToolFunction
+from ..llm import LOOP_ID_ATTR, ToolDefinition, ToolFunction
 from ..models import (
     Card,
     CharacterStats,
+    ChatMessage,
     DeathComponent,
     HandComponent,
     HumanMessage,
@@ -45,7 +46,6 @@ from ..models import (
     render_labeled_str_list,
 )
 from ..utils import prompt_builder
-from .arbitration_common import make_loop_id
 from .card_pile_common import (
     READ_PILES_TOOL,
     READ_PILES_TOOL_NAME,
@@ -69,6 +69,19 @@ MAX_DECISION_ROUNDS: Final[int] = 4
 #######################################################################################################################################
 # 决策 loop 的 kind（拼进 loop_id，供存档记忆里反查本次决策过程）。
 LOOP_KIND: Final[str] = "monster_decision"
+
+
+#######################################################################################################################################
+def _make_loop_id(
+    messages: Sequence[ChatMessage], kind: str, round_number: int, *labels: str
+) -> str:
+    """生成一次 agent loop 的唯一 id：``<kind>:<round>:<labels…>#<序号>``。"""
+    existing = {
+        loop_id
+        for m in messages
+        if (loop_id := getattr(m, LOOP_ID_ATTR, None)) is not None
+    }
+    return f"{':'.join([kind, str(round_number), *labels])}#{len(existing) + 1}"
 
 
 #######################################################################################################################################
@@ -496,7 +509,7 @@ class MonsterCombatDecisionSystem(ReactiveProcessor, CombatPassContextMixin):
     ) -> None:
         """驱动单个怪物的工具化出牌决策（原地写记忆，事后整段压缩成一条记录）。"""
         memory = get_agent_memory(self._game, entity)
-        loop_id = make_loop_id(memory.messages, LOOP_KIND, round_number, entity.name)
+        loop_id = _make_loop_id(memory.messages, LOOP_KIND, round_number, entity.name)
         current_turn_entity = self._pass_turn()
 
         try:

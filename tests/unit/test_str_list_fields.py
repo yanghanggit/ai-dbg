@@ -4,8 +4,7 @@
 本文件覆盖：
 - 清洗（``normalize_str_list``）与保边界渲染（``render_*``）；
 - 模型层 ``NormalizedStrList`` 注解自动清洗；
-- 词缀「逐条校验 + 整槽置空」支持多条；
-- 各消费端（出牌/怪物决策）逐条渲染全部条目；
+- 怪物决策提示词逐条渲染全部条目；
 - 消耗品堆叠身份纳入内置卡牌规格。
 """
 
@@ -14,15 +13,11 @@ from ai_dbg.models import (
     Card,
     ConsumableItem,
     append_item_with_stacking,
-    apply_affix_design,
     normalize_str_list,
     render_labeled_str_list,
     render_str_list,
 )
 from ai_dbg.systems.monster_combat_decision_system import _format_card
-from ai_dbg.systems.play_cards_arbitration_system import (
-    _build_play_cards_arbitration_prompt,
-)
 
 AFFIX_A = "[穿甲]:本卡 damage 结算时无视目标 block"
 AFFIX_B = "[自损]:打出时对自身结算本卡 damage×1 的伤害"
@@ -70,11 +65,6 @@ def test_artifact_modifiers_are_normalized() -> None:
     assert artifact.modifiers == ["r"]
 
 
-# ---------------------------------------------------------------------------
-# apply_affix_design：多值逐条校验 + 整槽置空
-# ---------------------------------------------------------------------------
-
-
 def _card(**overrides: object) -> Card:
     base: dict[str, object] = {
         "name": "原型",
@@ -86,49 +76,9 @@ def _card(**overrides: object) -> Card:
     return Card.model_validate(base)
 
 
-def test_apply_multiple_affixes() -> None:
-    card = _card()
-    applied, fallbacks = apply_affix_design(
-        "角色.无名", card, {"on_play_affixes": [AFFIX_A, AFFIX_B]}
-    )
-    assert applied == 2
-    assert fallbacks == []
-    assert card.on_play_affixes == [AFFIX_A, AFFIX_B]
-
-
-def test_apply_dedupes_and_drops_blank_affixes() -> None:
-    card = _card()
-    applied, fallbacks = apply_affix_design(
-        "角色.无名", card, {"on_play_affixes": [" " + AFFIX_A + " ", "", AFFIX_A]}
-    )
-    assert applied == 1
-    assert fallbacks == []
-    assert card.on_play_affixes == [AFFIX_A]
-
-
-def test_one_invalid_affix_empties_whole_slot() -> None:
-    card = _card()
-    applied, notes = apply_affix_design(
-        "角色.无名",
-        card,
-        {"on_play_affixes": [AFFIX_A, "断裂:打出时对目标造成本卡 damage 的伤害"]},
-    )
-    assert applied == 0
-    assert len(notes) == 1
-    assert card.on_play_affixes == []
-
-
 # ---------------------------------------------------------------------------
 # 消费端逐条渲染
 # ---------------------------------------------------------------------------
-
-
-def test_play_arbitration_prompt_renders_all_affixes_separately() -> None:
-    text = _build_play_cards_arbitration_prompt(
-        "角色.无名", _card(on_play_affixes=[AFFIX_A, AFFIX_B]), ["怪物.甲"], 1
-    )
-    assert AFFIX_A in text and AFFIX_B in text
-    assert f"{AFFIX_A}、{AFFIX_B}" not in text
 
 
 def test_monster_decision_lines_render_all_affixes_separately() -> None:

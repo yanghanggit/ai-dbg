@@ -34,12 +34,16 @@ from ai_dbg.models import (
     PartyMemberComponent,
     PassTurnAction,
     PlayCardsAction,
+    SystemMessage,
     TargetType,
     ToolMessage,
 )
 from ai_dbg.systems.card_pile_common import PILE_EXHAUST
 from ai_dbg.systems.combat_decision_common import REASON_MISSING
-from ai_dbg.systems.monster_combat_decision_system import MonsterCombatDecisionSystem
+from ai_dbg.systems.monster_combat_decision_system import (
+    MonsterCombatDecisionSystem,
+    _make_loop_id,
+)
 from dungeon_support import install_combat
 
 _MODULE = "ai_dbg.systems.monster_combat_decision_system"
@@ -395,3 +399,23 @@ class TestToolLoopSelfCorrection:
         assert "决策没有返回可执行的结果" in record.content
         assert json.loads(record.combat_decision)["forced"] is True
         assert monster.has(PassTurnAction)
+
+
+#######################################################################################################
+def test_make_loop_id_increments_from_persisted_markers() -> None:
+    """序号取自记忆里已有的 loop 起点标记，跨进程不重号。"""
+    empty: List[Any] = [SystemMessage(content="system")]
+    assert (
+        _make_loop_id(empty, "monster_decision", 1, "怪物.甲")
+        == "monster_decision:1:怪物.甲#1"
+    )
+
+    persisted: List[Any] = [
+        SystemMessage(content="system"),
+        HumanMessage(content="A", loop_id="monster_decision:1:怪物.甲#1"),
+        HumanMessage(content="B", loop_id="artifact:1:角色.甲#2"),
+    ]
+    assert (
+        _make_loop_id(persisted, "monster_decision", 1, "怪物.甲")
+        == "monster_decision:1:怪物.甲#3"
+    )

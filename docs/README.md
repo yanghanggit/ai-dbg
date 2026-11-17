@@ -41,14 +41,12 @@
 | [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |
 | [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件，不随世界快照回滚；与 job 日志的分工 |
 | [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与回滚 |
-| [战斗管道（Combat Pipeline）](wiki/combat-pipeline.md) | ECS 处理器链的架构设计：管道心跳驱动、牌库预置与抽牌堆确定性填充、仲裁的三方归属、回合行动序列与生命周期阶段 |
-| [神器（Artifact）](wiki/artifact.md) | 第一公民实体：内容作者写修正规则，由 `ReliquaryComponent` 声明归属，运行点由标记组件表达，出牌仲裁后由神器自身实体作为临时 agent 自行判定并执行，机制与内容分离 |
-| [卡牌数据模型（Card）](wiki/card.md) | Card 字段的三层结构（确定性骨架 / 语义词缀 / 生命周期流转）、来源引用（source）与「确定性骨架 + LLM 语义」的设计取舍 |
-| [卡牌设计指南（Card Design）](wiki/card-design.md) | 面向内容作者的设计方法论：设计总原则、布尔字段硬约束、字段设计含义、词缀设计方法（字段/词缀/范例均指向各自单一来源） |
+| [战斗管道（Combat Pipeline）](wiki/combat-pipeline.md) | ECS 处理器链的架构设计：管道心跳驱动、牌库预置与抽牌堆确定性填充、静态伤害/格挡结算、回合行动序列与生命周期阶段 |
+| [神器（Artifact）](wiki/artifact.md) | 场景级修正规则的数据模型与挂载方式；当前保留数据形状，运行时结算未启用 |
+| [卡牌数据模型（Card）](wiki/card.md) | Card 字段的三层结构（确定性骨架 / 保留词缀数据 / 生命周期流转）、来源引用（source）与静态结算的设计取舍 |
 | [三端化思维（攻击端 / 防御端 / 运转端）](wiki/combat-ports.md) | 端口化思维方法论：攻击端（前端/成长性/铺垫）、防御端（前端/成长性/特殊）、运转端（过牌/加费/启动）及其与 Card 字段的映射 |
 | [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
-| [手牌（HandComponent）](wiki/hand.md) | 手牌的双重身份：作为出牌者的行动选择集、作为被命中者的当前状态，及其与牌堆/仲裁/装备的关联 |
+| [手牌（HandComponent）](wiki/hand.md) | 手牌的双重身份：作为出牌者的行动选择集、作为被命中者的当前状态，及其与牌堆/静态结算/装备的关联 |
 | [DBG 核心概念定义与逻辑关系总结](<wiki/DBG 核心概念定义与逻辑关系总结.md>) | Modifiers（对局级规则）与 Affixes（一次性效果词缀）二者的定义、归属与逻辑关系：宏观-微观模型 |
-| [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段（精简提示词、阈值触发压缩）；以及仅作用于地下城场景实体的仲裁 loop 逐次压缩与失败不回滚策略 |
-| [角色自持内容生成（Actor Intrinsic Generation）](wiki/actor-intrinsic-generation.md) | 以角色/怪物为 agent 生成候选卡与牌库时的取材边界：只取内化身份，排除当前场景等易变外部信息 |
+| [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段：怪物决策的逐次去痕与按上下文占比触发的全局压缩 |
 | [战役设定与全局规则（CAMPAIGN_SETTING / SYSTEM_RULES）](wiki/campaign-setting-rules-bridge.md) | 故事层两字段的分层（均封存在 demo/）、抽象设定的惰性知识与内容无关边界 |

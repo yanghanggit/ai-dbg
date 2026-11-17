@@ -1,7 +1,7 @@
 # AI-DBG
 
 一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 DBG（Deck Building Game）框架：
-以 ECS 承载副本、卡牌与战斗规则，以 LLM（DeepSeek）驱动卡牌设计、战斗决策与叙事生成。
+以 ECS 承载副本、卡牌与战斗规则，以 LLM（DeepSeek）驱动战斗决策与叙事生成。
 
 > 本仓库是**引擎 + 常驻服务端 + 服务端真相**，同时自带两个面向 AI 代理的命令行工具。
 

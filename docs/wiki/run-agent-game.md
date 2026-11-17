@@ -20,11 +20,11 @@
 
 ## 命令面
 
-顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。卡牌调测命令 `card-prototypes`、`design-cards`、`rebuild-deck` 只读或只改副本文件，不写对局状态。
+顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。当前命令面不包含卡牌创建或牌库重做玩法。
 
 ## 职责分层
 
-Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 负责开场，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩，`cards.py` 负责卡牌调测。
+Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 负责开场，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩。
 
 真正的规则校验与 ECS 动作触发在 `ai_dbg/services/`。这一层与 CLI 解耦，同时被服务端 API 与测试复用；CLI 不是规则实现处，只是快照读写与动作选择的薄壳。
 
@@ -40,6 +40,4 @@ Click 层只做参数解析、日志初始化、快照路径构造与错误退�
 
 ## 与测试的分工
 
-CLI 的端到端走查依赖 LLM，结果不可完全复现，不能替代固定回归。规则与契约由单元/集成测试锁定；CLI 用于探索新副本、验证卡牌设计与观察完整快照差异。卡牌开发循环使用 `card-prototypes` 查原型、`design-cards` 预览设计、`rebuild-deck` 定点改写预置副本的怪物牌库。
-
-→ 参见：[卡牌设计指南（Card Design）](card-design.md)
+CLI 的端到端走查依赖 LLM，结果不可完全复现，不能替代固定回归。规则与契约由单元/集成测试锁定；CLI 用于探索新副本与观察完整快照差异。
