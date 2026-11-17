@@ -364,7 +364,7 @@ class TestExecute:
     async def test_skip_when_not_ongoing(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """战斗非 ONGOING 时，complete_combat 不应调用。"""
+        """战斗非 ONGOING 时，结束战斗不应发生。"""
         set_combat_state(mock_game, CombatState.COMPLETE)
         await system.execute()
         assert (
@@ -392,7 +392,7 @@ class TestExecute:
     async def test_both_sides_cardless_triggers_lose(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """双方均无可用卡牌时，应调用 complete_combat(LOSE)。"""
+        """双方均无可用卡牌时，应结束战斗并判负。"""
         ally = _make_actor(context, "英雄", is_ally=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {ally, monster})
@@ -420,7 +420,7 @@ class TestExecute:
     async def test_enemy_eliminated_triggers_win(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """敌方全灭时应调用 complete_combat(WIN)。"""
+        """敌方全灭时应结束战斗并判胜。"""
         ally = _make_actor(context, "英雄", is_ally=True)
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
         self._setup(mock_game, context, {ally, dead_monster})
@@ -434,7 +434,7 @@ class TestExecute:
     async def test_ally_eliminated_triggers_lose(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """友方全灭时应调用 complete_combat(LOSE)。"""
+        """友方全灭时应结束战斗并判负。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {dead_ally, monster})

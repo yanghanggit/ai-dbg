@@ -10,10 +10,7 @@ from ..game.combat import (
     consume_turn_energy,
     get_turn_energy,
 )
-from ..game.combat.state import (
-    advance_current_turn,
-    mark_turn_completed,
-)
+from ..game.combat.state import advance_current_turn
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
@@ -30,6 +27,7 @@ from ..game.messaging import (
 from ..models import (
     ActorComponent,
     CombatTurnComponent,
+    CombatTurnStatus,
     HandComponent,
     NoneEvent,
     PassTurnAction,
@@ -65,6 +63,24 @@ class PassTurnActionSystem(ReactiveProcessor):
             entity.has(PassTurnAction)
             and entity.has(HandComponent)
             and entity.has(ActorComponent)
+        )
+
+    ####################################################################################################################################
+    def _mark_turn_completed(self, turn_entity: Entity) -> None:
+        """标记行动槽已完成（角色已过牌/交出行动权）。"""
+        turn_comp = turn_entity.get(CombatTurnComponent)
+        assert (
+            turn_comp.status == CombatTurnStatus.PENDING
+        ), f"只有待行动的行动槽可以完成: {turn_entity.name}"
+        turn_entity.replace(
+            CombatTurnComponent,
+            turn_comp.name,
+            turn_comp.combat_name,
+            turn_comp.round_name,
+            turn_comp.actor_name,
+            turn_comp.order_index,
+            CombatTurnStatus.COMPLETED,
+            turn_comp.energy,
         )
 
     ####################################################################################################################################
@@ -108,7 +124,7 @@ class PassTurnActionSystem(ReactiveProcessor):
             consume_turn_energy(current_turn_entity, cur_energy)
 
         # 标记当前行动槽完成，并把行动权推进到下一个可用槽。
-        mark_turn_completed(current_turn_entity)
+        self._mark_turn_completed(current_turn_entity)
         next_turn_entity = advance_current_turn(self._game, last_round_entity)
         next_actor = (
             next_turn_entity.get(CombatTurnComponent).actor_name

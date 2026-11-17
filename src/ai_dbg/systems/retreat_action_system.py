@@ -6,7 +6,6 @@ from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import mark_dead
-from ..game.combat.state import mark_combat_retreated
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_entity,
@@ -20,7 +19,12 @@ from ..game.entities import (
 from ..game.memory import (
     add_human_message,
 )
-from ..models import HumanMessage, PartyMemberComponent, RetreatAction
+from ..models import (
+    CombatStateComponent,
+    HumanMessage,
+    PartyMemberComponent,
+    RetreatAction,
+)
 from ..utils import prompt_builder
 
 
@@ -74,7 +78,20 @@ class RetreatActionSystem(ReactiveProcessor):
             self._process_retreat_action(entity, dungeon_name)
 
         # 标记当前战斗为撤退状态
-        mark_combat_retreated(current_combat_entity(self._game))
+        self._mark_combat_retreated(current_combat_entity(self._game))
+
+    ####################################################################################################################################
+    def _mark_combat_retreated(self, combat_entity: Entity) -> None:
+        """标记本次战斗通过撤退结束。"""
+        state_comp = combat_entity.get(CombatStateComponent)
+        combat_entity.replace(
+            CombatStateComponent,
+            state_comp.name,
+            state_comp.room_name,
+            state_comp.state,
+            state_comp.result,
+            True,
+        )
 
     ####################################################################################################################################
     def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:

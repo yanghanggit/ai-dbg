@@ -9,17 +9,12 @@ from ai_dbg.game.combat.state import (
     combat_rounds,
     combat_turns,
     combat_view,
-    complete_combat,
     create_combat,
     create_combat_round,
     current_combat_round,
     current_combat_turn,
     destroy_combat,
-    mark_combat_retreated,
-    mark_turn_completed,
     record_round_entry,
-    transition_combat_to_ongoing,
-    transition_combat_to_post_combat,
 )
 from ai_dbg.game.entities import create_entity
 from ai_dbg.models import (
@@ -38,6 +33,13 @@ from ai_dbg.models import (
     RoundEntryKind,
 )
 from ai_dbg.services.dungeon_teardown_action import teardown_dungeon
+from ai_dbg.systems.combat_init_stage_system import CombatInitStageSystem
+from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
+from ai_dbg.systems.combat_post_combat_transition_system import (
+    CombatPostCombatTransitionSystem,
+)
+from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
+from ai_dbg.systems.retreat_action_system import RetreatActionSystem
 from dungeon_support import (
     make_dungeon_entity,
     make_room_entity,
@@ -159,7 +161,7 @@ def test_turn_completion_advances_to_next_pending_turn(sample_game: Any) -> None
     current_turn = current_combat_turn(sample_game, combat)
     assert current_turn is not None
 
-    mark_turn_completed(current_turn)
+    PassTurnActionSystem(sample_game)._mark_turn_completed(current_turn)
     next_turn = advance_current_turn(sample_game, round_entity)
 
     assert next_turn is not None
@@ -191,7 +193,7 @@ def test_advance_current_turn_skips_dead_and_clears_after_last(
     )
     current_turn = current_combat_turn(sample_game, combat)
     assert current_turn is not None
-    mark_turn_completed(current_turn)
+    PassTurnActionSystem(sample_game)._mark_turn_completed(current_turn)
 
     next_turn = advance_current_turn(sample_game, round_entity)
     assert next_turn is not None
@@ -202,7 +204,7 @@ def test_advance_current_turn_skips_dead_and_clears_after_last(
     assert round_view is not None
     assert round_view.completed_actors == ["角色.甲"]
 
-    mark_turn_completed(next_turn)
+    PassTurnActionSystem(sample_game)._mark_turn_completed(next_turn)
     assert advance_current_turn(sample_game, round_entity) is None
     assert current_combat_turn(sample_game, combat) is None
 
@@ -210,18 +212,18 @@ def test_advance_current_turn_skips_dead_and_clears_after_last(
 def test_combat_state_transitions_update_the_single_component(sample_game: Any) -> None:
     _, combat = _room_and_combat(sample_game)
 
-    transition_combat_to_ongoing(combat)
+    CombatInitStageSystem(sample_game)._transition_to_ongoing(combat)
     assert combat.get(CombatStateComponent).state == CombatState.ONGOING
 
-    mark_combat_retreated(combat)
+    RetreatActionSystem(sample_game)._mark_combat_retreated(combat)
     assert combat.get(CombatStateComponent).retreated is True
 
-    complete_combat(combat, CombatResult.WIN)
+    CombatOutcomeSystem(sample_game)._complete_combat(combat, CombatResult.WIN)
     state = combat.get(CombatStateComponent)
     assert state.state == CombatState.COMPLETE
     assert state.result == CombatResult.WIN
 
-    transition_combat_to_post_combat(combat)
+    CombatPostCombatTransitionSystem(sample_game)._transition_to_post_combat(combat)
     assert combat.get(CombatStateComponent).state == CombatState.POST_COMBAT
 
 

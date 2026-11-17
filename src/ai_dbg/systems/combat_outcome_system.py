@@ -5,7 +5,6 @@ from typing import Final, Set, Type, final, override
 from loguru import logger
 
 from ..entitas import Component, Entity, ExecuteProcessor
-from ..game.combat.state import complete_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_entity,
@@ -18,6 +17,8 @@ from ..game.entities import (
 )
 from ..models import (
     CombatResult,
+    CombatState,
+    CombatStateComponent,
     DeathComponent,
     DiscardPileComponent,
     DrawPileComponent,
@@ -39,7 +40,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
     ########################################################################################################################################################################
     @override
     async def execute(self) -> None:
-        """检测阵营全灭条件，调用 complete_combat() 结束战斗；战斗未 ONGOING 时静默跳过。"""
+        """检测阵营全灭条件，调用 _complete_combat() 结束战斗；战斗未 ONGOING 时静默跳过。"""
 
         if not is_current_room_dungeon_combat(self._game):
             return
@@ -57,9 +58,25 @@ class CombatOutcomeSystem(ExecuteProcessor):
         logger.info(f"战斗结束，结果: {combat_result}")
 
         # 推进战斗状态机（ONGOING -> COMPLETE），后续 pipeline 系统据此判断是否进入战后阶段
-        complete_combat(current_combat_entity(self._game), combat_result)
+        self._complete_combat(current_combat_entity(self._game), combat_result)
 
         # 手牌清理与胜负通知由后续 CombatHandCleanupSystem / CombatResultNoticeSystem 统一处理
+
+    ########################################################################################################################################################################
+    def _complete_combat(self, combat_entity: Entity, result: CombatResult) -> None:
+        """将战斗状态从 ONGOING 转换为 COMPLETE。"""
+        state_comp = combat_entity.get(CombatStateComponent)
+        assert state_comp.state == CombatState.ONGOING
+        assert result in (CombatResult.WIN, CombatResult.LOSE)
+        assert state_comp.result == CombatResult.NONE
+        combat_entity.replace(
+            CombatStateComponent,
+            state_comp.name,
+            state_comp.room_name,
+            CombatState.COMPLETE,
+            result,
+            state_comp.retreated,
+        )
 
     ########################################################################################################################################################################
     def _determine_combat_result(self) -> CombatResult:

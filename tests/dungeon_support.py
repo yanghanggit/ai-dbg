@@ -11,8 +11,6 @@ from ai_dbg.game.combat.state import (
     create_combat,
     create_combat_round,
     current_combat_turn,
-    mark_round_completed,
-    mark_round_draw_completed,
 )
 from ai_dbg.game.dungeon import (
     current_combat_entity,
@@ -31,6 +29,8 @@ from ai_dbg.models import (
     DungeonRunComponent,
     StageComponent,
 )
+from ai_dbg.systems.combat_round_completion_system import CombatRoundCompletionSystem
+from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
 
 
 def make_dungeon_entity(
@@ -113,9 +113,9 @@ def install_combat(
         )
         if round_index == rounds:
             if draw_completed:
-                mark_round_draw_completed(round_entity)
+                DrawCardsActionSystem(game)._mark_round_draw_completed(round_entity)
             if is_completed:
-                mark_round_completed(round_entity)
+                CombatRoundCompletionSystem(game)._mark_round_completed(round_entity)
 
     return current_dungeon_combat(game)
 

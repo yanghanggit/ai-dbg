@@ -4,12 +4,11 @@ from typing import Final, final, override
 
 from loguru import logger
 
-from ..entitas import ExecuteProcessor
+from ..entitas import Entity, ExecuteProcessor
 from ..game.combat import get_alive_actors_in_stage
 from ..game.combat.state import (
     combat_round_view,
     latest_combat_round,
-    mark_round_completed,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
@@ -20,6 +19,7 @@ from ..game.dungeon import (
 from ..game.entities import (
     get_player_entity,
 )
+from ..models import CombatRoundComponent
 
 
 ###############################################################################################################################################
@@ -66,7 +66,20 @@ class CombatRoundCompletionSystem(ExecuteProcessor):
         all_passed = all(actor.name in completed for actor in actors_in_stage)
 
         if all_passed:
-            mark_round_completed(latest_round)
+            self._mark_round_completed(latest_round)
             logger.info(
                 f"回合完成：所有存活角色均已 pass turn，is_completed = True（action_order={round_view.action_order}）"
             )
+
+    ############################################################################################################
+    def _mark_round_completed(self, round_entity: Entity) -> None:
+        """标记回合完成。"""
+        round_comp = round_entity.get(CombatRoundComponent)
+        round_entity.replace(
+            CombatRoundComponent,
+            round_comp.name,
+            round_comp.combat_name,
+            round_comp.index,
+            True,
+            round_comp.draw_completed,
+        )

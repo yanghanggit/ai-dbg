@@ -5,14 +5,14 @@ from typing import Final, final
 from loguru import logger
 from overrides import override
 
-from ..entitas import ExecuteProcessor
-from ..game.combat.state import transition_combat_to_post_combat
+from ..entitas import Entity, ExecuteProcessor
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
+from ..models import CombatResult, CombatState, CombatStateComponent
 
 
 #######################################################################################################################################
@@ -38,7 +38,22 @@ class CombatPostCombatTransitionSystem(ExecuteProcessor):
         assert combat.is_won or combat.is_lost, "战斗结果状态异常！"
 
         logger.info("战斗结束，转换战斗状态：COMPLETE -> POST_COMBAT")
-        transition_combat_to_post_combat(current_combat_entity(self._game))
+        self._transition_to_post_combat(current_combat_entity(self._game))
+
+    #######################################################################################################################################
+    def _transition_to_post_combat(self, combat_entity: Entity) -> None:
+        """将战斗状态从 COMPLETE 转换为 POST_COMBAT。"""
+        state_comp = combat_entity.get(CombatStateComponent)
+        assert state_comp.result in (CombatResult.WIN, CombatResult.LOSE)
+        assert state_comp.state == CombatState.COMPLETE
+        combat_entity.replace(
+            CombatStateComponent,
+            state_comp.name,
+            state_comp.room_name,
+            CombatState.POST_COMBAT,
+            state_comp.result,
+            state_comp.retreated,
+        )
 
 
 #######################################################################################################################################

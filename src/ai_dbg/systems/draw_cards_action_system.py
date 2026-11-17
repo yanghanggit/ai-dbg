@@ -6,7 +6,6 @@ from typing import Dict, Final, List, Tuple, final, override
 from loguru import logger
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.combat.state import mark_round_draw_completed
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_round_entity,
@@ -169,6 +168,19 @@ class DrawCardsActionSystem(ReactiveProcessor):
         """每次尝试从牌堆抓取的目标张数（PartyMember 与非 PartyMember 均为 3 张）。"""
         return 3 if entity.has(PartyMemberComponent) else 3
 
+    ####################################################################################################################################
+    def _mark_round_draw_completed(self, round_entity: Entity) -> None:
+        """标记回合抽牌阶段完成。"""
+        round_comp = round_entity.get(CombatRoundComponent)
+        round_entity.replace(
+            CombatRoundComponent,
+            round_comp.name,
+            round_comp.combat_name,
+            round_comp.index,
+            round_comp.is_completed,
+            True,
+        )
+
     ######################################################################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
@@ -243,6 +255,6 @@ class DrawCardsActionSystem(ReactiveProcessor):
             )
 
         # 标记本回合 DRAW 阶段已完成
-        mark_round_draw_completed(last_round_entity)
+        self._mark_round_draw_completed(last_round_entity)
 
     #######################################################################################################################################

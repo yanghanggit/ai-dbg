@@ -4,12 +4,11 @@ from typing import Final, List, final, override
 
 from loguru import logger
 
-from ..entitas import ExecuteProcessor
+from ..entitas import Entity, ExecuteProcessor
 from ..game.combat import (
     get_alive_monsters_in_stage,
     get_alive_party_members_in_stage,
 )
-from ..game.combat.state import transition_combat_to_ongoing
 from ..game.context import DBGGame
 from ..game.dungeon import (
     current_combat_entity,
@@ -25,7 +24,13 @@ from ..game.memory import (
     add_human_message,
 )
 from ..game.stage.environment import get_stage_environment
-from ..models import AIMessage, HumanMessage
+from ..models import (
+    AIMessage,
+    CombatResult,
+    CombatState,
+    CombatStateComponent,
+    HumanMessage,
+)
 from ..utils import prompt_builder
 
 
@@ -108,10 +113,25 @@ class CombatInitStageSystem(ExecuteProcessor):
         )
 
         # 设置战斗为进行中（第一回合将由 DrawCardsAction 触发的 CombatRoundStartSystem 创建）
-        transition_combat_to_ongoing(current_combat_entity(self._game))
+        self._transition_to_ongoing(current_combat_entity(self._game))
         assert current_dungeon_combat(
             self._game
         ).is_ongoing, "战斗状态转换失败，当前状态非 ONGOING！"
+
+    ###################################################################################################################################################################
+    def _transition_to_ongoing(self, combat_entity: Entity) -> None:
+        """将战斗状态从 INITIALIZATION 转换为 ONGOING。"""
+        state_comp = combat_entity.get(CombatStateComponent)
+        assert state_comp.state == CombatState.INITIALIZATION
+        assert state_comp.result == CombatResult.NONE
+        combat_entity.replace(
+            CombatStateComponent,
+            state_comp.name,
+            state_comp.room_name,
+            CombatState.ONGOING,
+            state_comp.result,
+            state_comp.retreated,
+        )
 
 
 ###################################################################################################################################################################
