@@ -2,7 +2,7 @@
 
 import random
 from enum import StrEnum, unique
-from typing import Dict, Final, List, Set, final, override
+from typing import Dict, Final, List, Optional, Set, final, override
 
 from loguru import logger
 
@@ -13,8 +13,10 @@ from ..game.combat import (
 )
 from ..game.combat.state import (
     combat_rounds,
-    create_combat_round,
+    combat_turns,
+    current_combat_round,
     latest_combat_round,
+    set_current_combat_turn,
 )
 from ..game.context import DBGGame
 from ..game.dungeon import (
@@ -23,12 +25,18 @@ from ..game.dungeon import (
     is_current_room_dungeon_combat,
 )
 from ..game.entities import (
+    create_entity,
+    get_entity_by_name,
     get_player_entity,
     resolve_stage_entity,
 )
 from ..models import (
     CharacterStatsComponent,
     CombatRoundComponent,
+    CombatTurnComponent,
+    CombatTurnStatus,
+    CurrentCombatRoundComponent,
+    CurrentCombatTurnComponent,
     DrawCardsAction,
     DungeonComponent,
     IdentityComponent,
@@ -49,6 +57,17 @@ class ActionOrderStrategy(StrEnum):
     )
 
 
+############################################################################################################
+def _combat_round_entity_name(combat_name: str, index: int) -> str:
+    return f"{combat_name}#round-{index}"
+
+
+############################################################################################################
+def _combat_turn_entity_name(round_name: str, order_index: int) -> str:
+    return f"{round_name}#turn-{order_index}"
+
+
+############################################################################################################
 @final
 class CombatRoundStartSystem(ReactiveProcessor):
     """
@@ -77,6 +96,90 @@ class CombatRoundStartSystem(ReactiveProcessor):
     @override
     def filter(self, entity: Entity) -> bool:
         return entity.has(DrawCardsAction)
+
+    ############################################################################################################
+    def _create_round(
+        self,
+        combat_entity: Entity,
+        *,
+        index: int,
+        action_order: List[str],
+        current_actor: Optional[str],
+    ) -> Entity:
+        """创建新回合及其行动槽，并把它标记为当前回合。"""
+        existing_round = current_combat_round(self._game, combat_entity)
+        if existing_round is not None:
+            existing_round.remove(CurrentCombatRoundComponent)
+            for turn_entity in combat_turns(self._game, existing_round):
+                if turn_entity.has(CurrentCombatTurnComponent):
+                    turn_entity.remove(CurrentCombatTurnComponent)
+
+        round_name = _combat_round_entity_name(combat_entity.name, index)
+        assert (
+            get_entity_by_name(self._game, round_name) is None
+        ), f"回合实体已存在: {round_name}"
+
+        round_entity = create_entity(self._game, round_name)
+        round_entity.replace(
+            CombatRoundComponent,
+            round_name,
+            combat_entity.name,
+            index,
+            False,
+            False,
+        )
+        round_entity.replace(CurrentCombatRoundComponent, round_name)
+
+        for order_index, actor_name in enumerate(action_order, start=1):
+            self._create_turn(
+                round_entity,
+                actor_name=actor_name,
+                order_index=order_index,
+            )
+
+        if current_actor is not None:
+            current_turn = next(
+                (
+                    turn_entity
+                    for turn_entity in combat_turns(self._game, round_entity)
+                    if turn_entity.get(CombatTurnComponent).actor_name == current_actor
+                ),
+                None,
+            )
+            assert (
+                current_turn is not None
+            ), f"行动顺序中没有当前行动者: {current_actor}"
+            set_current_combat_turn(self._game, current_turn)
+
+        return round_entity
+
+    ############################################################################################################
+    def _create_turn(
+        self,
+        round_entity: Entity,
+        *,
+        actor_name: str,
+        order_index: int,
+    ) -> Entity:
+        """创建回合内的一个行动槽实体。"""
+        round_comp = round_entity.get(CombatRoundComponent)
+        turn_name = _combat_turn_entity_name(round_entity.name, order_index)
+        assert (
+            get_entity_by_name(self._game, turn_name) is None
+        ), f"行动槽实体已存在: {turn_name}"
+
+        turn_entity = create_entity(self._game, turn_name)
+        turn_entity.replace(
+            CombatTurnComponent,
+            turn_name,
+            round_comp.combat_name,
+            round_entity.name,
+            actor_name,
+            order_index,
+            CombatTurnStatus.PENDING,
+            2,
+        )
+        return turn_entity
 
     ############################################################################################################
     @override
@@ -138,8 +241,7 @@ class CombatRoundStartSystem(ReactiveProcessor):
 
         action_order = [entity.name for entity in snapshot_entities]
         current_actor = snapshot_entities[0].name if snapshot_entities else None
-        create_combat_round(
-            self._game,
+        self._create_round(
             combat_entity,
             index=round_number,
             action_order=action_order,

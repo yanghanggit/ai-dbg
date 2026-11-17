@@ -6,11 +6,22 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.combat.state import destroy_combat, get_combat_entity_for_room
+from ..game.combat.state import (
+    combat_round_entries,
+    combat_rounds,
+    combat_turns,
+    get_combat_entity_for_room,
+)
 from ..game.context import DBGGame
 from ..game.dungeon import dungeon_rooms, get_dungeon_entity
 from ..game.entities import destroy_entity, get_actors_in_stage
-from ..models import CombatComponent, MonsterComponent, TeardownDungeonAction
+from ..models import (
+    CombatComponent,
+    CurrentCombatRoundComponent,
+    CurrentCombatTurnComponent,
+    MonsterComponent,
+    TeardownDungeonAction,
+)
 
 
 ###################################################################################################################################################################
@@ -60,11 +71,36 @@ class TeardownDungeonActionSystem(ReactiveProcessor):
 
         for room_entity in rooms:
             if room_entity.has(CombatComponent):
-                destroy_combat(
-                    self._game,
+                self._destroy_combat(
                     get_combat_entity_for_room(self._game, room_entity),
                 )
             destroy_entity(self._game, room_entity)
 
         destroy_entity(self._game, dungeon_entity)
         logger.debug("[TeardownDungeonActionSystem] 副本实体清理完成")
+
+    ####################################################################################################################################
+    def _destroy_combat(self, combat_entity: Entity) -> None:
+        """销毁战斗实体及其全部回合/行动槽/记录实体，并解除房间上的战斗标记。"""
+        for round_entity in combat_rounds(self._game, combat_entity):
+            for entry_entity in combat_round_entries(self._game, round_entity):
+                destroy_entity(self._game, entry_entity)
+
+            for turn_entity in combat_turns(self._game, round_entity):
+                if turn_entity.has(CurrentCombatTurnComponent):
+                    turn_entity.remove(CurrentCombatTurnComponent)
+                destroy_entity(self._game, turn_entity)
+
+            if round_entity.has(CurrentCombatRoundComponent):
+                round_entity.remove(CurrentCombatRoundComponent)
+            destroy_entity(self._game, round_entity)
+
+        room_entities = self._game.ecs.get_group(
+            Matcher(all_of=[CombatComponent])
+        ).entities.copy()
+        for room_entity in room_entities:
+            combat_comp = room_entity.get(CombatComponent)
+            if combat_comp.combat_name == combat_entity.name:
+                room_entity.remove(CombatComponent)
+
+        destroy_entity(self._game, combat_entity)

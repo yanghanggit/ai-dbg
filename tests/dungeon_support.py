@@ -9,7 +9,6 @@ from ai_dbg.game.combat.state import (
     combat_rounds,
     combat_turns,
     create_combat,
-    create_combat_round,
     current_combat_turn,
 )
 from ai_dbg.game.dungeon import (
@@ -32,6 +31,7 @@ from ai_dbg.models import (
     StageComponent,
 )
 from ai_dbg.systems.combat_round_completion_system import CombatRoundCompletionSystem
+from ai_dbg.systems.combat_round_start_system import CombatRoundStartSystem
 from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
 
 
@@ -79,6 +79,23 @@ def make_room_entity(
 def set_current_room(game: Any, room: Entity) -> None:
     """把 room 标记为当前房间。"""
     room.replace(CurrentDungeonRoomComponent, room.name)
+
+
+def create_combat_round(
+    game: Any,
+    combat_entity: Entity,
+    *,
+    index: int,
+    action_order: Optional[List[str]],
+    current_actor: Optional[str],
+) -> Entity:
+    """测试辅助：复用生产系统的回合创建逻辑。"""
+    return CombatRoundStartSystem(game)._create_round(
+        combat_entity,
+        index=index,
+        action_order=action_order or [],
+        current_actor=current_actor,
+    )
 
 
 def install_combat(

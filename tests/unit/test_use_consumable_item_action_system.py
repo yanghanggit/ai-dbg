@@ -14,7 +14,6 @@ from ai_dbg.entitas.entity import Entity
 from ai_dbg.game.combat.state import (
     combat_round_view,
     combat_rounds,
-    create_combat_round,
 )
 from ai_dbg.game.context import ECSContext
 from ai_dbg.game.dungeon import current_combat_entity
@@ -34,6 +33,7 @@ from ai_dbg.systems.use_consumable_item_action_system import (
     UseConsumableItemActionSystem,
 )
 from dungeon_support import (
+    create_combat_round,
     current_round_entity,
     install_combat,
     set_combat_state,

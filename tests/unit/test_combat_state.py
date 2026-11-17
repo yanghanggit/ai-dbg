@@ -10,10 +10,8 @@ from ai_dbg.game.combat.state import (
     combat_turns,
     combat_view,
     create_combat,
-    create_combat_round,
     current_combat_round,
     current_combat_turn,
-    destroy_combat,
     record_round_entry,
 )
 from ai_dbg.game.entities import create_entity
@@ -43,6 +41,7 @@ from ai_dbg.systems.teardown_dungeon_action_system import (
     TeardownDungeonActionSystem,
 )
 from dungeon_support import (
+    create_combat_round,
     make_dungeon_entity,
     make_room_entity,
     set_current_room,
@@ -247,7 +246,7 @@ def test_destroy_combat_removes_rounds_and_room_marker(sample_game: Any) -> None
     )
     combat_name = combat.name
 
-    destroy_combat(sample_game, combat)
+    TeardownDungeonActionSystem(sample_game)._destroy_combat(combat)
 
     assert not room.has(CombatComponent)
     assert not sample_game.ecs.get_group(

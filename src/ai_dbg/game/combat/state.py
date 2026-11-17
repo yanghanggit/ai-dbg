@@ -24,7 +24,6 @@ from ...models import (
 from ..context import DBGGame
 from ..entities import (
     create_entity,
-    destroy_entity,
     get_actor_entity,
     get_entity_by_name,
 )
@@ -239,16 +238,6 @@ def _combat_entity_name(room_name: str) -> str:
 
 
 ###############################################################################################################################################
-def _combat_round_entity_name(combat_name: str, index: int) -> str:
-    return f"{combat_name}#round-{index}"
-
-
-###############################################################################################################################################
-def _combat_turn_entity_name(round_name: str, order_index: int) -> str:
-    return f"{round_name}#turn-{order_index}"
-
-
-###############################################################################################################################################
 def _combat_round_entry_entity_name(round_name: str, index: int) -> str:
     return f"{round_name}#entry-{index}"
 
@@ -301,93 +290,6 @@ def create_combat(
 
 
 ###############################################################################################################################################
-def create_combat_round(
-    dbg_game: DBGGame,
-    combat_entity: Entity,
-    *,
-    index: int,
-    action_order: List[str],
-    current_actor: Optional[str],
-) -> Entity:
-    """创建新回合及其行动槽，并把它标记为当前回合。"""
-    existing_round = current_combat_round(dbg_game, combat_entity)
-    if existing_round is not None:
-        existing_round.remove(CurrentCombatRoundComponent)
-        for turn_entity in combat_turns(dbg_game, existing_round):
-            if turn_entity.has(CurrentCombatTurnComponent):
-                turn_entity.remove(CurrentCombatTurnComponent)
-
-    round_name = _combat_round_entity_name(combat_entity.name, index)
-    assert (
-        get_entity_by_name(dbg_game, round_name) is None
-    ), f"回合实体已存在: {round_name}"
-
-    round_entity = create_entity(dbg_game, round_name)
-    round_entity.replace(
-        CombatRoundComponent,
-        round_name,
-        combat_entity.name,
-        index,
-        False,
-        False,
-    )
-    round_entity.replace(CurrentCombatRoundComponent, round_name)
-
-    for order_index, actor_name in enumerate(action_order, start=1):
-        create_combat_turn(
-            dbg_game,
-            round_entity,
-            actor_name=actor_name,
-            order_index=order_index,
-        )
-
-    if current_actor is not None:
-        current_turn = next(
-            (
-                turn_entity
-                for turn_entity in combat_turns(dbg_game, round_entity)
-                if turn_entity.get(CombatTurnComponent).actor_name == current_actor
-            ),
-            None,
-        )
-        assert current_turn is not None, f"行动顺序中没有当前行动者: {current_actor}"
-        set_current_combat_turn(dbg_game, current_turn)
-
-    return round_entity
-
-
-###############################################################################################################################################
-def create_combat_turn(
-    dbg_game: DBGGame,
-    round_entity: Entity,
-    *,
-    actor_name: str,
-    order_index: int,
-    status: CombatTurnStatus = CombatTurnStatus.PENDING,
-    energy: int = 2,
-) -> Entity:
-    """创建回合内的一个行动槽实体。"""
-    round_comp = round_entity.get(CombatRoundComponent)
-    turn_name = _combat_turn_entity_name(round_entity.name, order_index)
-    assert (
-        get_entity_by_name(dbg_game, turn_name) is None
-    ), f"行动槽实体已存在: {turn_name}"
-
-    turn_entity = create_entity(dbg_game, turn_name)
-    turn_entity.replace(
-        CombatTurnComponent,
-        turn_name,
-        round_comp.combat_name,
-        round_entity.name,
-        actor_name,
-        order_index,
-        status,
-        energy,
-    )
-    return turn_entity
-
-
-###############################################################################################################################################
 def set_current_combat_turn(dbg_game: DBGGame, turn_entity: Entity) -> None:
     """把指定行动槽设为当前行动槽；同一战斗只保留一个当前槽。"""
     turn_comp = turn_entity.get(CombatTurnComponent)
@@ -434,7 +336,7 @@ def advance_current_turn(dbg_game: DBGGame, round_entity: Entity) -> Optional[En
 
 
 ###############################################################################################################################################
-def create_combat_round_entry(
+def _create_combat_round_entry(
     dbg_game: DBGGame,
     round_entity: Entity,
     *,
@@ -479,7 +381,7 @@ def record_round_entry(
     turn_name: Optional[str] = None,
 ) -> Entity:
     """向回合追加一条操作记录实体。"""
-    return create_combat_round_entry(
+    return _create_combat_round_entry(
         dbg_game,
         round_entity,
         kind=kind,
@@ -503,32 +405,3 @@ def mark_turn_dead(turn_entity: Entity) -> None:
         CombatTurnStatus.DEAD,
         turn_comp.energy,
     )
-
-
-###############################################################################################################################################
-# 清理
-###############################################################################################################################################
-def destroy_combat(dbg_game: DBGGame, combat_entity: Entity) -> None:
-    """销毁战斗实体及其全部回合/行动槽/记录实体，并解除房间上的战斗标记。"""
-    for round_entity in combat_rounds(dbg_game, combat_entity):
-        for entry_entity in combat_round_entries(dbg_game, round_entity):
-            destroy_entity(dbg_game, entry_entity)
-
-        for turn_entity in combat_turns(dbg_game, round_entity):
-            if turn_entity.has(CurrentCombatTurnComponent):
-                turn_entity.remove(CurrentCombatTurnComponent)
-            destroy_entity(dbg_game, turn_entity)
-
-        if round_entity.has(CurrentCombatRoundComponent):
-            round_entity.remove(CurrentCombatRoundComponent)
-        destroy_entity(dbg_game, round_entity)
-
-    room_entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[CombatComponent])
-    ).entities.copy()
-    for room_entity in room_entities:
-        combat_comp = room_entity.get(CombatComponent)
-        if combat_comp.combat_name == combat_entity.name:
-            room_entity.remove(CombatComponent)
-
-    destroy_entity(dbg_game, combat_entity)
