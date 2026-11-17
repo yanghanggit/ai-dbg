@@ -32,7 +32,6 @@ from ai_dbg.models import (
     DeathComponent,
     RoundEntryKind,
 )
-from ai_dbg.services.dungeon_teardown_action import teardown_dungeon
 from ai_dbg.systems.combat_init_stage_system import CombatInitStageSystem
 from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
 from ai_dbg.systems.combat_post_combat_transition_system import (
@@ -40,6 +39,9 @@ from ai_dbg.systems.combat_post_combat_transition_system import (
 )
 from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
 from ai_dbg.systems.retreat_action_system import RetreatActionSystem
+from ai_dbg.systems.teardown_dungeon_action_system import (
+    TeardownDungeonActionSystem,
+)
 from dungeon_support import (
     make_dungeon_entity,
     make_room_entity,
@@ -258,7 +260,7 @@ def test_destroy_combat_removes_rounds_and_room_marker(sample_game: Any) -> None
     assert sample_game.ecs.get_entity_by_name(combat_name) is None
 
 
-def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
+async def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
     room, combat = _room_and_combat(sample_game)
     round_entity = create_combat_round(
         sample_game,
@@ -275,7 +277,7 @@ def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
         "叙事",
     )
 
-    teardown_dungeon(sample_game)
+    await TeardownDungeonActionSystem(sample_game).react([room])
 
     assert sample_game.ecs.entity_count == 0
     assert sample_game.ecs.entity_count == 0

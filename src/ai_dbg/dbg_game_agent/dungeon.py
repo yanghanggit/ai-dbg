@@ -26,13 +26,10 @@ from ai_dbg.services.dungeon_enter_action import (
     enter_dungeon,
 )
 from ai_dbg.services.dungeon_exit_action import (
-    exit_dungeon,
+    activate_exit_dungeon,
 )
 from ai_dbg.services.dungeon_setup_action import (
     setup_dungeon,
-)
-from ai_dbg.services.dungeon_teardown_action import (
-    teardown_dungeon,
 )
 
 from .core import restore_game
@@ -151,33 +148,18 @@ async def exit_dungeon_game(
     player_session: PlayerSession,
     save_dir: Path,
 ) -> DBGGame:
-    """结束副本返回大厅并归档。需战斗已结束（无论胜负），非战斗房间可直接退出。"""
+    """结束副本返回大厅并归档：挂载退出动作并执行全局 pipeline。"""
 
     # 创建 DBGGame 实例并从快照恢复游戏状态
     terminal_game = await restore_game(world, player_session)
 
-    # 状态守卫：玩家必须处于副本场景中（与 API 的 _validate_dungeon_prerequisites 对齐）
-    if not is_player_in_dungeon_stage(terminal_game):
-        logger.error("exit-dungeon 只能在副本场景中使用")
-        return terminal_game
-
-    # 若当前为战斗房间，状态守卫：只能在战斗结束后使用
-    if is_current_room_dungeon_combat(terminal_game):
-        if not current_dungeon_combat(terminal_game).is_post_combat:
-            logger.error("exit-dungeon 只能在战斗结束后使用")
-            return terminal_game
-
-    elif is_current_room_dungeon_opening(terminal_game):
-        logger.info("当前为非战斗房间，直接退出副本")
-
-    # 执行退出副本流程，返回大厅
-    success, msg = exit_dungeon(terminal_game)
+    # 只发起退出意图；副本、房间、战斗、队伍与大厅校验由 ECS system 处理
+    success, msg = activate_exit_dungeon(terminal_game)
     if not success:
-        logger.error(f"exit_dungeon 失败: {msg}")
+        logger.error(f"exit-dungeon 失败: {msg}")
         return terminal_game
 
-    # 销毁副本实体并重置副本数据
-    teardown_dungeon(terminal_game)
+    await terminal_game.pipeline.process(None)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

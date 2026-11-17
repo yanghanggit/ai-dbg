@@ -50,6 +50,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     )
     from ...systems.exhaust_cards_action_system import ExhaustCardsActionSystem
     from ...systems.exhaust_ethereal_cards_system import ExhaustEtherealCardsSystem
+    from ...systems.exit_dungeon_action_system import ExitDungeonActionSystem
     from ...systems.fill_draw_pile_system import FillDrawPileSystem
     from ...systems.generate_spoils_action_system import (
         GenerateSpoilsActionSystem,
@@ -64,6 +65,9 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.pre_combat_outcome_system import PreCombatOutcomeSystem
     from ...systems.prologue_system import PrologueSystem
     from ...systems.retreat_action_system import RetreatActionSystem
+    from ...systems.teardown_dungeon_action_system import (
+        TeardownDungeonActionSystem,
+    )
     from ...systems.transfer_cards_action_system import TransferCardsActionSystem
     from ...systems.turn_end_arbitration_system import TurnEndArbitrationSystem
     from ...systems.use_consumable_item_action_system import (
@@ -145,6 +149,12 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # 通用动作与每轮尾部
     # ---------------------------------------------------------------------
     pipeline.add(CompactContextActionSystem(dbg_game))
+
+    # 副本生命周期动作放在尾部：先退出副本，再销毁副本实体；
+    # 两者必须在 ActionCleanupSystem 之前，才能由动作组件触发。
+    pipeline.add(ExitDungeonActionSystem(dbg_game))
+    pipeline.add(TeardownDungeonActionSystem(dbg_game))
+
     pipeline.add(ActionCleanupSystem(dbg_game))
     pipeline.add(DestroyEntitySystem(dbg_game))
     pipeline.add(ContextCompactionSystem(dbg_game))

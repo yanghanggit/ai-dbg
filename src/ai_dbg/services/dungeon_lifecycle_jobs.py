@@ -5,13 +5,9 @@ from procrastinate import JobContext
 
 from ..game.context import DBGGame
 from ..game.persistence.store import store_game_async
+from ..job_context import get_current_job
 from ..pgsql import procrastinate_app
-from .dungeon_exit_action import (
-    exit_dungeon,
-)
-from .dungeon_teardown_action import (
-    teardown_dungeon,
-)
+from .dungeon_exit_action import activate_exit_dungeon
 from .game_server_runtime import get_runtime_game_server
 from .job_runtime import job_task
 
@@ -25,7 +21,7 @@ async def execute_exit_dungeon_job(
     context: JobContext,
     user_name: str,
 ) -> None:
-    """执行退出副本 job（返回大厅 + 实体销毁）。"""
+    """执行退出副本 job：退出动作 + teardown system + 归档。"""
     job_id = context.job.id
     assert job_id is not None, "运行中的 job 必然有 job id"
     try:
@@ -43,13 +39,12 @@ async def execute_exit_dungeon_job(
                 raise ValueError(f"游戏实例不存在: user={user_name}")
             assert isinstance(rpg_game, DBGGame), "Invalid game type"
 
-            # 退出副本并返回大厅（同步，内部自带状态守卫）
-            success, msg = exit_dungeon(rpg_game)
+            # 挂载退出意图，由 ExitDungeonActionSystem / TeardownDungeonActionSystem 执行
+            success, msg = activate_exit_dungeon(rpg_game)
             if not success:
                 raise ValueError(f"退出副本失败: {msg}")
 
-            # 销毁副本实体并重置副本数据（同步）
-            teardown_dungeon(rpg_game)
+            await rpg_game.pipeline.process(get_current_job())
 
             # 存储退出后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

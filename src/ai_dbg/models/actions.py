@@ -110,6 +110,26 @@ class EquipGearItemAction(Component):
 @final
 @register_action_component_type
 @register_component_type
+class ExitDungeonAction(Component):
+    """发起退出当前副本、返回大厅的意图；具体校验与传送由 ExitDungeonActionSystem 执行。"""
+
+    name: str
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class TeardownDungeonAction(Component):
+    """退出副本成功后，请求销毁副本相关实体；由 TeardownDungeonActionSystem 响应。"""
+
+    name: str
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
 class GenerateSpoilsAction(Component):
     """触发为角色生成候选奖励（SpoilsComponent），当前生成候选卡牌。
 
