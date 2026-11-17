@@ -32,7 +32,7 @@
 
 - **大厅**：`dungeon-list` / `dungeon start --dungeon <name>` / `blueprint-list` / `compact`。
 - **开场房间**：未初始化 → `opening init`；随后 `dungeon advance-stage` 推进，`dungeon exit` 离开。
-- **战斗房间**：`NONE` / `INITIALIZATION` → `combat init`；`ONGOING` 未抓牌或回合已结束 → `combat draw-cards`；轮到角色 → `combat play-cards` / `combat pass-turn` / `combat use-consumable` / `combat equip-gear`（怪物回合由服务端决策），也可 `combat retreat`；`COMPLETE` / `POST_COMBAT` 胜利 → `combat collect-loot`，有下一关再 `dungeon advance-stage`；其余结束态 → `dungeon exit`。
+- **战斗房间**：`NONE` / `INITIALIZATION` → `combat init`；`ONGOING` 未抓牌或回合已结束 → `combat draw-cards`；轮到角色 → `combat play-cards` / `combat pass-turn` / `combat use-consumable` / `combat equip-gear`（怪物回合由服务端决策），也可 `combat retreat`；`COMPLETE` / `POST_COMBAT` 胜利 → 有下一关再 `dungeon advance-stage`；其余结束态 → `dungeon exit`。
 
 建议字符串已带命令组前缀，可直接作为 CLI 参数；它只是提示，最终以服务端校验为准。
 

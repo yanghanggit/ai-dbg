@@ -10,8 +10,6 @@ from ..game.dungeon import (
     is_current_room_dungeon_combat,
 )
 from ..models import (
-    DungeonCombatCollectLootRequest,
-    DungeonCombatCollectLootResponse,
     DungeonCombatDrawCardsRequest,
     DungeonCombatDrawCardsResponse,
     DungeonCombatEquipGearItemRequest,
@@ -26,9 +24,6 @@ from ..models import (
     DungeonCombatRetreatResponse,
     DungeonCombatUseConsumableItemRequest,
     DungeonCombatUseConsumableItemResponse,
-)
-from .dungeon_combat_actions import (
-    collect_loot,
 )
 from .dungeon_combat_jobs import (
     execute_draw_cards_job,
@@ -159,62 +154,6 @@ async def dungeon_combat_init(
         job_id=job_id,
         message="战斗初始化 job 已启动，请通过会话消息查询结果",
     )
-
-
-###################################################################################################################################################################
-###################################################################################################################################################################
-###################################################################################################################################################################
-@dungeon_combat_api_router.post(
-    path="/api/dungeon/combat/collect_loot/v1/",
-    response_model=DungeonCombatCollectLootResponse,
-)
-async def dungeon_combat_collect_loot(
-    payload: DungeonCombatCollectLootRequest,
-    game_server: CurrentGameServer,
-) -> DungeonCombatCollectLootResponse:
-    """
-    收取战斗战利品接口
-    """
-
-    logger.info(f"/api/dungeon/combat/collect_loot/v1/: user={payload.user_name}")
-
-    current_room = game_server.get_room(payload.user_name)
-    if current_room is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="没有登录，请先登录",
-        )
-
-    async with current_room.transaction():
-
-        # 验证副本操作的前置条件
-        dbg_game = _validate_dungeon_prerequisites(
-            user_name=payload.user_name,
-            game_server=game_server,
-        )
-
-        # 验证当前副本房间是否为战斗房间
-        if not is_current_room_dungeon_combat(dbg_game):
-            logger.error(
-                f"玩家 {payload.user_name} 收取战利品失败: 当前副本房间不是战斗房间"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="当前副本房间不是战斗房间",
-            )
-
-        # 收取战利品
-        success, message = collect_loot(dbg_game)
-        if not success:
-            logger.warning(f"玩家 {payload.user_name} 收取战利品失败: {message}")
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=message,
-            )
-
-        # 收取战利品成功
-        logger.info(f"玩家 {payload.user_name} 收取战利品成功: {message}")
-        return DungeonCombatCollectLootResponse(message=message)
 
 
 ###################################################################################################################################################################

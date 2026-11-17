@@ -1,6 +1,6 @@
 """副本战斗动作。
 
-包含所有在战斗房间中执行的游戏动作函数（抽牌、出牌、过牌、撤退、使用物品、收取战利品等）。
+包含所有在战斗房间中执行的游戏动作函数（抽牌、出牌、过牌、撤退、使用物品等）。
 """
 
 from pathlib import Path
@@ -26,7 +26,6 @@ from ai_dbg.services.dungeon_combat_actions import (
     activate_play_cards_specified,
     activate_retreat,
     activate_use_consumable,
-    collect_loot,
 )
 
 from .core import restore_game
@@ -274,27 +273,4 @@ async def retreat_game(
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)
-    return terminal_game
-
-
-###############################################################################
-async def collect_loot_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    save_dir: Path,
-) -> DBGGame:
-    """收取战利品至随身背包并归档。无战利品时不归档。"""
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("collect-loot 只能在战斗房间中使用")
-        return terminal_game
-
-    success, msg = collect_loot(terminal_game)
-    if not success:
-        logger.warning(f"collect-loot 未归档：{msg}")
-        return terminal_game
-
-    await store_game_async(terminal_game, save_dir)
-    logger.info(f"战利品收取完成：{msg}，存档: {save_dir}")
     return terminal_game

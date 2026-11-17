@@ -38,7 +38,6 @@ from ai_dbg.dbg_api_agent.flow import suggest_actions
 from ai_dbg.dbg_api_agent.server_client import (
     compact_context,
     dungeon_advance_stage,
-    dungeon_combat_collect_loot,
     dungeon_combat_draw_cards,
     dungeon_combat_equip_gear,
     dungeon_combat_init,
@@ -510,17 +509,6 @@ def combat_equip_gear_cmd(user: str, game: str, item_name: str) -> None:
         return await _await_job(await dungeon_combat_equip_gear(user, game, item_name))
 
     _run("combat equip-gear", go())
-
-
-@combat_group.command("collect-loot")
-@identity_options
-def combat_collect_loot_cmd(user: str, game: str) -> None:
-    """收取战斗战利品（转入背包）。"""
-
-    async def go() -> Dict[str, Any]:
-        return _sync_result(await dungeon_combat_collect_loot(user, game))
-
-    _run("combat collect-loot", go())
 
 
 @combat_group.command("retreat")

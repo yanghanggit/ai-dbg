@@ -16,8 +16,6 @@ from ..models import (
     CompactContextResponse,
     DungeonAdvanceStageRequest,
     DungeonAdvanceStageResponse,
-    DungeonCombatCollectLootRequest,
-    DungeonCombatCollectLootResponse,
     DungeonCombatDrawCardsRequest,
     DungeonCombatDrawCardsResponse,
     DungeonCombatEquipGearItemRequest,
@@ -374,22 +372,6 @@ async def dungeon_opening_init(
         )
         response.raise_for_status()
         return DungeonOpeningInitResponse.model_validate(response.json())
-
-
-async def dungeon_combat_collect_loot(
-    user_name: str, game_name: str
-) -> DungeonCombatCollectLootResponse:
-    """收取战斗战利品，将掉落物转入背包。"""
-    async with build_client(10) as client:
-        response = await client.post(
-            "/api/dungeon/combat/collect_loot/v1/",
-            json=DungeonCombatCollectLootRequest(
-                user_name=user_name,
-                game_name=game_name,
-            ).model_dump(),
-        )
-        response.raise_for_status()
-        return DungeonCombatCollectLootResponse.model_validate(response.json())
 
 
 async def dungeon_combat_init(

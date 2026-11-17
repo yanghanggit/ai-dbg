@@ -35,7 +35,7 @@
 | ------ | ------ |
 | [消耗品系统（ConsumableItem）](wiki/consumable-item.md) | 消耗品的数据模型、内置卡牌与战斗使用管道 |
 | [装备系统（GearItem）](wiki/gear-item.md) | 装备的数据模型、装备物化为手牌的管道、战斗结束归还 |
-| [材料系统（MaterialItem）](wiki/material-item.md) | 战斗掉落材料的数据模型、堆叠规则与当前无消费端的定位 |
+| [材料系统（MaterialItem）](wiki/material-item.md) | 原料类道具的数据模型、堆叠规则与当前无获取/消费入口的定位 |
 | [DBG AI 操作 CLI（ai-dbg-agent-game）](wiki/run-agent-game.md) | 离线快照驱动的副本推进：新局直达副本、开场/战斗流程、全局 system 骨架与开发调测命令 |
 | [DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
 | [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |

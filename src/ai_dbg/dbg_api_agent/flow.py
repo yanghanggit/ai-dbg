@@ -3,7 +3,7 @@
 这里沉淀的是驱动游戏推进的**流程知识**：
 - 副本房间路由（开场房间 vs 战斗房间）
 - 战斗回合推进（抓牌 → 出牌/过牌 → 换手 → 新回合 → 结算）
-- 战后顺序（收取战利品 → 推进关卡 → 退出）
+- 战后顺序（推进关卡 → 退出）
 - 非战斗房间顺序（初始化 → 推进）
 
 输入是 :func:`ai_dbg.dbg_api_agent.status.build_status` 产出的快照 dict，
@@ -95,9 +95,8 @@ def suggest_actions(status: Dict[str, Any]) -> List[str]:
                                 actions.append("combat retreat")
 
                         case "COMPLETE" | "POST_COMBAT":
-                            # 只有胜利才收战利品并推进；战败只能离开副本（推进会被服务端拒）
+                            # 只有胜利才推进；战败只能离开副本（推进会被服务端拒）
                             if combat.get("result") == "WIN":
-                                actions.append("combat collect-loot")
                                 has_next = dungeon.get(
                                     "current_room_index", -1
                                 ) + 1 < dungeon.get("room_count", 1)

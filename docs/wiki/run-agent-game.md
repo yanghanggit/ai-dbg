@@ -20,7 +20,7 @@
 
 ## 命令面
 
-顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`、`collect-loot`。当前命令面不包含卡牌创建或牌库重做玩法。
+顶层命令负责生命周期与观测：`new`、`stages`、`enter-dungeon`、`exit-dungeon`、`next-dungeon`、`compact-context`。副本动作按房间类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`。当前命令面不包含卡牌创建或牌库重做玩法。
 
 ## 职责分层
 
@@ -34,7 +34,7 @@ Click 层只做参数解析、日志初始化、快照路径构造与错误退�
 
 开场、战斗是 `world` 中的房间状态，压缩是 `CompactContextAction` 动作；三者都不是独立的 pipeline。开场 system 在战斗回合中自行跳过，战斗 system 在开场或压缩回合中同样自行跳过。
 
-顺序就是因果链：回合开始必须先于抽牌，死亡判定必须先于胜负判定，胜负判定必须先于掉落，后战斗转换必须先于牌堆拆除。全局装配函数中的相邻注释是对这些不可交换顺序的显式约束。
+顺序就是因果链：回合开始必须先于抽牌，死亡判定必须先于胜负判定，胜负判定必须先于战后转换，后战斗转换必须先于牌堆拆除。全局装配函数中的相邻注释是对这些不可交换顺序的显式约束。
 
 → 参见：[战斗管道（Combat Pipeline）](combat-pipeline.md)
 

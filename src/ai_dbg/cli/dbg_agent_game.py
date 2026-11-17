@@ -21,7 +21,6 @@
   use-consumable  --snapshot PATH --item I [--targets T...]     使用消耗品
   equip-gear      --snapshot PATH --item I                      装备 GearItem
   retreat         --snapshot PATH                               主动撤退（结算为失败，成员死亡）
-  collect-loot    --snapshot PATH                               收战利品（胜利后）
   next-dungeon    --snapshot PATH                               下一关（仅推进，不初始化新房间）
   exit-dungeon    --snapshot PATH                               退出副本 → 大厅（无论胜负）
 
@@ -32,7 +31,7 @@
           —— 出牌、用消耗品、装备均不结束行动窗口；所有存活角色都过牌后本回合结束，需再 draw-cards
           —— 怪物：play-cards-specified 触发 AI 决策。若 AI 出牌，需再 pass-turn(怪物) 交出行动权；
                   若 AI 自行过牌，系统已在同一次调用内完成过牌，不要再对其 pass-turn
-        胜利 → collect-loot → next-dungeon → combat-init（或 opening-init，视新房间类型）
+        胜利 → next-dungeon → combat-init（或 opening-init，视新房间类型）
         失败 → exit-dungeon
         战斗中途撤退 → retreat → exit-dungeon
   副本（开场房间）：opening-init → next-dungeon
@@ -85,7 +84,6 @@ def _setup_logger(log_file_path: Path) -> None:
 
 
 from ai_dbg.dbg_game_agent.combat import (
-    collect_loot_game,
     draw_cards_game,
     equip_gear_game,
     init_combat_game,
@@ -555,38 +553,6 @@ def next_dungeon(snapshot: str) -> None:
     logger.info(f"本次存档目录：{_save_dir}")
 
     asyncio.run(next_dungeon_game(world, player_session, _save_dir))
-
-
-###############################################################################################################################################
-@main.command("collect-loot")
-@click.option(
-    "--snapshot",
-    required=True,
-    help="存档目录路径",
-)
-def collect_loot(snapshot: str) -> None:
-    """收取战利品至随身背包并归档。无战利品时不归档。"""
-
-    snapshot_path = Path(snapshot)
-    if not snapshot_path.exists():
-        raise click.BadParameter(
-            f"存档目录不存在：{snapshot_path}", param_hint="--snapshot"
-        )
-
-    _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _log_file = LOGS_DIR / f"run_agent_game_{_timestamp}.log"
-    _setup_logger(_log_file)
-
-    world, player_session = _restore_snapshot(snapshot_path)
-    _save_dir = (
-        WORLDS_DIR / player_session.name / str(world.blueprint.name) / _timestamp
-    )
-
-    logger.info(f"本次运行日志文件：{_log_file}")
-    logger.info(f"读取存档：{snapshot_path}")
-    logger.info(f"本次存档目录：{_save_dir}")
-
-    asyncio.run(collect_loot_game(world, player_session, _save_dir))
 
 
 ###############################################################################################################################################

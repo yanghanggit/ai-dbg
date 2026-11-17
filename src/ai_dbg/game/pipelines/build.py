@@ -14,8 +14,6 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
     from ...systems.action_cleanup_system import ActionCleanupSystem
     from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
-
-    # from ...systems.combat_loot_system import CombatLootSystem
     from ...systems.combat_outcome_system import CombatOutcomeSystem
     from ...systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
     from ...systems.combat_pile_teardown_system import CombatPileTeardownSystem
@@ -114,7 +112,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(CombatRoundCompletionSystem(dbg_game))
     pipeline.add(CombatOutcomeSystem(dbg_game))
     # 手牌清理必须在 CombatOutcomeSystem 之后：既覆盖正常回合结束，也覆盖战斗提前结束。
-    # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入掉落与战后处理。
+    # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入战后处理。
     pipeline.add(CombatHandCleanupSystem(dbg_game))
     pipeline.add(CombatResultNoticeSystem(dbg_game))
     pipeline.add(CombatPostCombatTransitionSystem(dbg_game))
