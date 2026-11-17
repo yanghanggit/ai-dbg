@@ -27,8 +27,9 @@ from ai_dbg.models import (
     PlayerComponent,
     StageComponent,
 )
-from ai_dbg.systems.combat_outcome_system import (
-    CombatOutcomeSystem,
+from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
+from ai_dbg.systems.combat_result_notice_system import (
+    CombatResultNoticeSystem,
     _build_combat_result_notification,
 )
 from dungeon_support import install_combat, set_combat_state
@@ -363,14 +364,13 @@ class TestExecute:
     async def test_skip_when_not_ongoing(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """战斗非 ONGOING 时，complete_combat / clear_round_state 均不应调用。"""
+        """战斗非 ONGOING 时，complete_combat 不应调用。"""
         set_combat_state(mock_game, CombatState.COMPLETE)
         await system.execute()
         assert (
             current_combat_entity(mock_game).get(CombatStateComponent).state
             == CombatState.COMPLETE
         )
-        # mock_game.clear_round_state.assert_not_called()
         mock_game.add_human_message.assert_not_called()
 
     @pytest.mark.asyncio
@@ -387,7 +387,6 @@ class TestExecute:
             current_combat_entity(mock_game).get(CombatStateComponent).result
             == CombatResult.NONE
         )
-        # mock_game.clear_round_state.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_both_sides_cardless_triggers_lose(
@@ -421,7 +420,7 @@ class TestExecute:
     async def test_enemy_eliminated_triggers_win(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """敌方全灭时应调用 complete_combat(WIN) 和 clear_round_state。"""
+        """敌方全灭时应调用 complete_combat(WIN)。"""
         ally = _make_actor(context, "英雄", is_ally=True)
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
         self._setup(mock_game, context, {ally, dead_monster})
@@ -430,24 +429,12 @@ class TestExecute:
             current_combat_entity(mock_game).get(CombatStateComponent).result
             == CombatResult.WIN
         )
-        # mock_game.clear_round_state.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_enemy_eliminated_broadcasts_to_allies(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
-    ) -> None:
-        """敌方全灭时应向友方广播胜利消息（add_human_message 至少调用一次）。"""
-        ally = _make_actor(context, "英雄", is_ally=True)
-        dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
-        self._setup(mock_game, context, {ally, dead_monster})
-        await system.execute()
-        assert mock_game.world.agent_memories
 
     @pytest.mark.asyncio
     async def test_ally_eliminated_triggers_lose(
         self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
     ) -> None:
-        """友方全灭时应调用 complete_combat(LOSE) 和 clear_round_state。"""
+        """友方全灭时应调用 complete_combat(LOSE)。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
         self._setup(mock_game, context, {dead_ally, monster})
@@ -456,36 +443,6 @@ class TestExecute:
             current_combat_entity(mock_game).get(CombatStateComponent).result
             == CombatResult.LOSE
         )
-        # mock_game.clear_round_state.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_ally_eliminated_broadcasts_to_allies(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
-    ) -> None:
-        """友方全灭时应向（存活/死亡）友方广播失败消息。"""
-        dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
-        monster = _make_actor(context, "哥布林", is_monster=True)
-        self._setup(mock_game, context, {dead_ally, monster})
-        await system.execute()
-        assert mock_game.world.agent_memories
-
-    # @pytest.mark.asyncio
-    # async def test_clear_round_state_called_before_broadcast(
-    #     self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
-    # ) -> None:
-    #     """clear_round_state 应在 add_human_message 之前调用。"""
-    #     call_order: List[str] = []
-    #     mock_game.clear_round_state.side_effect = lambda: call_order.append("clear")
-    #     mock_game.add_human_message.side_effect = lambda *a, **kw: call_order.append(
-    #         "broadcast"
-    #     )
-
-    #     ally = _make_actor(context, "英雄", is_ally=True)
-    #     dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
-    #     self._setup(mock_game, context, {ally, dead_monster})
-    #     await system.execute()
-
-    #     assert call_order.index("clear") < call_order.index("broadcast")
 
 
 # ---------------------------------------------------------------------------
@@ -501,7 +458,7 @@ class TestCombatOutcomeNotice:
         player._name = "player"
         player.add(ActorComponent, "player", "测试场景")
         player.add(PlayerComponent, "player")
-        stage = _make_stage(context, "测试场景")
+        _make_stage(context, "测试场景")
         for actor in actors:
             actor.replace(ActorComponent, actor.name, "测试场景")
 
@@ -509,11 +466,11 @@ class TestCombatOutcomeNotice:
         self,
         context: ECSContext,
         mock_game: Any,
-        system: CombatOutcomeSystem,
         actors: set[Entity],
     ) -> dict[str, str]:
         self._setup(context, mock_game, actors)
-        await system.execute()
+        await CombatOutcomeSystem(mock_game).execute()
+        await CombatResultNoticeSystem(mock_game).execute()
         return {
             name: memory.messages[-1].content
             for name, memory in mock_game.world.agent_memories.items()
@@ -522,27 +479,28 @@ class TestCombatOutcomeNotice:
 
     @pytest.mark.asyncio
     async def test_win_gives_party_victory_and_monster_defeat(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         """队伍全胜：友方读「胜利」，怪物读「失败」，两侧都带 combat_outcome。"""
         ally = _make_actor(context, "英雄", is_ally=True)
         dead_monster = _make_actor(context, "哥布林", is_monster=True, is_dead=True)
-        contents = await self._collect(context, mock_game, system, {ally, dead_monster})
+        contents = await self._collect(context, mock_game, {ally, dead_monster})
 
         assert "战斗胜利" in contents["英雄"]
         assert "战斗失败" in contents["哥布林"]
 
-        for call in mock_game.add_human_message.call_args_list:
-            assert call.args[1].combat_outcome == "测试场景"
+        for name in ("英雄", "哥布林"):
+            message = mock_game.world.agent_memories[name].messages[-1]
+            assert message.combat_outcome == "测试场景"
 
     @pytest.mark.asyncio
     async def test_lose_gives_party_defeat_and_monster_victory(
-        self, context: ECSContext, mock_game: Any, system: CombatOutcomeSystem
+        self, context: ECSContext, mock_game: Any
     ) -> None:
         """队伍全灭：友方读「失败」，怪物读「胜利」。"""
         dead_ally = _make_actor(context, "英雄", is_ally=True, is_dead=True)
         monster = _make_actor(context, "哥布林", is_monster=True)
-        contents = await self._collect(context, mock_game, system, {dead_ally, monster})
+        contents = await self._collect(context, mock_game, {dead_ally, monster})
 
         assert "战斗失败" in contents["英雄"]
         assert "战斗胜利" in contents["哥布林"]

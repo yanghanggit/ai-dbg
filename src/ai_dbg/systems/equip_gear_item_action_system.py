@@ -114,9 +114,7 @@ class EquipGearItemActionSystem(ReactiveProcessor):
 
         actor_entity = get_actor_entity(self._game, turn_comp.actor_name)
         if actor_entity is None:
-            raise ValueError(
-                f"装备使用失败：找不到当前行动角色 {turn_comp.actor_name}"
-            )
+            raise ValueError(f"装备使用失败：找不到当前行动角色 {turn_comp.actor_name}")
         if not actor_entity.has(PartyMemberComponent):
             raise ValueError(
                 f"装备使用失败：当前行动角色 {actor_entity.name} 不是我方角色"

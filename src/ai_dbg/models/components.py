@@ -347,7 +347,7 @@ class DrawPileComponent(Component):
     cards: List[Card]  # FIFO 消耗，耗尽时由 DiscardPile 洗牌补充
     retained_cards: List[Card] = (
         []
-    )  # retain 牌临时中转队列：回合末由 clear_round_state 写入，下回合 DrawCardsActionSystem 优先取回手牌（不占用抓牌名额）
+    )  # retain 牌临时中转队列：回合末由 CombatHandCleanupSystem 写入，下回合 DrawCardsActionSystem 优先取回手牌（不占用抓牌名额）
 
 
 ############################################################################################################

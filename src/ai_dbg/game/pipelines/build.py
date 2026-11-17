@@ -20,6 +20,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
         AutonomousArbitrationSystem,
     )
     from ...systems.card_operation_system import CardOperationSystem
+    from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
     from ...systems.combat_init_actor_system import CombatInitActorSystem
     from ...systems.combat_init_stage_system import CombatInitStageSystem
     from ...systems.combat_loot_system import CombatLootSystem
@@ -28,7 +29,7 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     from ...systems.combat_post_combat_transition_system import (
         CombatPostCombatTransitionSystem,
     )
-    from ...systems.combat_round_cleanup_system import CombatRoundCleanupSystem
+    from ...systems.combat_result_notice_system import CombatResultNoticeSystem
     from ...systems.combat_round_completion_system import CombatRoundCompletionSystem
     from ...systems.combat_round_start_system import (
         ActionOrderStrategy,
@@ -130,9 +131,12 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     # 超时强制判负的死亡标记先于胜负判定。
     # ---------------------------------------------------------------------
     pipeline.add(CombatRoundCompletionSystem(dbg_game))
-    pipeline.add(CombatRoundCleanupSystem(dbg_game))
     pipeline.add(PreCombatOutcomeSystem(dbg_game))
     pipeline.add(CombatOutcomeSystem(dbg_game))
+    # 手牌清理必须在 CombatOutcomeSystem 之后：既覆盖正常回合结束，也覆盖战斗提前结束。
+    # 同时保证胜负判定读到的是清理前的手牌状态；清理后再进入掉落与战后处理。
+    pipeline.add(CombatHandCleanupSystem(dbg_game))
+    pipeline.add(CombatResultNoticeSystem(dbg_game))
     pipeline.add(CombatLootSystem(dbg_game))
     pipeline.add(CombatPostCombatTransitionSystem(dbg_game))
     pipeline.add(CombatPileTeardownSystem(dbg_game))

@@ -1,9 +1,6 @@
 """战斗规则：属性、目标解析与回合状态。"""
 
-from .rounds import (
-    assert_no_residual_combat_state,
-    clear_round_state,
-)
+from .rounds import assert_no_residual_combat_state
 from .stats import (
     compute_character_hand_block,
     compute_character_stats,
@@ -21,7 +18,6 @@ from .targeting import (
 
 __all__ = [
     "assert_no_residual_combat_state",
-    "clear_round_state",
     "compute_character_hand_block",
     "compute_character_stats",
     "consume_turn_energy",

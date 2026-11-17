@@ -8,6 +8,7 @@
 """
 
 import json
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Dict, Final, List, Mapping, Sequence, Tuple
 
@@ -24,6 +25,16 @@ from ..models import (
     ExhaustPileComponent,
     HumanMessage,
 )
+
+
+#######################################################################################################################################
+@dataclass(frozen=True)
+class HandSettlement:
+    """一个角色在回合末的手牌去向。"""
+
+    owner: Entity
+    discarded: Tuple[Card, ...]
+    retained: Tuple[Card, ...]
 
 
 #######################################################################################################################################
@@ -105,10 +116,13 @@ def record_pile_change(
 #######################################################################################################################################
 def record_round_end_discard(
     game: DBGGame,
-    settlements: Sequence[Tuple[Entity, Sequence[Card], Sequence[Card]]],
+    settlements: Sequence[HandSettlement],
 ) -> None:
     """回合末清手牌：把每张手牌的去向告诉主人（进弃牌堆 / 留到下回合）。"""
-    for owner, discarded, retained in settlements:
+    for settlement in settlements:
+        owner = settlement.owner
+        discarded = settlement.discarded
+        retained = settlement.retained
         if not discarded and not retained:
             continue
         discard_size = (

@@ -85,7 +85,9 @@ async def test_play_cards_broadcast_excludes_actor(context: ECSContext) -> None:
 
     with (
         patch("ai_dbg.systems.play_cards_action_system.consume_turn_energy"),
-        patch("ai_dbg.systems.play_cards_action_system.broadcast_to_stage") as mock_broadcast,
+        patch(
+            "ai_dbg.systems.play_cards_action_system.broadcast_to_stage"
+        ) as mock_broadcast,
     ):
         await PlayCardsActionSystem(game).react([actor])
 
@@ -110,7 +112,9 @@ async def test_pass_turn_broadcast_keeps_actor(context: ECSContext) -> None:
     with (
         patch("ai_dbg.systems.pass_turn_action_system.get_turn_energy", return_value=2),
         patch("ai_dbg.systems.pass_turn_action_system.consume_turn_energy"),
-        patch("ai_dbg.systems.pass_turn_action_system.broadcast_to_stage") as mock_broadcast,
+        patch(
+            "ai_dbg.systems.pass_turn_action_system.broadcast_to_stage"
+        ) as mock_broadcast,
     ):
         await pass_module.PassTurnActionSystem(game).react([actor])
 

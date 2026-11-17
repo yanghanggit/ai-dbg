@@ -1,11 +1,10 @@
-"""战斗结果判定系统：检测阵营全灭条件，结束战斗并广播结果。"""
+"""战斗结果判定系统：检测阵营全灭条件并结束战斗。"""
 
 from typing import Final, Set, Type, final, override
 
 from loguru import logger
 
 from ..entitas import Component, Entity, ExecuteProcessor
-from ..game.combat import clear_round_state
 from ..game.combat.state import complete_combat
 from ..game.context import DBGGame
 from ..game.dungeon import (
@@ -16,10 +15,6 @@ from ..game.dungeon import (
 from ..game.entities import (
     get_actors_in_stage,
     get_player_entity,
-    resolve_stage_entity,
-)
-from ..game.memory import (
-    add_human_message,
 )
 from ..models import (
     CombatResult,
@@ -27,23 +22,9 @@ from ..models import (
     DiscardPileComponent,
     DrawPileComponent,
     HandComponent,
-    HumanMessage,
     MonsterComponent,
     PartyMemberComponent,
 )
-from ..utils import prompt_builder
-from .card_pile_common import record_round_end_discard
-
-
-########################################################################################################################################################################
-@prompt_builder
-def _build_combat_result_notification(stage_name: str, is_victory: bool) -> str:
-    """生成写入 agent 记忆的战斗胜/败通知文本。"""
-    result_text = "胜利" if is_victory else "失败"
-    return f"# {stage_name}的战斗{result_text}！"
-
-
-########################################################################################################################################################################
 
 
 @final
@@ -58,7 +39,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
     ########################################################################################################################################################################
     @override
     async def execute(self) -> None:
-        """检测阵营全灭条件，调用 complete_combat() 结束战斗并广播结果；战斗未 ONGOING 时静默跳过。"""
+        """检测阵营全灭条件，调用 complete_combat() 结束战斗；战斗未 ONGOING 时静默跳过。"""
 
         if not is_current_room_dungeon_combat(self._game):
             return
@@ -78,11 +59,7 @@ class CombatOutcomeSystem(ExecuteProcessor):
         # 推进战斗状态机（ONGOING -> COMPLETE），后续 pipeline 系统据此判断是否进入战后阶段
         complete_combat(current_combat_entity(self._game), combat_result)
 
-        # 根据判定结果清理回合状态并广播战斗结果
-        record_round_end_discard(self._game, clear_round_state(self._game))
-
-        # 广播战斗结果给队伍成员
-        self._notify_combat_result(combat_result)
+        # 手牌清理与胜负通知由后续 CombatHandCleanupSystem / CombatResultNoticeSystem 统一处理
 
     ########################################################################################################################################################################
     def _determine_combat_result(self) -> CombatResult:
@@ -166,41 +143,6 @@ class CombatOutcomeSystem(ExecuteProcessor):
         return self._is_side_cardless(alive_allies) and self._is_side_cardless(
             alive_enemies
         )
-
-    ########################################################################################################################################################################
-    def _notify_combat_result(self, result: CombatResult) -> None:
-        """向当前场景内所有参战者（含怪物）写入胜/败通知，附带 combat_outcome 参数。
-
-        文本按各自阵营视角生成：队伍看 `CombatResult`，怪物看其反面。
-        """
-
-        player_entity = get_player_entity(self._game)
-        assert player_entity is not None, "Player entity should not be None."
-
-        combat_stage_entity = resolve_stage_entity(self._game, player_entity)
-        assert (
-            combat_stage_entity is not None
-        ), "Player's stage entity should not be None."
-
-        actors_in_stage = get_actors_in_stage(self._game, player_entity)
-        assert len(actors_in_stage) > 0, f"entities with actions: {actors_in_stage}"
-
-        for entity in actors_in_stage:
-            is_victory = (
-                result == CombatResult.WIN
-                if entity.has(PartyMemberComponent)
-                else result == CombatResult.LOSE
-            )
-            add_human_message(
-                self._game,
-                entity,
-                HumanMessage(
-                    content=_build_combat_result_notification(
-                        combat_stage_entity.name, is_victory
-                    ),
-                    combat_outcome=combat_stage_entity.name,
-                ),
-            )
 
     ########################################################################################################################################################################
     def _count_available_cards(self, entity: Entity) -> int:

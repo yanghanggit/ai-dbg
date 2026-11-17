@@ -1,12 +1,7 @@
-"""回合行动者、回合清理与战斗残留校验。"""
+"""战斗残留校验。"""
 
-from typing import List, Tuple
-
-from loguru import logger
-
-from ...entitas import Entity, Matcher
+from ...entitas import Matcher
 from ...models import (
-    Card,
     DiscardPileComponent,
     DrawPileComponent,
     ExhaustPileComponent,
@@ -15,69 +10,8 @@ from ...models import (
 from ..context import DBGGame
 
 
-def clear_round_state(game: DBGGame) -> List[Tuple[Entity, List[Card], List[Card]]]:
-    """清除所有角色实体的每回合可变状态（手牌归入弃牌堆 + 回合动态属性）。
-
-    返回每张手牌的去向 `(entity, 进弃牌堆, 进保留队列)`，供调用方写牌堆变更记忆。
-    """
-
-    settlements: List[Tuple[Entity, List[Card], List[Card]]] = []
-
-    # 清除所有角色实体的手牌组件（STS 标准：回合末未出牌进弃牌堆）
-    for entity in game.ecs.get_group(
-        Matcher(all_of=[HandComponent, DiscardPileComponent, DrawPileComponent])
-    ).entities.copy():
-
-        hand_comp = entity.get(HandComponent)
-        discard_pile_comp = entity.get(DiscardPileComponent)
-        discard_cards: List[Card] = []
-        retain_cards: List[Card] = []
-
-        if hand_comp.cards:
-
-            retain_cards = [c for c in hand_comp.cards if c.retain]
-            discard_cards = [c for c in hand_comp.cards if not c.retain]
-
-            # 将非 retain 的手牌归入弃牌堆（战斗子堆均为副本，不会回流 DeckComponent）
-            new_discard_cards = [*discard_pile_comp.cards, *discard_cards]
-            entity.replace(
-                DiscardPileComponent,
-                discard_pile_comp.name,
-                new_discard_cards,
-            )
-
-            # retain 牌暂存到 DrawPile 的保留队列，下回合优先取回手牌
-            if retain_cards:
-                assert entity.has(
-                    DrawPileComponent
-                ), f"{entity.name} 缺少 DrawPileComponent，无法存放 retain 牌"
-                draw_pile_comp = entity.get(DrawPileComponent)
-                entity.replace(
-                    DrawPileComponent,
-                    draw_pile_comp.name,
-                    draw_pile_comp.cards,
-                    [*draw_pile_comp.retained_cards, *retain_cards],
-                )
-                logger.debug(
-                    f"clear hands: {entity.name} 将 {len(retain_cards)} 张 retain 牌转入 DrawPile 保留队列"
-                )
-
-            logger.debug(
-                f"clear hands: {entity.name} 将 {len(discard_cards)} 张剩余手牌归入 DiscardPile，DiscardPile 累计 {len(new_discard_cards)} 张"
-            )
-        else:
-            logger.debug(f"clear hands: {entity.name}")
-
-        settlements.append((entity, discard_cards, retain_cards))
-
-        # 无论是否有手牌，回合末统一移除 HandComponent
-        entity.remove(HandComponent)
-
-    return settlements
-
-
 def assert_no_residual_combat_state(dbg_game: DBGGame) -> None:
-    """断言战斗临时组件已被 pipeline（CombatRoundCleanupSystem/CombatOutcomeSystem/CombatPileTeardownSystem）清理干净，此函数不做任何清理动作。"""
+    """断言战斗临时组件已被 pipeline（CombatHandCleanupSystem/CombatPileTeardownSystem）清理干净，此函数不做任何清理动作。"""
 
     residual_entities = dbg_game.ecs.get_group(
         Matcher(

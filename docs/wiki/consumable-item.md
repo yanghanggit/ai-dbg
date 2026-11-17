@@ -35,7 +35,7 @@
 
 **结算阶段**（`PlayCardsArbitrationSystem`）：物化出的牌与任何普通手牌一样，由出牌仲裁结算伤害，结果追加一条 `RoundEntryKind.CARDS` 回合记录实体。
 
-> 为什么物化出的牌要强制 `retain=True`：回合末 `clear_round_state` 会把非 retain 手牌塞进弃牌堆，而 DrawPile 耗尽时弃牌堆会被洗回 DrawPile。若不 retain，一张本回合没用掉的消耗品卡会在后续回合被重新抽到并再次打出，而库存早已扣了 1 份——等于一份消耗品重复生效。`retain` 让它在手牌中留到打出为止，战斗结束由 `CombatPileTeardownSystem` 清掉副本。
+> 为什么物化出的牌要强制 `retain=True`：回合末手牌结算会把非 retain 手牌塞进弃牌堆，而 DrawPile 耗尽时弃牌堆会被洗回 DrawPile。若不 retain，一张本回合没用掉的消耗品卡会在后续回合被重新抽到并再次打出，而库存早已扣了 1 份——等于一份消耗品重复生效。`retain` 让它在手牌中留到打出为止，战斗结束由 `CombatPileTeardownSystem` 清掉副本。
 >
 > 消耗品卡**不叠加角色属性**：`Card.damage` 就是最终伤害（与装备刻意不同——装备物化时会叠加持有者的 `attack` / `defense`）。
 

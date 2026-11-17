@@ -23,6 +23,7 @@ from ai_dbg.systems.card_pile_common import (
     PILE_HAND,
     PILE_LABELS,
     PILE_RETAINED,
+    HandSettlement,
     build_pile_change_tag,
     format_card_names,
     format_pile_counts,
@@ -139,10 +140,17 @@ def test_round_end_discard_reports_both_destinations(
     owner = _make_owner(context, cards=2)
     discarded: List[Card] = [_make_card("攻击"), _make_card("防守")]
     retained: List[Card] = [_make_card("守势", retain=True)]
-    # 与 clear_round_state 一致：先入堆，再写记录（正文里的余量是变更后的）
+    # 与 CombatHandCleanupSystem._settle_hand 一致：先入堆，再写记录（正文里的余量是变更后的）
     owner.get(DiscardPileComponent).cards.extend(discarded)
 
-    record_round_end_discard(game, [(owner, discarded, retained)])
+    record_round_end_discard(
+        game,
+        [
+            HandSettlement(
+                owner=owner, discarded=tuple(discarded), retained=tuple(retained)
+            )
+        ],
+    )
 
     message = game.world.agent_memories[owner.name].messages[-1]
     content = message.content
@@ -161,6 +169,9 @@ def test_round_end_discard_skips_empty_hands(context: Context, game: Any) -> Non
     """没有手牌可清就不写消息（避免每回合给全员刷一条空记录）。"""
     owner = _make_owner(context, cards=0)
 
-    record_round_end_discard(game, [(owner, [], [])])
+    record_round_end_discard(
+        game,
+        [HandSettlement(owner=owner, discarded=(), retained=())],
+    )
 
     game.add_human_message.assert_not_called()
