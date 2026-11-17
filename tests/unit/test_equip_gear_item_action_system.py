@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.game.context import ECSContext
 from ai_dbg.models import (
     ActorComponent,
@@ -21,12 +20,10 @@ from ai_dbg.models import (
     InventoryComponent,
     PartyMemberComponent,
     PlayerComponent,
-    RoundEntryKind,
     StageComponent,
 )
 from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
 from dungeon_support import (
-    current_round_entity,
     install_combat,
     set_combat_state,
 )
@@ -211,7 +208,6 @@ class TestReact:
         actor = _make_actor_entity(context, "角色.测试")
         player = _make_player_entity(context, "player", [gear])
         _attach_request(player, "装备.测试")
-        latest_round_entity = current_round_entity(mock_game)
         generated = Card(name="斩击", description="x")
         with patch.object(system, "_materialize_cards", return_value=[generated]):
             await system.react([player])
@@ -223,14 +219,5 @@ class TestReact:
         assert gear in actor.get(EquippedGearComponent).items
         # 生成的卡牌进入当前行动者手牌
         assert generated in actor.get(HandComponent).cards
-        # 本回合装备使用结果被记入记录队列
-        gear_entries = [
-            entry
-            for entry in combat_round_view(mock_game, latest_round_entity).entries
-            if entry.kind == RoundEntryKind.GEAR
-        ]
-        assert len(gear_entries) == 1
-        assert gear_entries[0].log
-        assert gear_entries[0].narrative
         # 广播装备转化通知
         assert mock_game.world.agent_memories

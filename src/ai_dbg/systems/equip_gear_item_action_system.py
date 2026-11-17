@@ -8,10 +8,8 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat import compute_character_stats
-from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -31,7 +29,6 @@ from ..models import (
     InventoryComponent,
     NoneEvent,
     PartyMemberComponent,
-    RoundEntryKind,
     apply_stats_to_card,
 )
 from ..utils import prompt_builder
@@ -145,7 +142,6 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
 
         self._move_gear_to_actor(context, gear)
         self._add_cards_to_hand(context.actor, cards)
-        self._record_gear_use(context.actor, gear, cards)
         self._broadcast_gear_use(context.actor, gear, cards)
 
     ####################################################################################################################################
@@ -195,28 +191,6 @@ class EquipGearItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
 
         hand_comp = actor.get(HandComponent)
         actor.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
-
-    ####################################################################################################################################
-    def _record_gear_use(
-        self,
-        actor: Entity,
-        gear: GearItem,
-        cards: List[Card],
-    ) -> None:
-        """记录本回合的装备使用结果。"""
-
-        round_entity = current_combat_round_entity(self._game)
-        if round_entity is None:
-            return
-
-        card_names = [card.name for card in cards]
-        record_round_entry(
-            self._game,
-            round_entity,
-            RoundEntryKind.GEAR,
-            f"[{actor.name} 装备 {gear.name}] 生成手牌「{'、'.join(card_names)}」",
-            "；".join(card.description for card in cards),
-        )
 
     ####################################################################################################################################
     def _broadcast_gear_use(

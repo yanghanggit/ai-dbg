@@ -6,7 +6,7 @@
 
 战斗是一个以 `CombatStateComponent` 状态机为核心的回合推进过程，由全局 ECS 处理器链中的战斗段按注册顺序驱动——顺序即因果链，无事件总线、无中心化状态机。战斗房间只是战斗的载体：它提供战场环境（stage）与参战角色（actors）；战斗本身是独立于房间的生命周期——**初始化 → 多回合累积推进（直到分出胜负）→ 结束**。
 
-战斗、回合、回合行动槽与回合记录的运行时状态都落在 ECS 实体上：战斗实体持有 `CombatStateComponent`，回合实体持有 `CombatRoundComponent`，每个角色的行动权落在独立的 `CombatTurnComponent` 实体上，每条操作记录落在独立的 `CombatRoundEntryComponent` 实体上；房间实体只保留 `CombatComponent` 作为链接。API 与观测层读取的是由这些组件投影出的 `CombatView`，投影本身不落库、不参与状态推进。
+战斗、回合与回合行动槽的运行时状态都落在 ECS 实体上：战斗实体持有 `CombatStateComponent`，回合实体持有 `CombatRoundComponent`，每个角色的行动权落在独立的 `CombatTurnComponent` 实体上；房间实体只保留 `CombatComponent` 作为链接。API 与观测层读取的是由这些组件投影出的 `CombatView`，投影本身不落库、不参与状态推进。
 
 ## 三阶段框架
 
@@ -30,7 +30,6 @@
 
 - `CombatTurnComponent`：每个参战角色在回合开始时生成一个行动槽，记录角色名、顺序序号、本回合剩余 energy 与状态（待行动 / 已完成 / 已死亡）；回合开始确定的顺序即创建顺序（按角色有效速度降序，速度相同按实体创建顺序升序；有效速度 = 基础 `speed` + 已装备件 `speed` 之和；本回合内不变）。出牌扣减当前槽的 energy，过牌把剩余 energy 清零；每个新槽默认 2 点。
 - `CurrentCombatTurnComponent`：只标记当前行动槽，是行动权的唯一来源；同一战斗最多一个，最后一个槽交出行动权后移除。
-- `CombatRoundEntryComponent`：每条操作记录独立成实体，记录种类、数据日志、叙事与所属行动槽；实体序号决定跨种类操作的全局先后顺序。
 
 `CombatPassSnapshotComponent` 是运行期 pass 快照：在动作阶段入口冻结当前行动槽，让决策与动作系统在同一次 pass 内共享同一个行动者。它不是行动权的来源，不注册、不参与快照持久化，并由 pipeline 的 cleanup 阶段兜底清除；过牌或死亡推进行动权后，后续系统不再消费该快照。`CurrentCombatTurnComponent` 仍是行动权的唯一权威。
 

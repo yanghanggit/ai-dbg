@@ -31,9 +31,9 @@
 
 ## 战斗使用管道
 
-**物化阶段**（`UseConsumableItemActionSystem`）：先从团队背包（player 的 `InventoryComponent`）**按 uuid 移除整条消耗品**（消耗其全部 `count`）；扣库存成功后才把 `cards` 物化为手牌——每个内置牌 × count 生成对应份数的独立副本（重生成 `uuid`、`source` 记为发起行动者、强制 `retain=True`）。随后向场景内所有存活角色广播使用通知，并追加一条 `RoundEntryKind.CONSUMABLE` 回合记录实体。
+**物化阶段**（`UseConsumableItemActionSystem`）：先从团队背包（player 的 `InventoryComponent`）**按 uuid 移除整条消耗品**（消耗其全部 `count`）；扣库存成功后才把 `cards` 物化为手牌——每个内置牌 × count 生成对应份数的独立副本（重生成 `uuid`、`source` 记为发起行动者、强制 `retain=True`）。随后向场景内所有存活角色广播使用通知。
 
-**结算阶段**（`PlayCardsArbitrationSystem`）：物化出的牌与任何普通手牌一样，由出牌仲裁结算伤害，结果追加一条 `RoundEntryKind.CARDS` 回合记录实体。
+**结算阶段**（`PlayCardsArbitrationSystem`）：物化出的牌与任何普通手牌一样，由出牌仲裁结算伤害并广播结果。
 
 > 为什么物化出的牌要强制 `retain=True`：回合末手牌结算会把非 retain 手牌塞进弃牌堆，而 DrawPile 耗尽时弃牌堆会被洗回 DrawPile。若不 retain，一张本回合没用掉的消耗品卡会在后续回合被重新抽到并再次打出，而库存早已扣了 1 份——等于一份消耗品重复生效。`retain` 让它在手牌中留到打出为止，战斗结束由 `CombatPileTeardownSystem` 清掉副本。
 >

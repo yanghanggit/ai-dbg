@@ -11,10 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import (
-    combat_round_view,
-    combat_rounds,
-)
+from ai_dbg.game.combat.state import combat_rounds
 from ai_dbg.game.context import ECSContext
 from ai_dbg.game.dungeon import current_combat_entity
 from ai_dbg.models import (
@@ -25,7 +22,6 @@ from ai_dbg.models import (
     HandComponent,
     InventoryComponent,
     PlayerComponent,
-    RoundEntryKind,
     StageComponent,
     UseConsumableItemAction,
 )
@@ -283,31 +279,6 @@ class TestReact:
 
         inv = player.get(InventoryComponent)
         assert len(inv.items) == 0
-
-    @pytest.mark.asyncio
-    async def test_records_round_log_like_gear(
-        self,
-        context: ECSContext,
-        mock_game: Any,
-        system: UseConsumableItemActionSystem,
-    ) -> None:
-        _setup_mock_dungeon(mock_game)
-        item = _make_consumable("灼血药剂", count=1)
-        actor = _make_actor_entity(context, "角色.无名", item)
-        player = _make_player_entity(context, "player", [item])
-        mock_game.resolve_stage_entity.return_value = context.create_entity()
-
-        await system.react([actor])
-
-        round_entity = current_round_entity(mock_game)
-        consumable_entries = [
-            entry
-            for entry in combat_round_view(mock_game, round_entity).entries
-            if entry.kind == RoundEntryKind.CONSUMABLE
-        ]
-        assert len(consumable_entries) == 1
-        assert consumable_entries[0].log
-        assert consumable_entries[0].narrative
 
     @pytest.mark.asyncio
     async def test_broadcasts_notice_to_stage(

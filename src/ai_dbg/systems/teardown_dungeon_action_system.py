@@ -7,7 +7,6 @@ from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ..game.combat.state import (
-    combat_round_entries,
     combat_rounds,
     combat_turns,
     get_combat_entity_for_room,
@@ -81,11 +80,8 @@ class TeardownDungeonActionSystem(ReactiveProcessor):
 
     ####################################################################################################################################
     def _destroy_combat(self, combat_entity: Entity) -> None:
-        """销毁战斗实体及其全部回合/行动槽/记录实体，并解除房间上的战斗标记。"""
+        """销毁战斗实体及其全部回合/行动槽实体，并解除房间上的战斗标记。"""
         for round_entity in combat_rounds(self._game, combat_entity):
-            for entry_entity in combat_round_entries(self._game, round_entity):
-                destroy_entity(self._game, entry_entity)
-
             for turn_entity in combat_turns(self._game, round_entity):
                 if turn_entity.has(CurrentCombatTurnComponent):
                     turn_entity.remove(CurrentCombatTurnComponent)

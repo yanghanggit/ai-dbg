@@ -5,7 +5,6 @@ from typing import Any, List, Optional
 
 from ai_dbg.entitas import Entity
 from ai_dbg.game.combat.state import (
-    combat_round_entries,
     combat_rounds,
     combat_turns,
     create_combat,
@@ -253,8 +252,3 @@ def current_turn_entity(game: Any) -> Entity:
 def current_round_turns(game: Any) -> List[Entity]:
     """测试辅助：返回当前回合的全部行动槽实体。"""
     return combat_turns(game, current_round_entity(game))
-
-
-def current_round_entries(game: Any) -> List[Entity]:
-    """测试辅助：返回当前回合的全部记录实体。"""
-    return combat_round_entries(game, current_round_entity(game))

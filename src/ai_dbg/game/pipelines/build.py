@@ -13,10 +13,11 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
 
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
     from ...systems.action_cleanup_system import ActionCleanupSystem
-    from ...systems.artifact_post_arbitration_system import (
-        ArtifactPostArbitrationSystem,
-    )
-    from ...systems.card_operation_system import CardOperationSystem
+
+    # from ...systems.artifact_post_arbitration_system import (
+    #     ArtifactPostArbitrationSystem,
+    # )
+    # from ...systems.card_operation_system import CardOperationSystem
     from ...systems.combat_hand_cleanup_system import CombatHandCleanupSystem
     from ...systems.combat_init_actor_system import CombatInitActorSystem
     from ...systems.combat_init_stage_system import CombatInitStageSystem
@@ -122,8 +123,8 @@ def build_game_pipeline(dbg_game: DBGGame) -> RPGGameProcessPipeline:
     pipeline.add(ExhaustCardsActionSystem(dbg_game))
     pipeline.add(ExhaustEtherealCardsSystem(dbg_game))
     pipeline.add(PlayCardsArbitrationSystem(dbg_game))
-    pipeline.add(CardOperationSystem(dbg_game))
-    pipeline.add(ArtifactPostArbitrationSystem(dbg_game))
+    # pipeline.add(CardOperationSystem(dbg_game))
+    # pipeline.add(ArtifactPostArbitrationSystem(dbg_game))
     pipeline.add(DeathSystem(dbg_game))
 
     # ---------------------------------------------------------------------

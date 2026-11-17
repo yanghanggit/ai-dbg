@@ -19,7 +19,6 @@ from ai_dbg.models import (
     Blueprint,
     CombatComponent,
     CombatRoundComponent,
-    CombatRoundEntryComponent,
     CombatState,
     CombatStateComponent,
     CombatTurnComponent,
@@ -29,7 +28,6 @@ from ai_dbg.models import (
     DungeonRoomType,
     DungeonRunComponent,
     HumanMessage,
-    RoundEntryKind,
     WorldState,
 )
 
@@ -168,18 +166,6 @@ class TestRoundTrip:
                     name="场景.测试#combat#round-1#turn-1",
                 ),
             ),
-            "场景.测试#combat#round-1#entry-1": dump_components(
-                CombatRoundEntryComponent(
-                    name="场景.测试#combat#round-1#entry-1",
-                    combat_name="场景.测试#combat",
-                    round_name="场景.测试#combat#round-1",
-                    turn_name="场景.测试#combat#round-1#turn-1",
-                    index=1,
-                    kind=RoundEntryKind.CARDS,
-                    log="log",
-                    narrative="narrative",
-                )
-            ),
         }
         save_dir = tmp_path / "snap"
         assert persistence_save.save_world(world, tmp_path, save_dir)
@@ -195,9 +181,6 @@ class TestRoundTrip:
         raw_turn = restored_world.entities["场景.测试#combat#round-1#turn-1"][
             "CombatTurnComponent"
         ]
-        raw_entry = restored_world.entities["场景.测试#combat#round-1#entry-1"][
-            "CombatRoundEntryComponent"
-        ]
         assert DungeonRunComponent(**raw_dungeon).created_at == created_at
         assert DungeonRoomComponent(**raw_room).room_type == DungeonRoomType.COMBAT
         assert CombatComponent(**raw_combat).combat_name == "场景.测试#combat"
@@ -207,9 +190,6 @@ class TestRoundTrip:
         assert restored_turn.actor_name == "角色.无名"
         assert restored_turn.status == CombatTurnStatus.PENDING
         assert restored_turn.energy == 1
-        restored_entry = CombatRoundEntryComponent(**raw_entry)
-        assert restored_entry.kind == RoundEntryKind.CARDS
-        assert restored_entry.turn_name == "场景.测试#combat#round-1#turn-1"
 
     def test_world_state_json_excludes_split_fields(self, tmp_path: Path) -> None:
         """world_state.json 应排除独立存储的字段。"""

@@ -11,10 +11,8 @@ from loguru import logger
 from overrides import override
 
 from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
 from ..game.dungeon import (
-    current_combat_round_entity,
     current_dungeon_combat,
     is_current_room_dungeon_combat,
 )
@@ -31,7 +29,6 @@ from ..models import (
     HandComponent,
     InventoryComponent,
     NoneEvent,
-    RoundEntryKind,
     UseConsumableItemAction,
     remove_item_by_uuid,
 )
@@ -132,17 +129,6 @@ class UseConsumableItemActionSystem(ReactiveProcessor, CombatPassContextMixin):
         # 将生成的多张卡牌放入当前行动者手牌
         hand_comp = entity.get(HandComponent)
         entity.replace(HandComponent, hand_comp.name, [*hand_comp.cards, *cards])
-
-        # 记录本回合消耗品使用结果（与装备记录同队列）
-        round_entity = current_combat_round_entity(self._game)
-        if round_entity is not None:
-            record_round_entry(
-                self._game,
-                round_entity,
-                RoundEntryKind.CONSUMABLE,
-                f"[{entity.name} 使用 {item.name} ×{removed_item.count}] 生成手牌「{'、'.join(card_names)}」",
-                "；".join(card.description for card in cards),
-            )
 
         # 向场景内其他角色广播消耗品使用通知
         round_number = len(current_dungeon_combat(self._game).rounds)

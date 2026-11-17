@@ -1,7 +1,7 @@
 """ECS 组件定义。添加到实体后由对应系统读取处理。"""
 
 from datetime import datetime
-from typing import Dict, List, Optional, final
+from typing import Dict, List, final
 
 from pydantic import Field
 
@@ -10,7 +10,7 @@ from .artifact import Artifact
 from .assets_meta import AssetKey
 from .card import Card
 from .character_stats import CharacterStats
-from .combat import CombatResult, CombatState, CombatTurnStatus, RoundEntryKind
+from .combat import CombatResult, CombatState, CombatTurnStatus
 from .dungeon_room import DungeonRoomType
 from .items import AnyItem, GearItem
 from .registry import register_component_type
@@ -203,22 +203,6 @@ class CurrentCombatTurnComponent(Component):
     """标记战斗当前行动槽；同一战斗最多一个，回合结束时移除。"""
 
     name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class CombatRoundEntryComponent(Component):
-    """回合内的一条操作记录；记录本身是独立实体，可被单独引用与查询。"""
-
-    name: str
-    combat_name: str
-    round_name: str
-    turn_name: Optional[str] = None
-    index: int
-    kind: RoundEntryKind
-    log: str
-    narrative: str
 
 
 ############################################################################################################

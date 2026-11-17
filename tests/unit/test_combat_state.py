@@ -11,7 +11,6 @@ from ai_dbg.game.combat.state import (
     create_combat,
     current_combat_round,
     current_combat_turn,
-    record_round_entry,
 )
 from ai_dbg.game.entities import create_entity
 from ai_dbg.models import (
@@ -19,7 +18,6 @@ from ai_dbg.models import (
     CombatComponent,
     CombatResult,
     CombatRoundComponent,
-    CombatRoundEntryComponent,
     CombatState,
     CombatStateComponent,
     CombatTurnComponent,
@@ -27,7 +25,6 @@ from ai_dbg.models import (
     CurrentCombatRoundComponent,
     CurrentCombatTurnComponent,
     DeathComponent,
-    RoundEntryKind,
 )
 from ai_dbg.systems.combat_init_stage_system import CombatInitStageSystem
 from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
@@ -99,7 +96,7 @@ def test_round_lifecycle_keeps_only_one_current_marker(sample_game: Any) -> None
     ]
 
 
-def test_round_creates_ordered_turns_and_entry_entities(sample_game: Any) -> None:
+def test_round_creates_ordered_turns(sample_game: Any) -> None:
     _, combat = _room_and_combat(sample_game)
     round_entity = create_combat_round(
         sample_game,
@@ -125,21 +122,11 @@ def test_round_creates_ordered_turns_and_entry_entities(sample_game: Any) -> Non
     assert get_turn_energy(current_turn) == 1
     assert current_turn.get(CombatTurnComponent).energy == 1
 
-    entry_entity = record_round_entry(
-        sample_game,
-        round_entity,
-        RoundEntryKind.CARDS,
-        "出牌",
-        "叙事",
-    )
-    assert entry_entity.get(CombatRoundEntryComponent).turn_name == current_turn.name
-
     round_view = combat_view(sample_game, combat).latest_round
     assert round_view is not None
     assert round_view.action_order == ["角色.甲", "角色.乙"]
     assert round_view.completed_actors == []
     assert round_view.current_actor == "角色.甲"
-    assert [entry.kind for entry in round_view.entries] == [RoundEntryKind.CARDS]
     dumped = round_view.model_dump(mode="json")
     assert dumped["action_order"] == ["角色.甲", "角色.乙"]
     assert dumped["current_actor"] == "角色.甲"
@@ -230,19 +217,12 @@ def test_combat_state_transitions_update_the_single_component(sample_game: Any) 
 
 def test_destroy_combat_removes_rounds_and_room_marker(sample_game: Any) -> None:
     room, combat = _room_and_combat(sample_game)
-    round_entity = create_combat_round(
+    create_combat_round(
         sample_game,
         combat,
         index=1,
         action_order=["角色.甲"],
         current_actor="角色.甲",
-    )
-    record_round_entry(
-        sample_game,
-        round_entity,
-        RoundEntryKind.CARDS,
-        "出牌",
-        "叙事",
     )
     combat_name = combat.name
 
@@ -253,30 +233,19 @@ def test_destroy_combat_removes_rounds_and_room_marker(sample_game: Any) -> None
         Matcher(all_of=[CombatRoundComponent])
     ).entities
     assert not sample_game.ecs.get_group(Matcher(all_of=[CombatTurnComponent])).entities
-    assert not sample_game.ecs.get_group(
-        Matcher(all_of=[CombatRoundEntryComponent])
-    ).entities
     assert sample_game.ecs.get_entity_by_name(combat_name) is None
 
 
 async def test_teardown_dungeon_cascades_combat_entities(sample_game: Any) -> None:
     room, combat = _room_and_combat(sample_game)
-    round_entity = create_combat_round(
+    create_combat_round(
         sample_game,
         combat,
         index=1,
         action_order=["角色.甲"],
         current_actor="角色.甲",
     )
-    record_round_entry(
-        sample_game,
-        round_entity,
-        RoundEntryKind.CARDS,
-        "出牌",
-        "叙事",
-    )
 
     await TeardownDungeonActionSystem(sample_game).react([room])
 
-    assert sample_game.ecs.entity_count == 0
     assert sample_game.ecs.entity_count == 0

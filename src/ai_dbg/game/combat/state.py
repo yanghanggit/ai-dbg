@@ -1,4 +1,4 @@
-"""战斗/回合/行动槽/回合记录实体的创建与查询。"""
+"""战斗/回合/行动槽实体的创建与查询。"""
 
 from typing import List, Optional
 
@@ -7,8 +7,6 @@ from ...models import (
     CombatComponent,
     CombatResult,
     CombatRoundComponent,
-    CombatRoundEntryComponent,
-    CombatRoundEntryView,
     CombatRoundView,
     CombatState,
     CombatStateComponent,
@@ -17,7 +15,6 @@ from ...models import (
     CombatView,
     CurrentCombatRoundComponent,
     CurrentCombatTurnComponent,
-    RoundEntryKind,
 )
 from ..context import DBGGame
 from ..entities import (
@@ -71,23 +68,6 @@ def combat_turns(dbg_game: DBGGame, round_entity: Entity) -> List[Entity]:
     return sorted(
         matched,
         key=lambda turn_entity: turn_entity.get(CombatTurnComponent).order_index,
-    )
-
-
-###############################################################################################################################################
-def combat_round_entries(dbg_game: DBGGame, round_entity: Entity) -> List[Entity]:
-    """按记录序号返回指定回合的全部回合记录实体。"""
-    entry_entities = dbg_game.ecs.get_group(
-        Matcher(all_of=[CombatRoundEntryComponent])
-    ).entities
-    matched = [
-        entry_entity
-        for entry_entity in entry_entities
-        if entry_entity.get(CombatRoundEntryComponent).round_name == round_entity.name
-    ]
-    return sorted(
-        matched,
-        key=lambda entry_entity: entry_entity.get(CombatRoundEntryComponent).index,
     )
 
 
@@ -155,24 +135,8 @@ def combat_turn_view(turn_entity: Entity) -> CombatTurnView:
 
 
 ###############################################################################################################################################
-def combat_round_entry_view(entry_entity: Entity) -> CombatRoundEntryView:
-    """把回合记录实体投影成只读视图。"""
-    entry_comp = entry_entity.get(CombatRoundEntryComponent)
-    return CombatRoundEntryView(
-        name=entry_comp.name,
-        combat_name=entry_comp.combat_name,
-        round_name=entry_comp.round_name,
-        turn_name=entry_comp.turn_name,
-        index=entry_comp.index,
-        kind=entry_comp.kind,
-        log=entry_comp.log,
-        narrative=entry_comp.narrative,
-    )
-
-
-###############################################################################################################################################
 def combat_round_view(dbg_game: DBGGame, round_entity: Entity) -> CombatRoundView:
-    """把回合实体及其行动槽/记录实体投影成只读视图。"""
+    """把回合实体及其行动槽投影成只读视图。"""
     round_comp = round_entity.get(CombatRoundComponent)
     return CombatRoundView(
         index=round_comp.index,
@@ -181,10 +145,6 @@ def combat_round_view(dbg_game: DBGGame, round_entity: Entity) -> CombatRoundVie
         turns=[
             combat_turn_view(turn_entity)
             for turn_entity in combat_turns(dbg_game, round_entity)
-        ],
-        entries=[
-            combat_round_entry_view(entry_entity)
-            for entry_entity in combat_round_entries(dbg_game, round_entity)
         ],
     )
 
@@ -210,11 +170,6 @@ def combat_view(dbg_game: DBGGame, combat_entity: Entity) -> CombatView:
 ###############################################################################################################################################
 def _combat_entity_name(room_name: str) -> str:
     return f"{room_name}#combat"
-
-
-###############################################################################################################################################
-def _combat_round_entry_entity_name(round_name: str, index: int) -> str:
-    return f"{round_name}#entry-{index}"
 
 
 ###############################################################################################################################################
@@ -262,59 +217,3 @@ def create_combat(
     )
     room_entity.replace(CombatComponent, room_entity.name, combat_name)
     return combat_entity
-
-
-###############################################################################################################################################
-def _create_combat_round_entry(
-    dbg_game: DBGGame,
-    round_entity: Entity,
-    *,
-    kind: RoundEntryKind,
-    log: str,
-    narrative: str,
-    turn_name: Optional[str] = None,
-) -> Entity:
-    """创建一条回合记录实体；默认关联当前行动槽。"""
-    round_comp = round_entity.get(CombatRoundComponent)
-    entries = combat_round_entries(dbg_game, round_entity)
-    index = entries[-1].get(CombatRoundEntryComponent).index + 1 if entries else 1
-    entry_name = _combat_round_entry_entity_name(round_entity.name, index)
-
-    if turn_name is None:
-        current_turn = current_turn_for_round(dbg_game, round_entity)
-        turn_name = current_turn.name if current_turn is not None else None
-
-    entry_entity = create_entity(dbg_game, entry_name)
-    entry_entity.replace(
-        CombatRoundEntryComponent,
-        entry_name,
-        round_comp.combat_name,
-        round_entity.name,
-        turn_name,
-        index,
-        kind,
-        log,
-        narrative,
-    )
-    return entry_entity
-
-
-###############################################################################################################################################
-def record_round_entry(
-    dbg_game: DBGGame,
-    round_entity: Entity,
-    kind: RoundEntryKind,
-    log: str,
-    narrative: str,
-    *,
-    turn_name: Optional[str] = None,
-) -> Entity:
-    """向回合追加一条操作记录实体。"""
-    return _create_combat_round_entry(
-        dbg_game,
-        round_entity,
-        kind=kind,
-        log=log,
-        narrative=narrative,
-        turn_name=turn_name,
-    )

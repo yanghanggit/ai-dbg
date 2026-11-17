@@ -1,7 +1,7 @@
 """战斗相关模型定义。
 
-战斗、回合、回合行动槽与回合记录都已迁移到 ECS：它们都是实体，运行时状态由
-实体上的组件持有。本模块只保留枚举、值对象与只读视图，供系统、API 与测试消费。
+战斗、回合与回合行动槽都已迁移到 ECS：它们都是实体，运行时状态由实体上的
+组件持有。本模块只保留枚举、值对象与只读视图，供系统、API 与测试消费。
 """
 
 from enum import IntEnum, StrEnum, unique
@@ -45,19 +45,6 @@ class CombatTurnStatus(StrEnum):
 
 ###############################################################################################################################################
 @final
-@unique
-class RoundEntryKind(StrEnum):
-    """回合内一条记录的种类标记。"""
-
-    CARDS = "cards"  # 出牌仲裁
-    CONSUMABLE = "consumable"  # 使用消耗品
-    GEAR = "gear"  # 装备转化
-    ARTIFACT = "artifact"  # 场景神器仲裁
-    FAILED = "failed"  # 仲裁未完成（未提交 / 循环异常）：无 HP 变更，仅留痕迹
-
-
-###############################################################################################################################################
-@final
 class CombatTurnView(BaseModel):
     """回合行动槽的只读投影；运行时数据由行动槽实体持有。"""
 
@@ -73,29 +60,13 @@ class CombatTurnView(BaseModel):
 
 ###############################################################################################################################################
 @final
-class CombatRoundEntryView(BaseModel):
-    """回合记录的只读投影；运行时数据由回合记录实体持有。"""
-
-    name: str
-    combat_name: str
-    round_name: str
-    turn_name: Optional[str] = None
-    index: int
-    kind: RoundEntryKind
-    log: str
-    narrative: str
-
-
-###############################################################################################################################################
-@final
 class CombatRoundView(BaseModel):
-    """回合的只读投影；运行时数据由回合/行动槽/记录实体持有。"""
+    """回合的只读投影；运行时数据由回合与行动槽实体持有。"""
 
     index: int
     is_completed: bool = False
     draw_completed: bool = False
     turns: List[CombatTurnView] = Field(default_factory=list)
-    entries: List[CombatRoundEntryView] = Field(default_factory=list)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

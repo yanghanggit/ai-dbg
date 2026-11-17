@@ -19,12 +19,8 @@ from ..game.combat import (
     compute_character_stats,
     set_character_hp,
 )
-from ..game.combat.state import record_round_entry
 from ..game.context import DBGGame
-from ..game.dungeon import (
-    current_combat_round_entity,
-    current_dungeon_combat,
-)
+from ..game.dungeon import current_dungeon_combat
 from ..game.entities import (
     get_actor_entity,
     get_entity_by_name,
@@ -46,7 +42,6 @@ from ..models import (
     CombatArbitrationEvent,
     HandComponent,
     HumanMessage,
-    RoundEntryKind,
 )
 from ..utils import prompt_builder
 
@@ -445,18 +440,12 @@ def build_arbitration_broadcast(
 # 仲裁类型与共享提示词段落
 ###########################################################################################################################################
 class RoundKind(StrEnum):
-    """一次仲裁在战斗回合日志中的归类：决定回合条目标记、兜底文案与失败记录。"""
+    """一次仲裁在战斗日志中的归类：决定兜底文案与失败记录。"""
 
     PLAY_CARDS = "play_cards"
     ARTIFACT = "artifact"
     CARD_OPERATION = "card_operation"
 
-
-_ROUND_ENTRY_KIND: Dict[RoundKind, RoundEntryKind] = {
-    RoundKind.PLAY_CARDS: RoundEntryKind.CARDS,
-    RoundKind.ARTIFACT: RoundEntryKind.ARTIFACT,
-    RoundKind.CARD_OPERATION: RoundEntryKind.CARDS,
-}
 
 _EMPTY_COMBAT_LOG: Dict[RoundKind, str] = {
     RoundKind.PLAY_CARDS: "本回合无 HP 变化",
@@ -479,7 +468,7 @@ def apply_arbitration_result(
     title_label: str,
     combat_log: str,
 ) -> None:
-    """落库一次仲裁结果：全场景广播 + HP + 生命值通知 + 回合记录。
+    """落库一次仲裁结果：全场景广播 + HP + 生命值通知。
 
     无失败分支；须先调用本函数、再压缩 loop 记忆。
     """
@@ -523,16 +512,6 @@ def apply_arbitration_result(
             ),
         )
 
-    round_entity = current_combat_round_entity(game)
-    assert round_entity is not None, "current_combat_round_entity 不应为 None"
-    record_round_entry(
-        game,
-        round_entity,
-        _ROUND_ENTRY_KIND[kind],
-        combat_log,
-        narrative,
-    )
-
 
 def record_aborted_loop(
     game: DBGGame,
@@ -542,7 +521,7 @@ def record_aborted_loop(
     loop_id: str,
     reason: str,
 ) -> None:
-    """把未完成的 loop 记进记忆与回合日志：过程原样保留，只补系统说明。
+    """把未完成的 loop 记进记忆：过程原样保留，只补系统说明。
 
     不回滚也不删除——失败也是上下文的一部分，且工具调用已经发生过；
     说明里声明「未落库」，使后续阅读者不把过程当既成事实。
@@ -558,16 +537,6 @@ def record_aborted_loop(
                 KEEP_ON_COMPACT_ATTR: True,
             },
         ),
-    )
-
-    round_entity = current_combat_round_entity(game)
-    assert round_entity is not None, "current_combat_round_entity 不应为 None"
-    record_round_entry(
-        game,
-        round_entity,
-        RoundEntryKind.FAILED,
-        f"[{kind}] {loop_id} 结算未完成：{reason}",
-        "（结算未完成，本回合无变化）",
     )
 
 

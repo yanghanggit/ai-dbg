@@ -12,7 +12,6 @@ import pytest
 
 from ai_dbg.deepseek import LOOP_END_ATTR, LOOP_ID_ATTR, AgentLoopResult
 from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import combat_round_view
 from ai_dbg.game.context import ECSContext
 from ai_dbg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
@@ -26,14 +25,13 @@ from ai_dbg.models import (
     CharacterStatsComponent,
     HumanMessage,
     PlayCardsAction,
-    RoundEntryKind,
     StageComponent,
     SystemMessage,
     TargetType,
 )
 from ai_dbg.systems import arbitration_common
 from ai_dbg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
-from dungeon_support import current_round_entity, install_combat
+from dungeon_support import install_combat
 
 
 def _make_card() -> Card:
@@ -209,9 +207,8 @@ class TestLoopMemoryCompression:
         assert getattr(summary, LOOP_ID_ATTR) == loop_id
         assert getattr(summary, LOOP_END_ATTR) == loop_id
 
-        # 落库先于压缩：HP 落库与回合记录均已发生
-        entries = combat_round_view(mock_game, current_round_entity(mock_game)).entries
-        assert len(entries) == 1
+        # 落库先于压缩：HP 落库已发生
+        mock_game.add_human_message.assert_called()
 
     @pytest.mark.asyncio
     async def test_failure_keeps_trace_and_appends_notice(
@@ -246,14 +243,6 @@ class TestLoopMemoryCompression:
         # 说明自带 loop 起止标记：无轨迹的失败也占一个 id，可被反查
         assert getattr(notice, LOOP_ID_ATTR) == getattr(notice, LOOP_END_ATTR)
 
-        # 回合日志留下失败痕迹（kind=failed，中性可展示文案）
-        entries = combat_round_view(mock_game, current_round_entity(mock_game)).entries
-        assert len(entries) == 1
-        assert entries[0].kind == RoundEntryKind.FAILED
-        assert "play_cards:1:角色.无名:斩击#" in entries[0].log
-        assert "未调用 submit_arbitration" in entries[0].log
-        assert entries[0].narrative == "（结算未完成，本回合无变化）"
-
     @pytest.mark.asyncio
     async def test_exception_keeps_trace_and_appends_notice(
         self,
@@ -282,7 +271,7 @@ class TestLoopMemoryCompression:
         mock_game: Any,
         stage_memory: SimpleNamespace,
     ) -> None:
-        """落库（写 HP / 回合记录）必须发生在压缩记忆之前，避免「已完成」假象。"""
+        """落库（写 HP）必须发生在压缩记忆之前，避免「已完成」假象。"""
         system = PlayCardsArbitrationSystem(mock_game)
         actor = _make_actor(context, "角色.无名", _make_card(), [])
         order: List[str] = []
@@ -293,8 +282,8 @@ class TestLoopMemoryCompression:
         with (
             _patch_stats(),
             patch(
-                "ai_dbg.systems.arbitration_common.record_round_entry",
-                side_effect=lambda *a, **kw: order.append("record"),
+                "ai_dbg.systems.play_cards_arbitration_system.apply_arbitration_result",
+                side_effect=lambda *a, **kw: order.append("persist"),
             ),
             patch(
                 "ai_dbg.systems.play_cards_arbitration_system.agent_loop",
@@ -303,7 +292,7 @@ class TestLoopMemoryCompression:
         ):
             await system._run_arbitration(actor)
 
-        assert order == ["record", "replace_span"]
+        assert order == ["persist", "replace_span"]
 
 
 class TestLoopIdUniqueness:

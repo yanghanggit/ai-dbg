@@ -153,7 +153,7 @@ def _entity_summary(name: str, components: EntityData) -> EntitySummary:
 
 ########################################################################################################################
 def _round_summary(combat: CombatView) -> Optional[Dict[str, Any]]:
-    """最近一回合的回合内状态与日志。"""
+    """最近一回合的回合内状态。"""
     latest = combat.latest_round
     if latest is None:
         return None
@@ -164,7 +164,6 @@ def _round_summary(combat: CombatView) -> Optional[Dict[str, Any]]:
         "action_order": list(latest.action_order),
         "completed_actors": list(latest.completed_actors),
         "turns": [turn.model_dump() for turn in latest.turns],
-        "entries": [entry.model_dump() for entry in latest.entries],
     }
 
 
