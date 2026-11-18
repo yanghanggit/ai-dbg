@@ -1,18 +1,26 @@
-"""
-Authentication module for the ai-srpg.
+"""认证模块：密码哈希与 JWT 令牌。
 
-This module provides:
-- Password encryption and verification utilities
-- JWT token creation and validation
-- Authentication-related data models
+本文件只做显式汇总再导出，不使用星号导入；新增或删除公开名时，两处都要改。
 """
 
-from typing import List
+from .crypt_context import hash_password, pwd_context, verify_password
+from .jwt import (
+    AuthTokenResponse,
+    JWTConfig,
+    create_access_token,
+    create_refresh_token,
+    decode_jwt_token,
+    jwt_config,
+)
 
-from .crypt_context import *
-from .jwt import *
-
-__all__: List[str] = [
-    # Password encryption and verification are exported via star imports
-    # JWT utilities and models are exported via star imports
+__all__ = [
+    "AuthTokenResponse",
+    "JWTConfig",
+    "create_access_token",
+    "create_refresh_token",
+    "decode_jwt_token",
+    "hash_password",
+    "jwt_config",
+    "pwd_context",
+    "verify_password",
 ]
