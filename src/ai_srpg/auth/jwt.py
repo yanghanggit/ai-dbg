@@ -24,41 +24,12 @@ JWT (JSON Web Token) 认证模块
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Final, Optional, final
+from typing import Any, Dict, Optional, final
 
 from jose import jwt
 from pydantic import BaseModel
 
-
-############################################################################################################
-# JWT 相关配置
-@final
-class JWTConfig(BaseModel):
-    """
-    JWT 配置类
-
-    定义 JWT 生成和验证所需的配置参数，包括签名密钥、算法和过期时间。
-
-    Attributes:
-        signing_key: JWT 签名密钥，生产环境中应使用强随机密钥
-        signing_algorithm: JWT 签名算法，默认使用 HS256
-        refresh_token_expire_days: 刷新令牌的有效期（天）
-        access_token_expire_minutes: 访问令牌的有效期（分钟）
-
-    Security Note:
-        在生产环境中必须修改 signing_key 为安全的随机密钥，
-        建议使用环境变量或密钥管理服务来管理密钥。
-    """
-
-    signing_key: str = "your-secret-key-here-please-change-it"
-    signing_algorithm: str = "HS256"
-    refresh_token_expire_days: int = 7
-    access_token_expire_minutes: int = 30
-
-
-############################################################################################################
-# 全局 JWT 配置实例
-jwt_config: Final[JWTConfig] = JWTConfig()
+from .config import SIGNING_ALGORITHM, jwt_config
 
 
 ############################################################################################################
@@ -100,7 +71,8 @@ def create_access_token(
 
     Args:
         data: 要编码到令牌中的数据字典，通常包含用户 ID 等信息
-        expires_delta: 自定义过期时间间隔，如果不提供则使用默认的 15 分钟
+        expires_delta: 自定义过期时间间隔，如果不提供则使用配置的默认值
+            （AI_SRPG_JWT_ACCESS_TOKEN_EXPIRE_MINUTES）
 
     Returns:
         str: 编码后的 JWT 访问令牌字符串
@@ -120,7 +92,9 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=jwt_config.access_token_expire_minutes
+        )
 
     # 添加一个唯一标识符用于令牌撤销
     jti = str(uuid.uuid4())
@@ -188,12 +162,12 @@ def _encode_token_to_jwt(
 
     Note:
         - 这是一个私有函数，不应直接从模块外部调用
-        - 使用全局 jwt_config 中的签名密钥和算法
+        - 签名密钥取自 jwt_config，算法固定为 SIGNING_ALGORITHM
     """
     encoded_jwt = jwt.encode(
         to_encode,
         jwt_config.signing_key,
-        algorithm=jwt_config.signing_algorithm,
+        algorithm=SIGNING_ALGORITHM,
     )
     return str(encoded_jwt)
 
@@ -228,7 +202,7 @@ def decode_jwt_token(token: str) -> Dict[str, Any]:
     payload = jwt.decode(
         token,
         jwt_config.signing_key,
-        algorithms=[jwt_config.signing_algorithm],
+        algorithms=[SIGNING_ALGORITHM],
     )
     return dict(payload)
 
