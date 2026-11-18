@@ -4,9 +4,9 @@
 .DEFAULT_GOAL := help
 
 # 游戏运行时目录（对应 src/ai_srpg/paths.py 的 BLUEPRINTS_DIR / SESSIONS_DIR / LOGS_DIR，
-# 以及 src/ai_srpg/llm/chat_dump.py 的 CHAT_DUMP_DIR）
+# 以及 src/ai_srpg/llm/call_records.py 的 LLM_CALLS_DIR）
 # 均为可重建的运行期数据：清了不影响代码与测试，下次运行自动重新创建。
-GAME_TEMP_DIRS := .blueprints .sessions .chat_dumps logs
+GAME_TEMP_DIRS := .blueprints .sessions .llm_calls logs
 
 # 推荐：uv 环境完整设置
 install:

@@ -7,6 +7,13 @@ from typing import List
 from .base import *
 from .client import *
 from .config import PostgreSQLConfig, postgresql_config
+from .game_snapshot import GameSnapshotDB
+from .game_snapshot_operations import (
+    append_game_snapshot,
+    list_game_snapshot_ids,
+    load_game_snapshot,
+    load_latest_game_snapshot,
+)
 from .job_event import JobEventDB
 from .job_event_operations import append_job_event, get_job_error, list_job_events
 from .procrastinate_app import procrastinate_app
@@ -28,6 +35,12 @@ __all__: List[str] = [
     # Vector document operations (low-level)
     "save_vector_document",
     "search_similar_documents",
+    # Game snapshot history
+    "GameSnapshotDB",
+    "append_game_snapshot",
+    "load_latest_game_snapshot",
+    "load_game_snapshot",
+    "list_game_snapshot_ids",
     # Job event models
     "JobEventDB",
     # Job event operations

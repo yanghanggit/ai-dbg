@@ -66,7 +66,7 @@ htmlcov/
 .blueprints/
 .sessions/
 .debug_cache/
-.chat_dumps/
+.llm_calls/
 
 # Local AI Agent Configurations (e.g., Claude, Gemini, etc.)
 .claude.json

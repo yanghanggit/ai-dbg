@@ -23,6 +23,8 @@
 
 import asyncio
 import datetime
+import itertools
+import json
 import sys
 from pathlib import Path
 from typing import Final
@@ -30,6 +32,7 @@ from typing import Final
 import click
 from loguru import logger
 
+from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
 from ai_srpg.srpg_game_agent.combat import (
     draw_cards_game,
@@ -72,6 +75,70 @@ def _setup_logger() -> Path:
 @click.group()
 def main() -> None:
     """AI 操作工具：快照驱动的离线副本推进（当前为骨架，仅记录调用）。"""
+
+
+###############################################################################
+@main.command("llm-calls")
+@click.option("--limit", default=20, show_default=True, help="最多显示多少条")
+@click.option("--label", default=None, help="按 label 精确过滤")
+def llm_calls(limit: int, label: str | None) -> None:
+    """列出最近的 LLM 调用记录（查问题 / 调提示词）。"""
+    records = list(itertools.islice(iter_llm_call_records(label=label), limit))
+    if not records:
+        click.echo("（没有 llm call 记录）")
+        return
+    for record in records:
+        status = "ERR" if record.response.get("error") else "OK"
+        tokens = (record.usage or {}).get("total_tokens", "-")
+        click.echo(
+            f"{record.created_at.astimezone():%Y-%m-%d %H:%M:%S}  {record.request_id[:8]}  "
+            f"{status:<3}  {record.elapsed_ms:>6}ms  {str(tokens):>6}tok  {record.label}"
+        )
+
+
+###############################################################################
+@main.command("llm-call")
+@click.argument("request_id")
+@click.option("--json", "as_json", is_flag=True, help="输出完整 JSON")
+def llm_call(request_id: str, as_json: bool) -> None:
+    """查看一条 LLM 调用记录（支持完整 id 或唯一前缀）。"""
+    record = find_llm_call(request_id)
+    if record is None:
+        raise click.ClickException(f"找不到记录: {request_id}")
+
+    if as_json:
+        click.echo(record.model_dump_json(indent=2))
+        return
+
+    click.echo(f"request_id: {record.request_id}")
+    click.echo(f"time:       {record.created_at.astimezone():%Y-%m-%d %H:%M:%S}")
+    click.echo(f"label:      {record.label}")
+    click.echo(f"model:      {record.model or '(provider default)'}")
+    click.echo(f"elapsed:    {record.elapsed_ms}ms")
+    if record.usage:
+        click.echo(f"usage:      {json.dumps(record.usage, ensure_ascii=False)}")
+
+    error = record.response.get("error")
+    if error:
+        click.echo(f"error:      {json.dumps(error, ensure_ascii=False)}")
+
+    for message in record.messages:
+        click.echo(f"\n===== {message.get('type', '?')} =====")
+        click.echo(message.get("content") or "")
+        tool_calls = (message.get("additional_kwargs") or {}).get("tool_calls")
+        if tool_calls:
+            click.echo(json.dumps(tool_calls, ensure_ascii=False, indent=2))
+
+    ai_message = record.response.get("ai_message") or {}
+    click.echo("\n===== ai =====")
+    click.echo(ai_message.get("content") or "")
+    tool_calls = ai_message.get("additional_kwargs", {}).get("tool_calls")
+    if tool_calls:
+        click.echo(json.dumps(tool_calls, ensure_ascii=False, indent=2))
+    reasoning = ai_message.get("additional_kwargs", {}).get("reasoning_content")
+    if reasoning:
+        click.echo("\n===== reasoning =====")
+        click.echo(reasoning)
 
 
 ###############################################################################

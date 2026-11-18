@@ -92,7 +92,7 @@ class ChatCompletionRequest:
     tools: Sequence[ToolDefinition] = ()
     tool_choice: Optional[ToolChoice] = None
     reasoning_effort: Optional[ReasoningEffort] = None
-    dump: bool = True
+    record: bool = True
 
     def __post_init__(self) -> None:
         assert self.label != "", "label should not be empty"

@@ -36,7 +36,7 @@ import requests
 from dotenv import load_dotenv
 from loguru import logger
 
-from ..llm import chat_dump
+from ..llm import call_records
 from ..llm.errors import ChatError, ErrorKind
 from ..llm.types import (
     ChatCompletionRequest,
@@ -420,11 +420,14 @@ class DeepSeekClient:
         status_code: Optional[int] = None,
     ) -> ChatCompletionResult:
         """构造失败结果：预期内失败不抛异常，只填 `error`。"""
-        return ChatCompletionResult(
+        result = ChatCompletionResult(
             request=request,
             error=ChatError(request.label, message, kind=kind, status_code=status_code),
             elapsed_seconds=elapsed_seconds,
         )
+        # 失败同样留痕：排查问题时「发了什么、错在哪」必须成对出现
+        call_records.record_llm_call(request, result)
+        return result
 
     ################################################################################################################################################################################
     async def complete(self, request: ChatCompletionRequest) -> ChatCompletionResult:
@@ -517,8 +520,8 @@ class DeepSeekClient:
             )
             logger.info("=" * 60)
 
-        # 记录完整对话内容以供调试分析（request.dump=False / 进程级关闭时内部直接返回）
-        chat_dump.dump_chat(request, completion)
+        # 记录完整调用留痕（request.record=False / 进程级关闭时内部直接返回）
+        call_records.record_llm_call(request, completion)
 
         return completion
 

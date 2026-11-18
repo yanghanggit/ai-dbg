@@ -107,8 +107,8 @@ def _service(outcome: Union[BaseException, _FakeResponse]) -> DeepSeekClient:
 
 
 def _request(label: str = "测试", **kwargs: Any) -> ChatCompletionRequest:
-    # dump=False：本文件多数用例只验证通讯结果，不应在 .chat_dumps/ 留文件
-    kwargs.setdefault("dump", False)
+    # record=False：本文件多数用例只验证通讯结果，不应在 .llm_calls/ 留文件
+    kwargs.setdefault("record", False)
     return ChatCompletionRequest(
         label=label,
         input_message="ping",
@@ -294,51 +294,54 @@ class TestBatchChat:
 
 
 ############################################################################################################
-# chat dump 接线：是否落盘由 request.dump + 进程级开关共同决定
+# llm call 记录接线：是否落盘由 request.record + 进程级开关共同决定
 ############################################################################################################
-class TestChatDumpWiring:
+class TestLlmCallRecordWiring:
     @pytest.mark.asyncio
-    async def test_successful_chat_dumps_by_default(
+    async def test_successful_chat_is_recorded_by_default(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("ai_srpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_SRPG_CHAT_DUMP_ENABLED", raising=False)
+        monkeypatch.setattr("ai_srpg.llm.call_records.LLM_CALLS_DIR", tmp_path)
+        monkeypatch.delenv("AI_SRPG_LLM_CALL_LOG_ENABLED", raising=False)
 
         request = ChatCompletionRequest(
             label="测试.落盘",
             input_message="ping",
             messages=[SystemMessage(content="sys")],
         )
-        assert request.dump is True
+        assert request.record is True
 
         await _service(_FakeResponse(200, payload=_success_payload())).complete(request)
 
-        files = list(tmp_path.glob("*.txt"))
+        files = list(tmp_path.glob("*.jsonl"))
         assert len(files) == 1
-        assert "ping" in files[0].read_text(encoding="utf-8")
+        lines = files[0].read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        assert "测试.落盘" in lines[0]
+        assert "ping" in lines[0]
 
     @pytest.mark.asyncio
-    async def test_dump_false_writes_nothing(
+    async def test_record_false_writes_nothing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("ai_srpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_SRPG_CHAT_DUMP_ENABLED", raising=False)
+        monkeypatch.setattr("ai_srpg.llm.call_records.LLM_CALLS_DIR", tmp_path)
+        monkeypatch.delenv("AI_SRPG_LLM_CALL_LOG_ENABLED", raising=False)
 
-        request = _request()  # dump=False
+        request = _request()  # record=False
         result = await _service(
             _FakeResponse(200, payload=_success_payload())
         ).complete(request)
 
         assert result.content == "hi"
-        assert list(tmp_path.glob("*.txt")) == []
+        assert list(tmp_path.glob("*.jsonl")) == []
 
     @pytest.mark.asyncio
-    async def test_failed_chat_dumps_nothing(
+    async def test_failed_chat_is_recorded_with_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """失败请求没有可供留痕的完整对话（只在成功后落盘）。"""
-        monkeypatch.setattr("ai_srpg.llm.chat_dump.CHAT_DUMP_DIR", tmp_path)
-        monkeypatch.delenv("AI_SRPG_CHAT_DUMP_ENABLED", raising=False)
+        """失败也要留痕：排查问题需要「发了什么 + 错在哪」成对出现。"""
+        monkeypatch.setattr("ai_srpg.llm.call_records.LLM_CALLS_DIR", tmp_path)
+        monkeypatch.delenv("AI_SRPG_LLM_CALL_LOG_ENABLED", raising=False)
 
         request = ChatCompletionRequest(
             label="测试.失败",
@@ -347,7 +350,11 @@ class TestChatDumpWiring:
         )
         await _service(_FakeResponse(500, text="boom")).complete(request)
 
-        assert list(tmp_path.glob("*.txt")) == []
+        files = list(tmp_path.glob("*.jsonl"))
+        assert len(files) == 1
+        content = files[0].read_text(encoding="utf-8")
+        assert '"kind":"api"' in content
+        assert '"status_code":500' in content
 
 
 ############################################################################################################

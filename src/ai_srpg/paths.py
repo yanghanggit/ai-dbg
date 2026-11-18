@@ -25,6 +25,12 @@ ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 assert ASSETS_DIR.exists(), f"找不到目录: {ASSETS_DIR}"
 
 ###########################################################################################################################################
+# LLM 调用记录目录（llm/call_records.py 追加 JSONL；开发期查问题 / 调提示词）
+LLM_CALLS_DIR: Path = Path(".llm_calls")
+LLM_CALLS_DIR.mkdir(parents=True, exist_ok=True)
+assert LLM_CALLS_DIR.exists(), f"找不到目录: {LLM_CALLS_DIR}"
+
+###########################################################################################################################################
 # 日志文件目录（各 CLI 入口写运行日志）
 LOGS_DIR: Path = Path("logs")
 LOGS_DIR.mkdir(parents=True, exist_ok=True)

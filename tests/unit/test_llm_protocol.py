@@ -68,7 +68,7 @@ class TestChatCompletionRequest:
         assert request.thinking is False
         assert request.tools == ()
         assert request.tool_choice is None
-        assert request.dump is True
+        assert request.record is True
 
     def test_is_immutable(self) -> None:
         request = _request()

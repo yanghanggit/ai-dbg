@@ -22,6 +22,9 @@ from ai_srpg.services.entity_details import (
     entity_details_api_router,
 )
 from ai_srpg.services.game_server_runtime import bind_runtime_game_server
+from ai_srpg.services.gameplay_jobs import (
+    advance_game_job,  # noqa: F401  # 注册 Procrastinate task
+)
 from ai_srpg.services.gameplay_scheduler import run_gameplay_scheduler
 from ai_srpg.services.jobs_api import jobs_api_router
 from ai_srpg.services.player_session import player_session_api_router

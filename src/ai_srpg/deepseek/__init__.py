@@ -6,7 +6,7 @@
   不重复做 provider 决策；
 - 其它名字（工具类型 / 异常）转发自 `ai_srpg.llm`，只是为了让既有 import 不断。
 
-与 provider 无关的编排（值对象 / 协议 / `chat_dump`）请直接从 `ai_srpg.llm` 取。
+与 provider 无关的编排（值对象 / 协议 / `call_records`）请直接从 `ai_srpg.llm` 取。
 """
 
 from .agent_loop import (

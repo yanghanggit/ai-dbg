@@ -8,13 +8,14 @@
 - 值对象：`ChatCompletionRequest`（问什么）/ `ChatCompletionResult`（补全出什么）；
 - 协议：`ChatCompletionService`（执行者，方法为 `complete()`）；
 - 错误模型：`ChatError`；
-- 只依赖上述契约的编排：`agent_loop` / `batch_complete` / `chat_dump`。
+- 只依赖上述契约的编排：`agent_loop` / `batch_complete` / `call_records`。
 
 具体实现（当前是 DeepSeek）在 `ai_srpg.deepseek`；依赖方向永远是
 `deepseek → llm`，本包**不得** import `ai_srpg.deepseek`。
 
-`chat_dump` 作为子模块提供（`from ai_srpg.llm import chat_dump`），不在包 init
-里 import：它带有开关与文件落盘副作用，按需导入即可。
+`call_records`（一次 LLM 调用的结构化留痕）作为子模块提供
+（`from ai_srpg.llm import call_records`），不在包 init 里 import：
+它带有开关与文件落盘副作用，按需导入即可。
 """
 
 from .agent_loop import (
