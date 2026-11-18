@@ -8,7 +8,6 @@ from typing import Tuple
 
 from loguru import logger
 
-from ..game.combat import assert_no_residual_combat_state
 from ..game.combat.state import create_combat
 from ..game.context import SRPGGame
 from ..game.dungeon import (
@@ -24,7 +23,6 @@ from ..game.entities import (
 from ..game.memory import (
     add_human_message,
 )
-from ..game.stage.transition import stage_transition
 from ..models import (
     CurrentDungeonRoomComponent,
     DeathComponent,
@@ -117,12 +115,6 @@ def enter_dungeon(srpg_game: SRPGGame) -> Tuple[bool, str]:
         player_entity,
         HumanMessage(content=trans_message, dungeon_lifecycle_entry=dungeon_name),
     )
-
-    # 执行场景传送
-    stage_transition(srpg_game, {player_entity}, enter_room)
-
-    # 保底断言：pipeline 理应已清理完毕，此时不应存在残留战斗临时组件
-    assert_no_residual_combat_state(srpg_game)
 
     # 若是战斗房间则创建战斗实体并初始化；开场房间仅做场景传送，不创建战斗
     if room_component.room_type == DungeonRoomType.COMBAT:

@@ -1,8 +1,6 @@
-"""战斗规则：属性、目标解析与回合状态。"""
+"""战斗规则基础设施：角色属性、存活查询与目标解析。"""
 
-from .rounds import assert_no_residual_combat_state
 from .stats import (
-    compute_character_hand_block,
     compute_character_stats,
     consume_turn_energy,
     get_turn_energy,
@@ -17,8 +15,6 @@ from .targeting import (
 )
 
 __all__ = [
-    "assert_no_residual_combat_state",
-    "compute_character_hand_block",
     "compute_character_stats",
     "consume_turn_energy",
     "get_alive_actors_in_stage",

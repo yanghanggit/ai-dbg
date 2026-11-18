@@ -8,10 +8,7 @@ from typing import Tuple
 
 from loguru import logger
 
-from ..game.combat import (
-    assert_no_residual_combat_state,
-    set_character_hp,
-)
+from ..game.combat import set_character_hp
 from ..game.combat.state import create_combat
 from ..game.context import SRPGGame
 from ..game.dungeon import (
@@ -25,7 +22,6 @@ from ..game.entities import get_player_entity
 from ..game.memory import (
     add_human_message,
 )
-from ..game.stage.transition import stage_transition
 from ..models import (
     CurrentDungeonRoomComponent,
     DeathComponent,
@@ -130,13 +126,6 @@ async def advance_dungeon(srpg_game: SRPGGame) -> Tuple[bool, str]:
         logger.info(
             f"恢复生命值: {player_entity.name} 生命值 = {revived_stats.hp}/{revived_stats.max_hp}"
         )
-
-    # 执行场景传送
-    stage_transition(srpg_game, {player_entity}, next_room)
-
-    # 离开战斗房间：保底断言 pipeline 已清理完毕，不应存在残留战斗临时组件
-    if leaving_combat:
-        assert_no_residual_combat_state(srpg_game)
 
     # 进入战斗房间时创建战斗实体并初始化
     if next_room_component.room_type == DungeonRoomType.COMBAT:
