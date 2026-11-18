@@ -25,7 +25,7 @@ class BaseMessage(BaseModel):
     字段约定：
     - content: 文本内容；
     - additional_kwargs: LLM 响应里的结构化附属数据（reasoning_content / tool_calls 等）；
-    - 业务/调试标记（如 opening_initialization、loop_id、context_usage_ratio）走
+    - 业务/调试标记（如 loop_id、context_usage_ratio）走
       ``extra="allow"`` 额外属性，不挤占 additional_kwargs。
     """
 

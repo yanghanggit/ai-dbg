@@ -9,7 +9,6 @@ from ai_srpg.models import (
     Actor,
     ActorType,
     Blueprint,
-    CharacterStats,
     WorldState,
 )
 
@@ -50,5 +49,4 @@ def sample_actor() -> Actor:
         profile="test profile",
         base_body="",
         system_message="test system message",
-        character_stats=CharacterStats(max_hp=50, attack=10, defense=5),
     )

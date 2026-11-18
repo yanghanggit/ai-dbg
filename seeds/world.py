@@ -11,7 +11,6 @@ from ai_srpg.models import (
     Actor,
     ActorType,
     Blueprint,
-    CharacterStats,
     Stage,
     StageType,
     create_actor,
@@ -101,7 +100,6 @@ def create_nameless() -> Actor:
 **禁忌**: 你对任何人追问你的来历、强行拿走你身上仅有的东西、或强迫你去某个地方，都有本能的抵触。
 **最爱**: 你发现自己喜欢坐在炉火边，听火舌舔过木柴的轻响，那时候周围很安静。""",
         base_body="年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。",
-        character_stats=CharacterStats(),
         campaign_setting=CAMPAIGN_SETTING,
         system_rules=SYSTEM_RULES,
     )

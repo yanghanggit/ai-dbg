@@ -4,7 +4,6 @@
 
 `ai-srpg-agent-game` 是离线、快照驱动的副本推进入口：一次调用只完成一个动作，世界状态由快照承载，命令之间不保持进程内状态。它用于规则回归、问题复现与逐步观察 ECS 状态；需要走真实 HTTP 契约时改用 API 路径。
 
-→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
 
 ## 当前状态

@@ -1,8 +1,7 @@
 """从蓝图构建世界、角色与场景实体。"""
 
-import copy
 import uuid
-from typing import List, Optional
+from typing import List
 
 from loguru import logger
 
@@ -13,17 +12,12 @@ from ...models import (
     ActorComponent,
     ActorType,
     AppearanceComponent,
-    CharacterStatsComponent,
-    DeckComponent,
     IdentityComponent,
-    InventoryComponent,
-    LobbyComponent,
     MonsterComponent,
     NPCComponent,
     PlayerComponent,
     Stage,
     StageComponent,
-    StageType,
     SystemMessage,
     World,
     WorldComponent,
@@ -32,18 +26,6 @@ from ...models import (
 from ..context import SRPGGame
 from ..memory import add_system_message
 from .repository import create_entity, get_actor_entity
-
-
-def _assert_deck_sources(actor_name: str, deck_comp: Optional[DeckComponent]) -> None:
-    """入口不变量：牌库中每张卡必须显式带 source，且 source 必须等于持有者。"""
-    assert deck_comp is not None, f"{actor_name} 缺少 DeckComponent"
-    for card in deck_comp.cards:
-        assert (
-            card.source.strip()
-        ), f"{actor_name} 的卡「{card.name}」缺少 source：牌库中每张卡都必须显式设置 source"
-        assert (
-            card.source == actor_name
-        ), f"{actor_name} 的卡「{card.name}」source={card.source!r} 与持有者不符：持久牌库中的卡 source 必须等于持有者名"
 
 
 def build_from_blueprint(srpg_game: SRPGGame) -> None:
@@ -71,9 +53,6 @@ def build_from_blueprint(srpg_game: SRPGGame) -> None:
     assert not player_actor_entity.has(PlayerComponent)
     player_actor_entity.replace(PlayerComponent, srpg_game.player_name)
     logger.info(f"玩家: {srpg_game.player_name} 选择控制: {srpg_game.player_actor}")
-    assert player_actor_entity.has(
-        InventoryComponent
-    ), "玩家角色实体必须有 InventoryComponent"
 
 
 def _create_world_entities(
@@ -144,12 +123,6 @@ def create_actor_entities(
             actor_model.base_body,
             actor_model.base_body,
         )
-        actor_entity.add(
-            CharacterStatsComponent,
-            actor_model.name,
-            copy.copy(actor_model.character_stats),
-        )
-
         match actor_model.type:
             case ActorType.NPC:
                 actor_entity.add(NPCComponent, actor_model.name)
@@ -163,8 +136,6 @@ def create_actor_entities(
             assert comp_class is not None, f"未知组件类型: {comp_name}"
             actor_entity.set(comp_class, comp_class(**comp_data))
 
-        assert actor_entity.has(DeckComponent), "玩家角色实体必须有 DeckComponent"
-        _assert_deck_sources(actor_entity.name, actor_entity.get(DeckComponent))
         actor_entities.append(actor_entity)
     return actor_entities
 
@@ -191,9 +162,6 @@ def create_stage_entities(
             stage_entity,
             SystemMessage(content=stage_model.system_message),
         )
-
-        if stage_model.type == StageType.LOBBY:
-            stage_entity.add(LobbyComponent, stage_model.name)
 
         for comp_name, comp_data in stage_model.components.items():
             comp_class = resolve_component_type(comp_name, comp_data)

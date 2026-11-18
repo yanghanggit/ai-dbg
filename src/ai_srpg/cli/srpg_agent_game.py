@@ -81,7 +81,7 @@ def main() -> None:
     "--game", required=True, help="游戏名称（对应 BLUEPRINTS_DIR 下的文件名）。"
 )
 @click.option(
-    "--dungeon", required=True, help="副本名称（对应 DUNGEONS_DIR 下的文件名）。"
+    "--dungeon", required=True, help="副本名称（骨架仅记录参数，不读取数据）。"
 )
 def new_game(user: str | None, game: str, dungeon: str) -> None:
     """创建新游戏并进入副本首间（骨架）。"""

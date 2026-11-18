@@ -19,4 +19,3 @@
   → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 
 → 参见：[SRPG AI 操作 CLI（ai-srpg-agent-game）](run-agent-game.md)
-→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)

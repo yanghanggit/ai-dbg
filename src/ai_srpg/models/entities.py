@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 
 from ..entitas import EntityData
 from .assets_meta import AssetKey
-from .character_stats import CharacterStats
 
 
 ###############################################################################################################################################
@@ -34,7 +33,6 @@ class Actor(BaseModel):
     profile: str
     base_body: str
     system_message: str
-    character_stats: CharacterStats
     components: EntityData = {}
     assets: Dict[AssetKey, str] = Field(
         default_factory=dict

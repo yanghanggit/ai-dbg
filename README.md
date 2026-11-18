@@ -79,13 +79,12 @@ pm2 start ecosystem.config.js
 
 ### 面向 AI 代理的工具（非人工操作）
 
-游戏的「操作」由 AI 代理驱动，日常无需人手动执行。本仓库提供两条代理路径，
-此处仅列入口，**用法、参数与环境变量见各自文档**：
+游戏的「操作」由 AI 代理驱动，日常无需人手动执行。此处仅列入口，
+**用法、参数与环境变量见对应文档**：
 
 | 命令 | 用途 | 文档 |
 | --- | --- | --- |
 | `ai-srpg-agent-game` | 离线、快照驱动推进（当前为骨架） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
-| `ai-srpg-agent-api` | 通过 HTTP 走查服务器 API | [docs/wiki/run-agent-api.md](docs/wiki/run-agent-api.md) |
 
 `uv run <命令> --help` 可列出全部子命令。
 

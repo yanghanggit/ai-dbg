@@ -1,18 +1,8 @@
 """ECS 组件定义。添加到实体后由对应系统读取处理。"""
 
-from datetime import datetime
-from typing import Dict, List, final
-
-from pydantic import Field
+from typing import final
 
 from ..entitas.components import Component
-from .artifact import Artifact
-from .assets_meta import AssetKey
-from .card import Card
-from .character_stats import CharacterStats
-from .combat import CombatResult, CombatState, CombatTurnStatus
-from .dungeon_room import DungeonRoomType
-from .items import AnyItem, GearItem
 from .registry import register_component_type
 
 
@@ -59,7 +49,7 @@ class ActorComponent(Component):
 @final
 @register_component_type
 class EnvironmentComponent(Component):
-    """场景环境叙述，由 AI 根据当前状态动态生成，为行动规划与战斗初始化等系统提供背景信息。"""
+    """场景环境叙述，由 AI 根据当前状态动态生成，为后续行动规划提供背景信息。"""
 
     name: str
     narrative: str  # 叙述性描述文本
@@ -97,142 +87,6 @@ class AppearanceComponent(Component):
 ############################################################################################################
 @final
 @register_component_type
-class LobbyComponent(Component):
-    """标记场景为大厅/营地：两次副本之间的极简落脚点，不承载任何非副本玩法。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class DungeonComponent(Component):
-    """标记场景为副本类型。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class DungeonRunComponent(Component):
-    """一次副本运行的元数据，挂在副本实体上。"""
-
-    name: str
-    profile: str
-    created_at: datetime
-    assets: Dict[AssetKey, str] = Field(default_factory=dict)
-
-
-############################################################################################################
-@final
-@register_component_type
-class DungeonRoomComponent(Component):
-    """副本房间元数据；当前与房间对应的 Stage 实体一一对应。"""
-
-    name: str
-    dungeon_name: str
-    index: int
-    room_type: DungeonRoomType
-
-
-############################################################################################################
-@final
-@register_component_type
-class CurrentDungeonRoomComponent(Component):
-    """标记当前所在副本房间；同一时刻最多存在一个。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class CombatComponent(Component):
-    """标记战斗房间，并链接到该房间对应的战斗实体。"""
-
-    name: str
-    combat_name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class CombatStateComponent(Component):
-    """战斗实体的状态机与结算信息。"""
-
-    name: str
-    room_name: str
-    state: CombatState = CombatState.NONE
-    result: CombatResult = CombatResult.NONE
-    retreated: bool = False
-
-
-############################################################################################################
-@final
-@register_component_type
-class CombatRoundComponent(Component):
-    """战斗回合实体上的回合生命周期状态。"""
-
-    name: str
-    combat_name: str
-    index: int
-    is_completed: bool = False
-    draw_completed: bool = False
-
-
-############################################################################################################
-@final
-@register_component_type
-class CombatTurnComponent(Component):
-    """回合内一个角色的行动槽；行动权、完成与死亡都落到单个槽上。"""
-
-    name: str
-    combat_name: str
-    round_name: str
-    actor_name: str
-    order_index: int
-    status: CombatTurnStatus = CombatTurnStatus.PENDING
-    energy: int = 2
-
-
-############################################################################################################
-@final
-@register_component_type
-class CurrentCombatTurnComponent(Component):
-    """标记战斗当前行动槽；同一战斗最多一个，回合结束时移除。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class CurrentCombatRoundComponent(Component):
-    """标记战斗实体当前所在的回合；同一战斗最多一个。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-class CombatPassSnapshotComponent(Component):
-    """一次 pipeline pass 的动作阶段快照；挂在冻结的行动槽上，不注册、不持久化。
-
-    它冻结进入动作阶段时的当前行动槽，供决策与动作系统共享，避免同一次 pass 内
-    因 current turn 推进而让不同系统看到不同行动者。它不是行动权的权威来源；
-    ``CurrentCombatTurnComponent`` 仍然是唯一权威。
-    """
-
-    combat_name: str
-    round_name: str
-    turn_name: str
-    actor_name: str
-
-
-############################################################################################################
-@final
-@register_component_type
 class NPCComponent(Component):
     """标记角色为 NPC（非玩家控制的友方角色），属于友方阵营。"""
 
@@ -240,118 +94,9 @@ class NPCComponent(Component):
 
 
 ############################################################################################################
-
-
 @final
 @register_component_type
 class MonsterComponent(Component):
     """标记角色为怪物（敌方阵营战斗单位）。"""
 
     name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class HandComponent(Component):
-    """存储角色当前手牌与所在回合数。"""
-
-    name: str
-    cards: List[Card]
-
-
-############################################################################################################
-@final
-@register_component_type
-class DeathComponent(Component):
-    """标记角色已死亡，战斗系统排除此角色。"""
-
-    name: str
-
-
-############################################################################################################
-############################################################################################################
-@final
-@register_component_type
-class CharacterStatsComponent(Component):
-    """存储角色战斗属性（HP、攻击力、防御力等）。"""
-
-    name: str
-    stats: CharacterStats
-
-
-############################################################################################################
-@final
-@register_component_type
-class ReliquaryComponent(Component):
-    """神器容器组件：Actor/Stage 均可携带，承载该实体携带的神器列表。"""
-
-    name: str
-    artifacts: List[Artifact] = []
-
-
-############################################################################################################
-
-
-@final
-@register_component_type
-class DrawPileComponent(Component):
-    """战斗内抽牌堆；Draw 阶段 FIFO 消耗，耗尽时自动将 DiscardPile 洗牌补入；存放 DeckComponent 原始牌的 model_copy() 副本。"""
-
-    name: str
-    cards: List[Card]  # FIFO 消耗，耗尽时由 DiscardPile 洗牌补充
-    retained_cards: List[Card] = (
-        []
-    )  # retain 牌临时中转队列：回合末写入，下回合抓牌时优先取回手牌（不占用抓牌名额）
-
-
-############################################################################################################
-@final
-@register_component_type
-class ExhaustPileComponent(Component):
-    """消耗堆；存放主动弃置的自有牌副本，战斗内永久移出抽牌循环。"""
-
-    name: str
-    cards: List[Card]  # 按时间顺序追加，战斗内只增不减
-
-
-############################################################################################################
-@final
-@register_component_type
-class DiscardPileComponent(Component):
-    """弃牌堆；出牌使用后或回合末剩余手牌进入此堆，DrawPile 耗尽时洗牌回补；存放副本，战斗结束后由 CombatPileTeardownSystem 清空。"""
-
-    name: str
-    cards: List[Card]  # 按时间顺序追加，DrawPile 耗尽时整体洗牌移入 DrawPile
-
-
-############################################################################################################
-@final
-@register_component_type
-class DeckComponent(Component):
-    """跨战斗持久牌库。"""
-
-    name: str
-    cards: List[Card]
-
-
-############################################################################################################
-@final
-@register_component_type
-class InventoryComponent(Component):
-    """随身背包；存储角色当前携带的道具列表。"""
-
-    name: str
-    items: List[AnyItem]  # 当前携带的道具
-
-
-############################################################################################################
-
-
-@final
-@register_component_type
-class EquippedGearComponent(Component):
-    """战斗中由当前行动者转化、待归还玩家背包的装备暂存列表；可同时存在于多个角色实体上。"""
-
-    name: str
-    items: List[GearItem]

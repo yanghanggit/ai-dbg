@@ -1,17 +1,13 @@
 """
 游戏实体工厂模块。
 
-system prompt 段序原则：内容向的「游戏设定」「角色/场景/神器设定」「基础体型」等在前，
+system prompt 段序原则：内容向的「游戏设定」「角色/场景设定」「基础体型」等在前，
 具备规则效果的「全局规则」在后——让 agent 先建立人物与世界观，最后读到必须遵守的规则。
 """
-
-from typing import List
 
 from . import (
     Actor,
     ActorType,
-    Artifact,
-    CharacterStats,
     Stage,
     StageType,
     World,
@@ -24,7 +20,6 @@ def create_actor(
     actor_type: ActorType,
     profile: str,
     base_body: str,
-    character_stats: CharacterStats,
     campaign_setting: str,
     system_rules: str,
 ) -> Actor:
@@ -46,13 +41,7 @@ def create_actor(
         profile=profile,
         base_body=base_body,
         system_message="",
-        character_stats=character_stats,
     )
-
-    # 血量加满!!!!
-    assert character_stats.max_hp > 0, "Max HP must be greater than 0."
-    # assert actor.character_stats.hp == 0, "HP must be 0."
-    actor.character_stats.hp = character_stats.max_hp
 
     # 系统提示词词
     actor.system_message = f"""# {actor.name}
@@ -166,33 +155,3 @@ def create_world(
 {system_rules}"""
 
     return world
-
-
-#######################################################################################################################################
-def create_artifact(
-    name: str,
-    description: str,
-    modifiers: List[str],
-    source: str = "",
-) -> Artifact:
-    """
-    创建一个神器(Artifact)实例。
-
-    神器与 Card 同级：只承载人设意象（description）与修正规则（modifiers），
-    由携带它的宿主通过 ReliquaryComponent 声明归属；source 标识以谁的名义生效，
-    当前只保留数据形状，不进入战斗结算。
-    """
-
-    assert name.strip() != "", "SRPG 游戏要求必须有神器名称(name)"
-    assert description.strip() != "", "SRPG 游戏要求必须有神器设定(description)"
-    assert modifiers, "SRPG 游戏要求神器至少有一条修正规则(modifiers)"
-
-    # 创建神器实例
-    artifact = Artifact(
-        name=name,
-        description=description,
-        source=source,
-        modifiers=list(modifiers),
-    )
-
-    return artifact

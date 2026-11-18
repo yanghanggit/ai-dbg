@@ -26,7 +26,6 @@ from ai_srpg.game.entities import (
 from ai_srpg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
-    LobbyComponent,
     Stage,
     StageComponent,
     StageType,
@@ -151,7 +150,6 @@ class TestCreateStageEntitiesDynamicComponent:
         assert len(stage_entities) == 1
         stage_entity = stage_entities[0]
         assert stage_entity.has(StageComponent)
-        assert stage_entity.has(LobbyComponent)
         assert stage_entity.has(tag_cls)
         assert stage_entity.get(tag_cls).model_dump() == {"name": "场景.测试房"}
 

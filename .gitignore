@@ -65,7 +65,6 @@ htmlcov/
 # -----------------------------------------------------------------------------
 .blueprints/
 .sessions/
-.dungeons/
 .debug_cache/
 .chat_dumps/
 

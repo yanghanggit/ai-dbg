@@ -32,4 +32,3 @@
 - job 事件中的失败摘要面向客户端，完整异常栈留在服务端日志。
 
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
-→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)

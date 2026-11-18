@@ -5,13 +5,10 @@ from typing import Dict, Final, List, final, override
 
 from loguru import logger
 
-from ..entitas import Entity, ExecuteProcessor
+from ..entitas import ExecuteProcessor
 from ..game.context import SRPGGame
 from ..game.entities import (
     get_actors_by_stage,
-)
-from ..models import (
-    DeathComponent,
 )
 
 
@@ -34,25 +31,8 @@ class EpilogueSystem(ExecuteProcessor):
 
         actor_distribution_info: Dict[str, List[str]] = {}
         for stage, actors in actor_distribution.items():
-            actor_distribution_info[stage.name] = [
-                self._format_entity_name_with_status(actor) for actor in actors
-            ]
+            actor_distribution_info[stage.name] = [actor.name for actor in actors]
 
         logger.warning(
             f"mapping = {json.dumps(actor_distribution_info, indent=2, ensure_ascii=False)}"
         )
-
-    ############################################################################################################
-    def _format_entity_name_with_status(self, entity: Entity) -> str:
-        """返回实体名称，若有状态标签（如 dead）则附加在括号内。"""
-        tags = []
-
-        if entity.has(DeathComponent):
-            tags.append("dead")
-
-        if len(tags) == 0:
-            return entity.name
-        else:
-            return f"{entity.name}({' & '.join(tags)})"
-
-    ############################################################################################################

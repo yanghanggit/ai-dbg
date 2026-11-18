@@ -7,31 +7,25 @@
 from pathlib import Path
 
 ###########################################################################################################################################
-# 游戏蓝图配置目录
+# 游戏蓝图目录（scripts/seed_db.py 写入）
 BLUEPRINTS_DIR: Path = Path(".blueprints")
 BLUEPRINTS_DIR.mkdir(parents=True, exist_ok=True)
 assert BLUEPRINTS_DIR.exists(), f"找不到目录: {BLUEPRINTS_DIR}"
 
 ###########################################################################################################################################
-# 副本配置目录
-DUNGEONS_DIR: Path = Path(".dungeons")
-DUNGEONS_DIR.mkdir(parents=True, exist_ok=True)
-assert DUNGEONS_DIR.exists(), f"找不到目录: {DUNGEONS_DIR}"
-
-###########################################################################################################################################
-# 用户会话历史目录（跨游戏、append-only，不随游戏实例重建清空）
+# 用户会话历史目录（跨游戏、append-only，不随游戏实例重建清空；session/store.py 读写）
 SESSIONS_DIR: Path = Path(".sessions")
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 assert SESSIONS_DIR.exists(), f"找不到目录: {SESSIONS_DIR}"
 
 ###########################################################################################################################################
-# 资源资产目录（raw 资源 + 同名 .meta）
+# 资源资产目录（raw 资源 + 同名 .meta；assets_meta / 静态文件服务使用）
 ASSETS_DIR: Path = Path(".assets/image")
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 assert ASSETS_DIR.exists(), f"找不到目录: {ASSETS_DIR}"
 
 ###########################################################################################################################################
-# 日志文件目录
+# 日志文件目录（各 CLI 入口写运行日志）
 LOGS_DIR: Path = Path("logs")
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 assert LOGS_DIR.exists(), f"找不到目录: {LOGS_DIR}"
