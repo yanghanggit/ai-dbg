@@ -17,18 +17,7 @@ from starlette.types import Scope
 from ai_srpg.models import ASSETS_URL_PREFIX, ApiRouteInfo, ServerInfoResponse
 from ai_srpg.paths import ASSETS_DIR, LOGS_DIR
 from ai_srpg.pgsql import procrastinate_app
-from ai_srpg.services.compact_api import compact_api_router
 from ai_srpg.services.components_api import components_api_router
-from ai_srpg.services.dungeon_combat_api import (
-    dungeon_combat_api_router,
-)
-from ai_srpg.services.dungeon_lifecycle_api import (
-    dungeon_lifecycle_api_router,
-)
-from ai_srpg.services.dungeon_opening_api import (
-    dungeon_opening_api_router,
-)
-from ai_srpg.services.dungeon_state import dungeon_state_api_router
 from ai_srpg.services.entity_details import (
     entity_details_api_router,
 )
@@ -36,10 +25,8 @@ from ai_srpg.services.game_server_runtime import bind_runtime_game_server
 from ai_srpg.services.gameplay_scheduler import run_gameplay_scheduler
 from ai_srpg.services.jobs_api import jobs_api_router
 from ai_srpg.services.login import login_api_router
-from ai_srpg.services.new_game import new_game_api_router
 from ai_srpg.services.player_session import player_session_api_router
 from ai_srpg.services.room_error_handlers import register_room_error_handlers
-from ai_srpg.services.stages_state import stages_state_api_router
 from ai_srpg.session.server import GameServer
 
 load_dotenv()
@@ -178,15 +165,8 @@ app.mount(
 app.include_router(router=player_session_api_router)
 app.include_router(router=components_api_router)
 app.include_router(router=entity_details_api_router)
-app.include_router(router=stages_state_api_router)
-app.include_router(router=dungeon_state_api_router)
 app.include_router(router=jobs_api_router)
 app.include_router(router=login_api_router)
-app.include_router(router=new_game_api_router)
-app.include_router(router=compact_api_router)
-app.include_router(router=dungeon_lifecycle_api_router)
-app.include_router(router=dungeon_combat_api_router)
-app.include_router(router=dungeon_opening_api_router)
 
 
 @click.command()

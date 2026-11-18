@@ -4,10 +4,6 @@ import pytest
 
 from ai_srpg.entitas.entity import Entity
 from ai_srpg.game.assembly import create_srpg_game
-from ai_srpg.game.combat import (
-    compute_character_stats,
-    set_character_hp,
-)
 from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.dungeon import (
     current_dungeon_name,
@@ -239,75 +235,3 @@ class TestBuildFromBlueprint:
     #     # entities_serialization is now populated; second call must assert-fail
     #     with pytest.raises(AssertionError):
     #         build_from_blueprint(game)
-
-
-# ---------------------------------------------------------------------------
-# TestComputeCharacterStats
-# ---------------------------------------------------------------------------
-
-
-class TestComputeCharacterStats:
-    # def test_base_stats_returned(self) -> None:
-    #     game = _make_game()
-    #     actor = _make_actor_entity(game, "knight")
-    #     stats = compute_character_stats(actor)
-    #     assert stats.max_hp == 20
-    #     assert stats.attack == 5
-    #     assert stats.defense == 3
-
-    def test_missing_actor_component_raises(self) -> None:
-        game = _make_game()
-        entity = create_entity(game, "ghost")
-        entity.add(CharacterStatsComponent, "ghost", CharacterStats())
-        with pytest.raises(AssertionError):
-            compute_character_stats(entity)
-
-    def test_missing_stats_component_raises(self) -> None:
-        game = _make_game()
-        entity = create_entity(game, "ghost")
-        entity.add(ActorComponent, "ghost", "")
-        with pytest.raises(AssertionError):
-            compute_character_stats(entity)
-
-    # def test_no_equipment_uses_base_stats(self) -> None:
-    #     game = _make_game()
-    #     actor = _make_actor_entity(game, "rogue")
-    #     stats = compute_character_stats(actor)
-    #     # Without equipment bonuses, stats should equal base
-    #     assert stats.attack == 5
-    #     assert stats.defense == 3
-
-
-# ---------------------------------------------------------------------------
-# TestSetCharacterHp
-# ---------------------------------------------------------------------------
-
-
-class TestSetCharacterHp:
-    def test_set_normal_hp(self) -> None:
-        game = _make_game()
-        actor = _make_actor_entity(game, "warrior")
-        set_character_hp(actor, 10)
-        result = compute_character_stats(actor)
-        assert result.hp == 10
-
-    def test_clamp_negative_hp_to_zero(self) -> None:
-        game = _make_game()
-        actor = _make_actor_entity(game, "warrior")
-        set_character_hp(actor, -5)
-        result = compute_character_stats(actor)
-        assert result.hp == 0
-
-    def test_clamp_exceeding_max_hp(self) -> None:
-        game = _make_game()
-        actor = _make_actor_entity(game, "warrior")
-        set_character_hp(actor, 9999)
-        result = compute_character_stats(actor)
-        assert result.hp == 20  # max_hp is 20
-
-    def test_set_hp_to_max(self) -> None:
-        game = _make_game()
-        actor = _make_actor_entity(game, "warrior")
-        set_character_hp(actor, 20)
-        result = compute_character_stats(actor)
-        assert result.hp == 20

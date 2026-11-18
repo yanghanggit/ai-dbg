@@ -4,8 +4,6 @@ from typing import List, Optional
 
 from ..entitas import Entity, Matcher
 from ..models import (
-    CombatComponent,
-    CombatView,
     CurrentDungeonRoomComponent,
     DungeonComponent,
     DungeonRoomComponent,
@@ -13,12 +11,6 @@ from ..models import (
     DungeonRoomView,
     DungeonRunComponent,
     DungeonStateView,
-)
-from .combat.state import (
-    combat_view,
-    current_combat_round,
-    current_combat_turn,
-    get_combat_entity_for_room,
 )
 from .context import SRPGGame
 from .entities import (
@@ -84,46 +76,6 @@ def current_room_index(srpg_game: SRPGGame) -> int:
 
 
 ###############################################################################################################################################
-def current_dungeon_combat_room(srpg_game: SRPGGame) -> Entity:
-    """断言当前处于战斗房间中，返回战斗房间实体。"""
-    room_entity = current_dungeon_room(srpg_game)
-    assert room_entity is not None, "当前副本房间不存在"
-    assert (
-        _require_room_component(room_entity).room_type == DungeonRoomType.COMBAT
-    ), "当前副本房间不是战斗房间"
-    assert room_entity.has(CombatComponent), "当前战斗房间缺少 CombatComponent"
-    return room_entity
-
-
-###############################################################################################################################################
-def current_combat_entity(srpg_game: SRPGGame) -> Entity:
-    """返回当前战斗房间对应的战斗实体。
-
-    调用方应先用 is_current_room_dungeon_combat 守卫。
-    """
-    room_entity = current_dungeon_combat_room(srpg_game)
-    return get_combat_entity_for_room(srpg_game, room_entity)
-
-
-###############################################################################################################################################
-def current_combat_round_entity(srpg_game: SRPGGame) -> Optional[Entity]:
-    """返回当前战斗的当前回合实体。"""
-    return current_combat_round(srpg_game, current_combat_entity(srpg_game))
-
-
-###############################################################################################################################################
-def current_combat_turn_entity(srpg_game: SRPGGame) -> Optional[Entity]:
-    """返回当前战斗的当前行动槽实体。"""
-    return current_combat_turn(srpg_game, current_combat_entity(srpg_game))
-
-
-###############################################################################################################################################
-def current_dungeon_combat(srpg_game: SRPGGame) -> CombatView:
-    """返回当前战斗的只读视图；调用方应先用 is_current_room_dungeon_combat 守卫。"""
-    return combat_view(srpg_game, current_combat_entity(srpg_game))
-
-
-###############################################################################################################################################
 def is_dungeon_setup_entities(srpg_game: SRPGGame) -> bool:
     """检查当前副本的实体是否已全部创建。"""
     dungeon_entity = get_dungeon_entity(srpg_game)
@@ -176,17 +128,10 @@ def is_current_room_dungeon_opening(srpg_game: SRPGGame) -> bool:
 def dungeon_room_view(srpg_game: SRPGGame, room_entity: Entity) -> DungeonRoomView:
     """把一个房间实体投影成 API 视图。"""
     room_component = _require_room_component(room_entity)
-    combat: Optional[CombatView] = None
-    if room_entity.has(CombatComponent):
-        combat = combat_view(
-            srpg_game, get_combat_entity_for_room(srpg_game, room_entity)
-        )
-
     return DungeonRoomView(
         name=room_entity.name,
         index=room_component.index,
         type=room_component.room_type,
-        combat=combat,
     )
 
 
