@@ -1,7 +1,7 @@
 """从蓝图构建世界、角色与场景实体。"""
 
 import uuid
-from typing import List
+from typing import List, Optional
 
 from loguru import logger
 
@@ -28,8 +28,17 @@ from ..memory import add_system_message
 from .queries import get_actor_entity
 
 
-def build_from_blueprint(srpg_game: SRPGGame) -> None:
-    """创建并初始化新游戏世界，包括世界、角色和场景。"""
+def build_from_blueprint(
+    srpg_game: SRPGGame,
+    *,
+    player_name: str,
+    player_actor: Optional[str] = None,
+) -> None:
+    """创建并初始化新游戏世界，包括世界、角色和场景。
+
+    ``player_name`` 是玩家身份（来自会话/房间），``player_actor`` 缺省时取蓝图声明的
+    受控角色；两者只在构建期使用，之后以 ECS 的 ``PlayerComponent`` 为准。
+    """
     assert len(srpg_game.world.entities) == 0, "游戏中有实体，不能创建新的游戏"
     if len(srpg_game.world.entities) > 0:
         logger.warning(
@@ -44,15 +53,14 @@ def build_from_blueprint(srpg_game: SRPGGame) -> None:
     )
     create_stage_entities(srpg_game, srpg_game.world.blueprint.stages)
 
-    assert srpg_game.player_name.strip() != "", "玩家名字不能为空"
-    assert srpg_game.player_actor.strip() != "", "玩家角色不能为空"
-    player_actor_entity = get_actor_entity(srpg_game, srpg_game.player_actor)
-    assert (
-        player_actor_entity is not None
-    ), f"找不到玩家角色实体: {srpg_game.player_actor}"
+    actor_name = player_actor or srpg_game.world.blueprint.player_actor
+    assert player_name.strip() != "", "玩家名字不能为空"
+    assert actor_name.strip() != "", "玩家角色不能为空"
+    player_actor_entity = get_actor_entity(srpg_game, actor_name)
+    assert player_actor_entity is not None, f"找不到玩家角色实体: {actor_name}"
     assert not player_actor_entity.has(PlayerComponent)
-    player_actor_entity.replace(PlayerComponent, srpg_game.player_name)
-    logger.info(f"玩家: {srpg_game.player_name} 选择控制: {srpg_game.player_actor}")
+    player_actor_entity.replace(PlayerComponent, player_name)
+    logger.info(f"玩家: {player_name} 选择控制: {actor_name}")
 
 
 def _create_world_entities(

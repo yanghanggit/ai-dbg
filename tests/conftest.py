@@ -33,8 +33,6 @@ def sample_game() -> SRPGGame:
     )
     return create_srpg_game(
         name="test_blueprint",
-        player_name="test_player",
-        player_actor="test_actor",
         world=world,
         events=RecordingEventSink(),
     )

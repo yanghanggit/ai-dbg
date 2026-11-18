@@ -1,8 +1,10 @@
 """SRPG 游戏业务上下文。
 
 `SRPGGame` 既是 ECS 上下文（继承 ``ECSContext``，实体创建/销毁/按名查找直接调用自身），
-又是一次游戏运行的世界状态、玩家身份、领域事件出口与唯一 pipeline 的持有者。
-用户会话历史由房间单独持有，不属于这里。
+又是一次游戏运行的世界状态、领域事件出口与唯一 pipeline 的持有者。
+
+玩家身份与当前控制角色属于玩家会话（``PlayerSession``）与蓝图（``Blueprint``），
+不在此重复保存：构建世界时由调用方传入一次，之后以 ECS 的 ``PlayerComponent`` 为准。
 """
 
 from typing import Optional
@@ -23,15 +25,11 @@ class SRPGGame(ECSContext):
         self,
         *,
         name: str,
-        player_name: str,
-        player_actor: str,
         world: WorldState,
         events: Optional[DomainEventSink] = None,
     ) -> None:
         super().__init__()
         self.name = name
-        self.player_name = player_name
-        self.player_actor = player_actor
         self.world = world
         self.events: DomainEventSink = events if events is not None else NullEventSink()
         # 由 `create_srpg_game` 装配后替换为空 pipeline 之上的真实流程。
@@ -44,4 +42,4 @@ class SRPGGame(ECSContext):
         super().destroy_entity(entity)
 
     def __repr__(self) -> str:
-        return f"<SRPGGame name={self.name!r} player={self.player_name!r} entities={self.entity_count}>"
+        return f"<SRPGGame name={self.name!r} entities={self.entity_count}>"

@@ -11,20 +11,16 @@ from .pipelines.build import build_game_pipeline
 def create_srpg_game(
     *,
     name: str,
-    player_name: str,
-    player_actor: str,
     world: WorldState,
     events: Optional[DomainEventSink] = None,
 ) -> SRPGGame:
     """创建完整的游戏业务上下文（数据 + 唯一 pipeline）。
 
-    ``player_name`` / ``player_actor`` 是构建玩家实体所需的领域身份；
     ``events`` 是应用层注入的领域事件出口，游戏本身不持有 PlayerSession。
+    玩家身份只在构建世界时由 ``build_from_blueprint`` 一次性写入 ECS。
     """
     srpg_game = SRPGGame(
         name=name,
-        player_name=player_name,
-        player_actor=player_actor,
         world=world,
         events=events,
     )
