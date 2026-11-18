@@ -15,7 +15,6 @@ from ...models import (
     AppearanceComponent,
     CharacterStatsComponent,
     DeckComponent,
-    DungeonComponent,
     IdentityComponent,
     InventoryComponent,
     LobbyComponent,
@@ -193,13 +192,8 @@ def create_stage_entities(
             SystemMessage(content=stage_model.system_message),
         )
 
-        match stage_model.type:
-            case StageType.DUNGEON:
-                stage_entity.add(DungeonComponent, stage_model.name)
-            case StageType.LOBBY:
-                stage_entity.add(LobbyComponent, stage_model.name)
-            case _:
-                assert False, f"未知的 StageType: {stage_model.type}"
+        if stage_model.type == StageType.LOBBY:
+            stage_entity.add(LobbyComponent, stage_model.name)
 
         for comp_name, comp_data in stage_model.components.items():
             comp_class = resolve_component_type(comp_name, comp_data)

@@ -9,7 +9,6 @@ from .queries import (
     get_actors_by_stage,
     get_actors_by_stage_as_names,
     get_actors_in_stage,
-    is_actor_in_dungeon_stage,
     is_actor_in_lobby_stage,
 )
 from .repository import (
@@ -42,7 +41,6 @@ __all__ = [
     "get_player_entity",
     "get_stage_entity",
     "get_world_entity",
-    "is_actor_in_dungeon_stage",
     "is_actor_in_lobby_stage",
     "resolve_stage_entity",
     "restore_context",

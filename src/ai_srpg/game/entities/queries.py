@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Set
 from ...entitas import Entity, Matcher
 from ...models import (
     ActorComponent,
-    DungeonComponent,
     LobbyComponent,
     StageComponent,
 )
@@ -49,21 +48,7 @@ def is_actor_in_lobby_stage(srpg_game: SRPGGame, actor_entity: Entity) -> bool:
     assert actor_entity.has(ActorComponent), "actor_entity must have ActorComponent"
     stage_entity = resolve_stage_entity(srpg_game, actor_entity)
     assert stage_entity is not None, "stage_entity is None"
-    assert not (
-        stage_entity.has(LobbyComponent) and stage_entity.has(DungeonComponent)
-    ), "stage_entity has both LobbyComponent and DungeonComponent!"
     return stage_entity.has(LobbyComponent)
-
-
-def is_actor_in_dungeon_stage(srpg_game: SRPGGame, actor_entity: Entity) -> bool:
-    """判断 Actor 是否在副本场景中。"""
-    assert actor_entity.has(ActorComponent), "actor_entity must have ActorComponent"
-    stage_entity = resolve_stage_entity(srpg_game, actor_entity)
-    assert stage_entity is not None, "stage_entity is None"
-    assert not (
-        stage_entity.has(DungeonComponent) and stage_entity.has(LobbyComponent)
-    ), "stage_entity has both DungeonComponent and LobbyComponent!"
-    return stage_entity.has(DungeonComponent)
 
 
 def get_actors_by_stage(srpg_game: SRPGGame) -> Dict[Entity, List[Entity]]:
