@@ -82,3 +82,16 @@ class AppearanceComponent(Component):
     name: str
     base_body: str  # 基础身体形态描述（不含装备）
     appearance: str  # 最终外观描述（含装备）
+
+
+###############################################################################
+__all__ = [
+    "ActorComponent",
+    "AppearanceComponent",
+    "DestroyComponent",
+    "EnvironmentComponent",
+    "IdentityComponent",
+    "PlayerComponent",
+    "StageComponent",
+    "WorldComponent",
+]

@@ -1,17 +1,130 @@
-from .agent_event import *
-from .agent_memory import *
-from .agent_memory_snapshot import *
-from .agent_memory_store import *
-from .assets_meta import *
-from .blueprint import *
-from .components import *
-from .context_snapshot import *
-from .entities import *
-from .entity_factory import *
-from .entity_naming import *
-from .game_snapshot import *
-from .job import *
-from .memory_tags import *
-from .messages import *
-from .registry import *
-from .session_message import *
+"""模型层：数据结构与纯函数，不依赖游戏运行时、服务端与存储。
+
+各子模块用 ``__all__`` 声明自己的公开面；本文件只做显式汇总再导出，
+不使用星号导入。新增或删除公开名时，两处都要改。
+"""
+
+from .agent_event import AgentEvent, AnyAgentEvent, NoneEvent
+from .agent_memory import AgentMemory
+from .agent_memory_snapshot import MEMORY_SNAPSHOT_FORMAT_VERSION, AgentMemorySnapshot
+from .agent_memory_store import AgentMemoryStore
+from .assets_meta import (
+    ASSET_META_SUFFIX,
+    ASSETS_URL_PREFIX,
+    AnyAssetMeta,
+    AssetMeta,
+    AssetSource,
+    ImageMeta,
+    asset_meta_path,
+    asset_path,
+    asset_url,
+    new_asset_filename,
+)
+from .blueprint import Blueprint
+from .components import (
+    ActorComponent,
+    AppearanceComponent,
+    DestroyComponent,
+    EnvironmentComponent,
+    IdentityComponent,
+    PlayerComponent,
+    StageComponent,
+    WorldComponent,
+)
+from .context_snapshot import SNAPSHOT_FORMAT_VERSION, ContextSnapshot
+from .entities import Actor, ActorType, Stage, StageType, World
+from .entity_factory import create_actor, create_stage, create_world
+from .entity_naming import EntityNaming
+from .game_snapshot import GAME_SNAPSHOT_FORMAT_VERSION, GameSnapshot, GameSnapshotInfo
+from .job import JobEvent
+from .memory_tags import MEMORY_TAGS, assert_known_memory_tags
+from .messages import (
+    AIMessage,
+    BaseMessage,
+    ChatMessage,
+    HumanMessage,
+    MessageSpan,
+    MsgT,
+    SystemMessage,
+    ToolMessage,
+    find_marked_span,
+    find_marked_spans,
+    find_message,
+    get_buffer_string,
+)
+from .registry import (
+    ACTION_COMPONENT_TYPES,
+    COMPONENT_TYPES,
+    ComponentT,
+    create_component_type,
+    register_action_component_type,
+    register_component_type,
+    resolve_component_type,
+)
+from .session_message import SessionMessage
+
+__all__ = [
+    "ACTION_COMPONENT_TYPES",
+    "AIMessage",
+    "ASSETS_URL_PREFIX",
+    "ASSET_META_SUFFIX",
+    "Actor",
+    "ActorComponent",
+    "ActorType",
+    "AgentEvent",
+    "AgentMemory",
+    "AgentMemorySnapshot",
+    "AgentMemoryStore",
+    "AnyAgentEvent",
+    "AnyAssetMeta",
+    "AppearanceComponent",
+    "AssetMeta",
+    "AssetSource",
+    "BaseMessage",
+    "Blueprint",
+    "COMPONENT_TYPES",
+    "ChatMessage",
+    "ComponentT",
+    "ContextSnapshot",
+    "DestroyComponent",
+    "EntityNaming",
+    "EnvironmentComponent",
+    "GAME_SNAPSHOT_FORMAT_VERSION",
+    "GameSnapshot",
+    "GameSnapshotInfo",
+    "HumanMessage",
+    "IdentityComponent",
+    "ImageMeta",
+    "JobEvent",
+    "MEMORY_SNAPSHOT_FORMAT_VERSION",
+    "MEMORY_TAGS",
+    "MessageSpan",
+    "MsgT",
+    "NoneEvent",
+    "PlayerComponent",
+    "SNAPSHOT_FORMAT_VERSION",
+    "SessionMessage",
+    "Stage",
+    "StageComponent",
+    "StageType",
+    "SystemMessage",
+    "ToolMessage",
+    "World",
+    "WorldComponent",
+    "assert_known_memory_tags",
+    "asset_meta_path",
+    "asset_path",
+    "asset_url",
+    "create_actor",
+    "create_component_type",
+    "create_stage",
+    "create_world",
+    "find_marked_span",
+    "find_marked_spans",
+    "find_message",
+    "get_buffer_string",
+    "new_asset_filename",
+    "register_action_component_type",
+    "register_component_type",
+    "resolve_component_type",
+]

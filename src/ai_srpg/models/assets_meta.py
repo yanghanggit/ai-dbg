@@ -296,3 +296,18 @@ _ASSET_META_ADAPTER: Final[TypeAdapter[AssetMeta]] = TypeAdapter(AnyAssetMeta)
 def _load_asset_meta(text: str) -> AssetMeta:
     """按 meta JSON 内的 ``type`` 判别分发到具体子类。"""
     return _ASSET_META_ADAPTER.validate_json(text)
+
+
+###############################################################################
+__all__ = [
+    "ASSETS_URL_PREFIX",
+    "ASSET_META_SUFFIX",
+    "AnyAssetMeta",
+    "AssetMeta",
+    "AssetSource",
+    "ImageMeta",
+    "asset_meta_path",
+    "asset_path",
+    "asset_url",
+    "new_asset_filename",
+]

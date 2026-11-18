@@ -29,3 +29,7 @@ class JobEvent(BaseModel):
     message: str = ""
     payload: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+###############################################################################
+__all__ = ["JobEvent"]

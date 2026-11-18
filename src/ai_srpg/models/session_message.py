@@ -20,3 +20,7 @@ class SessionMessage(BaseModel):
     game_name: Optional[str] = None
     actor: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+###############################################################################
+__all__ = ["SessionMessage"]

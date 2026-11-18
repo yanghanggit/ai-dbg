@@ -37,3 +37,7 @@ def assert_known_memory_tags(message: BaseModel) -> None:
     assert (
         not unknown
     ), f"{type(message).__name__} 使用了未登记的记忆标记 {sorted(unknown)}；请在 models/memory_tags.py 登记后再使用"
+
+
+###############################################################################
+__all__ = ["MEMORY_TAGS", "assert_known_memory_tags"]
