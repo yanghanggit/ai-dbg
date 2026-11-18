@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from ..models import GameSnapshot
+from ..models import GameSnapshot, GameSnapshotInfo
 from .client import SessionLocal
 from .game_snapshot import GameSnapshotDB
 
@@ -106,6 +106,41 @@ def list_game_snapshot_ids(
             .all()
         )
         return [row.id for row in rows]
+    finally:
+        db.close()
+
+
+###############################################################################
+def list_game_snapshots(
+    user_name: str, game_name: str, *, limit: int = 20
+) -> List[GameSnapshotInfo]:
+    """按时间倒序列出快照元数据，供 CLI 观察历史。"""
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(GameSnapshotDB)
+            .filter(
+                GameSnapshotDB.user_name == user_name,
+                GameSnapshotDB.game_name == game_name,
+            )
+            .order_by(GameSnapshotDB.id.desc())
+            .limit(limit)
+            .all()
+        )
+        result: List[GameSnapshotInfo] = []
+        for row in rows:
+            snapshot = GameSnapshot.model_validate(row.data)
+            result.append(
+                GameSnapshotInfo(
+                    id=row.id,
+                    game_name=row.game_name,
+                    format_version=row.format_version,
+                    created_at=row.created_at,
+                    entity_count=len(snapshot.ecs.entities),
+                    memory_count=len(snapshot.memory.memories),
+                )
+            )
+        return result
     finally:
         db.close()
 

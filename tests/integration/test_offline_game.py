@@ -13,13 +13,29 @@ from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
 from ai_srpg.pgsql.game_snapshot_operations import list_game_snapshot_ids
 from ai_srpg.services.gameplay_runtime import run_pass
-from ai_srpg.services.offline_game import load_or_create_game, save_game_snapshot
+from ai_srpg.services.offline_game import (
+    GameAlreadyExistsError,
+    OfflinePassFailed,
+    create_new_game,
+    list_snapshots,
+    load_or_create_game,
+    run_offline_pass,
+    save_game_snapshot,
+)
 from seeds import create_seed_blueprint
 
 
 class _Noop(ExecuteProcessor):
     async def execute(self) -> None:
         return None
+
+
+class _CreateEntity(ExecuteProcessor):
+    def __init__(self, game: SRPGGame) -> None:
+        self._game = game
+
+    async def execute(self) -> None:
+        self._game.create_entity("推进实体")
 
 
 class _CreateThenFail(ExecuteProcessor):
@@ -68,6 +84,24 @@ async def test_create_from_blueprint_writes_baseline_snapshot(
     assert game.get_entity_by_name("角色.无名") is not None
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
 
+    infos = list_snapshots(user_name, "Game1")
+    assert len(infos) == 1
+    assert infos[0].entity_count == game.entity_count
+    assert infos[0].memory_count > 0
+
+
+async def test_create_new_game_rejects_existing_unless_reset(
+    blueprint_dir: Path, user_name: str
+) -> None:
+    await create_new_game(user_name, "Game1")
+
+    with pytest.raises(GameAlreadyExistsError, match="已有 1 个快照"):
+        await create_new_game(user_name, "Game1")
+
+    outcome = await create_new_game(user_name, "Game1", reset=True)
+    assert outcome.snapshot_id
+    assert len(list_game_snapshot_ids(user_name, "Game1")) == 2
+
 
 async def test_load_latest_restores_state(blueprint_dir: Path, user_name: str) -> None:
     game = await load_or_create_game(user_name, "Game1")
@@ -111,6 +145,20 @@ async def test_run_pass_without_room_saves_snapshot(
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 2
 
 
+async def test_offline_pass_saves_success_state(
+    blueprint_dir: Path, user_name: str
+) -> None:
+    game = await load_or_create_game(user_name, "Game1")
+    game.pipeline = ProcessorPipeline()
+    game.pipeline.add(_CreateEntity(game))
+
+    outcome = await run_offline_pass(game, user_name)
+
+    assert outcome.result.completed
+    reloaded = await load_or_create_game(user_name, "Game1")
+    assert reloaded.get_entity_by_name("推进实体") is not None
+
+
 async def test_failing_pass_without_room_rolls_back(
     blueprint_dir: Path, user_name: str
 ) -> None:
@@ -118,8 +166,8 @@ async def test_failing_pass_without_room_rolls_back(
     game.pipeline = ProcessorPipeline()
     game.pipeline.add(_CreateThenFail(game))
 
-    with pytest.raises(RuntimeError, match="boom"):
-        await run_pass(game, user_name)
+    with pytest.raises(OfflinePassFailed, match="boom"):
+        await run_offline_pass(game, user_name)
 
     assert game.get_entity_by_name("临时实体") is None
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 2

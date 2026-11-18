@@ -1,5 +1,6 @@
 """一次游戏运行的组合快照：ECS 与 agent 记忆两个平级子系统。"""
 
+import datetime
 from typing import Final, final
 
 from pydantic import BaseModel
@@ -28,4 +29,17 @@ class GameSnapshot(BaseModel):
 
 
 ###############################################################################
-__all__ = ["GameSnapshot", "GAME_SNAPSHOT_FORMAT_VERSION"]
+@final
+class GameSnapshotInfo(BaseModel):
+    """快照列表项：只含查看历史所需的元数据，不展开两个子系统。"""
+
+    id: int
+    game_name: str
+    format_version: int
+    created_at: datetime.datetime
+    entity_count: int
+    memory_count: int
+
+
+###############################################################################
+__all__ = ["GameSnapshot", "GameSnapshotInfo", "GAME_SNAPSHOT_FORMAT_VERSION"]

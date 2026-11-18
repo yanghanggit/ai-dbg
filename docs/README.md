@@ -38,4 +38,4 @@
 | [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件；当前仅内存，持久化待接入数据库 |
 | [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | agent 记忆膨胀的基础能力：上下文占比信号与手动压缩原语；自动触发待玩法规则落地 |
 | [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
-| [SRPG AI 操作 CLI（ai-srpg-agent-game）](wiki/run-agent-game.md) | 离线、快照驱动的游戏开发辅助入口；动作层为骨架，LLM 调用观测命令可用 |
+| [SRPG AI 操作 CLI（ai-srpg-agent-game）](wiki/run-agent-game.md) | 离线、快照驱动的游戏开发辅助入口；建局、查看、推进与记忆压缩，附 LLM 调用观测 |

@@ -1,13 +1,14 @@
-"""SRPG AI 操作工具 —— 快照驱动的离线游戏推进 CLI（骨架）。
+"""SRPG AI 操作工具 —— 快照驱动的离线游戏推进 CLI。
 
-只保留命令面、参数与日志骨架：每条子命令把参数交给 `srpg_game_agent`
-的动作骨架，后者只记录调用，不读写存档、不推进世界。
-待数据层与 SRPG 规则落地后，在动作层填充实现。
+每条子命令只完成一个动作：加载快照 → 执行 → 按需保存新快照，命令之间
+不保持进程内状态。状态与历史由 PostgreSQL 的 game_snapshots 承载。
 
 命令一览：
-  new              创建新游戏
+  new              从蓝图创建新游戏并写入基线快照
+  snapshots        列出快照历史
   stages           列出场景-角色映射
-  compact-context  手动压缩指定实体的 LLM 记忆
+  compact-context  手动压缩指定实体的 LLM 记忆并保存快照
+  advance          执行一次 pass 并保存结果快照
 """
 
 import asyncio
@@ -25,8 +26,14 @@ from loguru import logger
 from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
+from ai_srpg.services.offline_game import GameAlreadyExistsError, OfflinePassFailed
 from ai_srpg.srpg_game_agent.compact import compact_context_game
-from ai_srpg.srpg_game_agent.core import create_and_initialize_game, stages_game
+from ai_srpg.srpg_game_agent.core import (
+    advance_game,
+    create_and_initialize_game,
+    snapshots_game,
+    stages_game,
+)
 
 LOG_LEVEL: Final[str] = "DEBUG"
 
@@ -69,7 +76,7 @@ def _run_game(
 ###############################################################################
 @click.group()
 def main() -> None:
-    """AI 操作工具：快照驱动的离线游戏推进（当前为骨架，仅记录调用）。"""
+    """AI 操作工具：快照驱动的离线游戏推进。"""
 
 
 ###############################################################################
@@ -201,19 +208,75 @@ def llm_call(request_id: str, as_json: bool) -> None:
 
 ###############################################################################
 @main.command("new")
-@click.option("--user", default=None, help="玩家用户名。默认为带时间戳的随机名称。")
+@click.option("--user", required=True, help="玩家用户名")
 @click.option(
-    "--game", required=True, help="游戏名称（对应 BLUEPRINTS_DIR 下的文件名）。"
+    "--game", required=True, help="游戏名称（对应 BLUEPRINTS_DIR 下的文件名）"
 )
-def new_game(user: str | None, game: str) -> None:
-    """创建新游戏（骨架）。"""
+@click.option("--player-actor", default=None, help="指定玩家角色名；缺省由蓝图决定")
+@click.option(
+    "--reset",
+    is_flag=True,
+    help="已有快照时仍从蓝图重建，并追加新的基线快照（旧历史保留）",
+)
+def new_game(user: str, game: str, player_actor: str | None, reset: bool) -> None:
+    """从蓝图创建新游戏并写入基线快照。"""
     _setup_logger()
-    _run_game(
-        create_and_initialize_game(user or "skeleton", game),
-        command="new",
-        user=user or "skeleton",
+    try:
+        outcome = _run_game(
+            create_and_initialize_game(
+                user,
+                game,
+                player_actor=player_actor,
+                reset=reset,
+            ),
+            command="new",
+            user=user,
+            game=game,
+        )
+    except GameAlreadyExistsError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"user:      {user}")
+    click.echo(f"game:      {game}")
+    click.echo(f"entities:  {outcome.game.entity_count}")
+    click.echo(f"snapshot:  {outcome.snapshot_id}")
+
+
+###############################################################################
+@main.command("snapshots")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--limit", default=20, show_default=True, help="最多显示多少条")
+@click.option("--json", "as_json", is_flag=True, help="逐行输出完整 JSON")
+def snapshots(user: str, game: str, limit: int, as_json: bool) -> None:
+    """按时间倒序列出快照历史。"""
+    _setup_logger()
+    infos = _run_game(
+        snapshots_game(user, game, limit=limit),
+        command="snapshots",
+        user=user,
         game=game,
     )
+    if not infos:
+        click.echo("（没有快照）")
+        return
+    if as_json:
+        for info in infos:
+            click.echo(info.model_dump_json())
+        return
+    for info in infos:
+        line = "  ".join(
+            [
+                f"{info.created_at.astimezone():%Y-%m-%d %H:%M:%S}",
+                f"id={info.id:<6}",
+                f"entities={info.entity_count:<4}",
+                f"memories={info.memory_count:<4}",
+                f"v{info.format_version}",
+            ]
+        )
+        click.echo(line)
 
 
 ###############################################################################
@@ -221,17 +284,31 @@ def new_game(user: str | None, game: str) -> None:
 @click.option("--user", required=True, help="玩家用户名")
 @click.option("--game", required=True, help="游戏名称")
 @click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
-def stages(user: str, game: str, snapshot_id: int | None) -> None:
-    """列出场景-角色映射（骨架）。"""
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON")
+def stages(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None:
+    """列出场景-角色映射。"""
     _setup_logger()
-    mapping = _run_game(
-        stages_game(user, game, snapshot_id),
-        command="stages",
-        user=user,
-        game=game,
-    )
+    try:
+        mapping = _run_game(
+            stages_game(user, game, snapshot_id),
+            command="stages",
+            user=user,
+            game=game,
+        )
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if as_json:
+        click.echo(json.dumps(mapping, ensure_ascii=False, indent=2))
+        return
+    if not mapping:
+        click.echo("（没有场景）")
+        return
     for stage_name, actor_names in mapping.items():
-        click.echo(f"{stage_name}: {', '.join(actor_names)}")
+        actors = ", ".join(actor_names) if actor_names else "（无角色）"
+        click.echo(f"{stage_name}: {actors}")
 
 
 ###############################################################################
@@ -240,12 +317,63 @@ def stages(user: str, game: str, snapshot_id: int | None) -> None:
 @click.option("--game", required=True, help="游戏名称")
 @click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
 @click.option("--target", required=True, help="要压缩的目标实体名")
-def compact_context(user: str, game: str, snapshot_id: int | None, target: str) -> None:
-    """手动压缩指定实体的 LLM 记忆（骨架）。"""
+@click.option("--summary", default=None, help="压缩后的摘要文本")
+def compact_context(
+    user: str,
+    game: str,
+    snapshot_id: int | None,
+    target: str,
+    summary: str | None,
+) -> None:
+    """手动压缩指定实体的 LLM 记忆并保存快照。"""
     _setup_logger()
-    _run_game(
-        compact_context_game(user, game, target, snapshot_id),
-        command="compact-context",
-        user=user,
-        game=game,
-    )
+    kwargs = {} if summary is None else {"summary": summary}
+    try:
+        outcome = _run_game(
+            compact_context_game(user, game, target, snapshot_id, **kwargs),
+            command="compact-context",
+            user=user,
+            game=game,
+        )
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"target:    {outcome.entity_name}")
+    click.echo(f"messages:  {outcome.before_messages} -> {outcome.after_messages}")
+    click.echo(f"context:   {outcome.before_ratio:.2%} -> {outcome.after_ratio:.2%}")
+    click.echo(f"snapshot:  {outcome.snapshot_id}")
+
+
+###############################################################################
+@main.command("advance")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+def advance(user: str, game: str, snapshot_id: int | None) -> None:
+    """执行一次 pass，并在成功后保存结果快照。"""
+    _setup_logger()
+    try:
+        outcome = _run_game(
+            advance_game(user, game, snapshot_id),
+            command="advance",
+            user=user,
+            game=game,
+        )
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except OfflinePassFailed as exc:
+        raise click.ClickException(f"pass 失败，已回滚到本次执行前快照: {exc}") from exc
+
+    result = outcome.result
+    click.echo(f"completed:  {result.completed}")
+    click.echo(f"ran:        {', '.join(result.ran) or '-'}")
+    click.echo(f"skipped:    {', '.join(result.skipped) or '-'}")
+    if result.aborted_by is not None:
+        click.echo(f"aborted_by: {result.aborted_by}")
+    click.echo(f"snapshot:   {outcome.snapshot_id}")
