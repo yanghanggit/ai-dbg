@@ -4,7 +4,7 @@
     --demo blur|watercolor|oil|garden|night|hat|fusion  预设场景
     --input PATH [-i PATH ...]                          输入图片（可多个）
     --prompt TEXT                                       编辑指令
-    --model nano-banana|nano-banana-pro                 模型选择
+    --model nano-banana|nano-banana-pro                 模型选择（必填）
     --list-demos                                        列出预设场景
     --test                                              测试 API 连接
 
@@ -94,7 +94,7 @@ def print_demo_scenarios() -> None:
 async def run_image_edit(
     input_images: List[str],
     prompt: str,
-    model: str = "nano-banana",
+    model: str,
     output_format: str = "png",
     aspect_ratio: str = "match_input_image",
 ) -> ImageMeta:
@@ -146,7 +146,7 @@ async def run_image_edit(
     return meta
 
 
-async def run_demo_scenario(scenario_key: str, model: str = "nano-banana") -> None:
+async def run_demo_scenario(scenario_key: str, model: str) -> None:
     """运行预设测试场景"""
     if scenario_key not in DEMO_SCENARIOS:
         print(f"❌ 未知场景: {scenario_key}")
@@ -210,8 +210,7 @@ async def run_demo_scenario(scenario_key: str, model: str = "nano-banana") -> No
     "--model",
     "-m",
     type=click.Choice(["nano-banana", "nano-banana-pro"]),
-    default="nano-banana",
-    help="使用的模型（默认: nano-banana）",
+    help="使用的模型（必填）",
 )
 @click.option(
     "--format",
@@ -246,7 +245,7 @@ async def run_demo_scenario(scenario_key: str, model: str = "nano-banana") -> No
 def main(
     input_images: Tuple[str, ...],
     prompt: Optional[str],
-    model: str,
+    model: Optional[str],
     output_format: str,
     aspect_ratio: str,
     demo: Optional[str],
@@ -271,7 +270,7 @@ def main(
 async def _async_main(
     input_images: Tuple[str, ...],
     prompt: Optional[str],
-    model: str,
+    model: Optional[str],
     output_format: str,
     aspect_ratio: str,
     demo: Optional[str],
@@ -292,6 +291,9 @@ async def _async_main(
 
     # 运行预设场景
     if demo:
+        if not model:
+            print("❌ 必须通过 --model 显式指定模型")
+            sys.exit(1)
         await run_demo_scenario(demo, model)
         return
 
@@ -315,6 +317,10 @@ async def _async_main(
         print("详细帮助:")
         print(f"  python scripts/{script} --help")
         return
+
+    if not model:
+        print("❌ 必须通过 --model 显式指定模型")
+        sys.exit(1)
 
     # 执行自定义编辑
     try:

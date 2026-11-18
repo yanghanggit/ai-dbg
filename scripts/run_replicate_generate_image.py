@@ -5,7 +5,7 @@ python scripts/run_replicate_generate_image.py "prompt"   单张生成
 python scripts/run_replicate_generate_image.py --demo     并发生成多张
 python scripts/run_replicate_generate_image.py --test     测试连接
 
-选项：--model / --negative / --size small|medium|large|wide|tall / --width / --height / --steps / --guidance
+选项：--model（必填）/ --negative / --size small|medium|large|wide|tall / --width / --height / --steps / --guidance
 资产固定输出到 .assets/image/，每个 raw 文件配一个同名 .meta。
 """
 
@@ -18,7 +18,6 @@ import click
 
 from ai_srpg.models import ImageMeta
 from ai_srpg.replicate import (
-    DEFAULT_IMAGE_MODEL,
     IMAGE_MODELS,
     TextToImageSpec,
     batch_text_to_images,
@@ -27,7 +26,7 @@ from ai_srpg.replicate import (
 )
 
 
-async def run_concurrent_demo(prompts: List[str]) -> None:
+async def run_concurrent_demo(prompts: List[str], model: str) -> None:
     """运行并发生成演示"""
     print("=" * 60)
     print("🚀 Replicate 并发文生图演示")
@@ -46,7 +45,7 @@ async def run_concurrent_demo(prompts: List[str]) -> None:
     try:
         specs = [
             TextToImageSpec(
-                model=DEFAULT_IMAGE_MODEL,
+                model=model,
                 prompt=prompt,
                 negative_prompt="worst quality, low quality, blurry",
                 width=512,
@@ -73,7 +72,7 @@ async def run_concurrent_demo(prompts: List[str]) -> None:
     "--model",
     "-m",
     type=click.Choice(list(IMAGE_MODELS.keys())),
-    help=f"选择模型 (默认: {DEFAULT_IMAGE_MODEL})",
+    help="选择模型（必填）",
 )
 @click.option(
     "--negative",
@@ -156,12 +155,16 @@ async def _async_main(
 
         # 如果是运行演示
         if demo:
+            if not model:
+                print("❌ 必须通过 --model 显式指定模型")
+                sys.exit(1)
             await run_concurrent_demo(
                 [
                     "peaceful mountain landscape",
                     "ocean waves on sandy beach",
                     "forest path in autumn",
-                ]
+                ],
+                model,
             )
             return
 
@@ -190,7 +193,10 @@ async def _async_main(
             print(f"  python scripts/{script} --help")
             return
 
-        model_name = model if model else DEFAULT_IMAGE_MODEL
+        if not model:
+            print("❌ 必须通过 --model 显式指定模型")
+            sys.exit(1)
+        model_name = model
 
         # 打印生成信息
         print(f"🎨 使用模型: {model_name}")

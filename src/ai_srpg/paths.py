@@ -7,7 +7,7 @@
 from pathlib import Path
 
 ###########################################################################################################################################
-# 游戏蓝图目录（scripts/seed_db.py 写入）
+# 游戏蓝图目录（scripts/reset_dev_db.py 写入）
 BLUEPRINTS_DIR: Path = Path(".blueprints")
 BLUEPRINTS_DIR.mkdir(parents=True, exist_ok=True)
 assert BLUEPRINTS_DIR.exists(), f"找不到目录: {BLUEPRINTS_DIR}"

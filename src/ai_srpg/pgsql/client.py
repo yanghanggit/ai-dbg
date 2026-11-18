@@ -21,9 +21,7 @@ def pgsql_database_exists(database_name: str) -> bool:
     """
 
     # 构建连接到 postgres 数据库的连接字符串
-    postgres_conn_str = (
-        f"postgresql://{postgresql_config.user}@{postgresql_config.host}/postgres"
-    )
+    postgres_conn_str = postgresql_config.admin_connection_string
 
     try:
 
@@ -63,9 +61,7 @@ def pgsql_create_database(database_name: str) -> None:
         return
 
     # 构建连接到 postgres 数据库的连接字符串
-    postgres_conn_str = (
-        f"postgresql://{postgresql_config.user}@{postgresql_config.host}/postgres"
-    )
+    postgres_conn_str = postgresql_config.admin_connection_string
 
     try:
 
@@ -103,9 +99,7 @@ def pgsql_drop_database(database_name: str) -> None:
         return
 
     # 构建连接到 postgres 数据库的连接字符串
-    postgres_conn_str = (
-        f"postgresql://{postgresql_config.user}@{postgresql_config.host}/postgres"
-    )
+    postgres_conn_str = postgresql_config.admin_connection_string
 
     try:
 

@@ -37,12 +37,12 @@ source .venv/bin/activate        # macOS/Linux
 
 ### 配置
 
-复制 `cp .env.example .env`，填好数据库连接、`DEEPSEEK_API_KEY`、`GAME_SERVER_PORT` 等。
+复制 `cp .env.example .env`，填好 `DEEPSEEK_API_KEY`、`GAME_SERVER_PORT` 等。PostgreSQL 连接全部来自 `AI_SRPG_DB_HOST` / `AI_SRPG_DB_PORT` / `AI_SRPG_DB_NAME` / `AI_SRPG_DB_USER` / `AI_SRPG_DB_PASSWORD`，密码可留空。
 
-### 初始化测试数据库
+### 重置开发数据库
 
 ```bash
-uv run python -m scripts.seed_db     # 种子蓝图写入 .blueprints/，并重建空库（表结构 + Procrastinate + 测试用户）
+uv run python -m scripts.reset_dev_db     # 种子蓝图写入 .blueprints/，并重建空库（表结构 + Procrastinate + 测试用户）
 ```
 
 > 会删除目标库中的全部数据，运行前请确认 `.env` 指向的是开发库。
@@ -57,12 +57,6 @@ uv run ai-srpg-server --host 0.0.0.0 --port 8000
 
 # 验证
 curl http://127.0.0.1:8000/
-```
-
-生产环境用 PM2 托管：
-
-```bash
-pm2 start ecosystem.config.js
 ```
 
 ### 后台定时任务
@@ -84,7 +78,7 @@ pm2 start ecosystem.config.js
 
 | 命令 | 用途 | 文档 |
 | --- | --- | --- |
-| `ai-srpg-agent-game` | 离线、快照驱动推进（动作骨架；含 LLM 调用观测） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
+| `ai-srpg-agent-game` | 离线、快照驱动推进（建局、查看、推进、压缩；含 LLM 调用观测） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
 
 `uv run <命令> --help` 可列出全部子命令。
 

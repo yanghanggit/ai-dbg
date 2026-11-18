@@ -17,7 +17,7 @@ from typing import Final, List, Optional, Tuple, final
 
 from ..models import AssetSource, ImageMeta, new_asset_filename
 from .batch import batch_generate_images
-from .config import DEFAULT_IMAGE_MODEL, IMAGE_MODELS
+from .models import IMAGE_MODELS
 from .pipeline import download_image, generate_image, image_format_from_url
 from .schemas import ReplicateImageInput
 
@@ -60,7 +60,7 @@ class EditImageSpec:
 
 
 ################################################################################################################################################################################
-# 受支持的宽高比（与 config.py 中 nano-banana 支持列表一致）
+# 受支持的宽高比（与 docs/wiki/image-generation.md 的 nano-banana 列表一致）
 _SUPPORTED_ASPECT_RATIOS: Final[Tuple[Tuple[int, int], ...]] = (
     (1, 1),
     (2, 3),
@@ -124,12 +124,11 @@ async def generate_image_asset(
     失败时异常向上抛出；批量场景可配合 ``batch_generate_images`` 隔离。
     常规文生图/图生图请优先使用 :func:`text_to_image` / :func:`edit_image`。
     """
-    model_name = model or DEFAULT_IMAGE_MODEL
-    if model_name not in IMAGE_MODELS:
+    if model not in IMAGE_MODELS:
         raise ValueError(
-            f"不支持的模型: {model_name}. 可用模型: {list(IMAGE_MODELS.keys())}"
+            f"不支持的模型: {model}. 可用模型: {list(IMAGE_MODELS.keys())}"
         )
-    model_ref = IMAGE_MODELS[model_name]["model_ref"]
+    model_ref = IMAGE_MODELS[model]["model_ref"]
     image_url = await generate_image(model_ref, dict(model_input))
 
     # 以产物 URL 的真实格式命名；无法识别时回退到声明的 output_format（默认 png）

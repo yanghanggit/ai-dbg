@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""数据库初始化脚本：把库重置到可直接开始测试的初始状态。
+"""开发数据库重置脚本：把库重置到可直接开始测试的初始状态。
+
+这是破坏性的完整重置，不是增量 seed：会删除目标库后重建。
 
 步骤：
 1. 生成种子蓝图并写入 ``.blueprints/``（内容见 ``seeds/blueprint.py``）；
@@ -10,7 +12,7 @@
 
 用法：
 
-    uv run python -m scripts.seed_db
+    uv run python -m scripts.reset_dev_db
 
 注意：会**删除**目标库中的全部数据，运行前请确认 ``.env`` 指向的是开发库。
 """
@@ -91,7 +93,7 @@ def _seed_user() -> None:
 ###########################################################################################################
 def main() -> None:
     """执行完整的数据库初始化流程。"""
-    logger.info(f"🚀 初始化数据库: {postgresql_config.database}")
+    logger.info(f"🚀 重置开发数据库: {postgresql_config.database}")
 
     _seed_blueprint()
 
