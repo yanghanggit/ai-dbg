@@ -10,16 +10,8 @@ from typing import AsyncGenerator, Final, Optional
 
 from ..game.context import SRPGGame
 from ..game.lifecycle import exit_game
-from ..models import PlayerSession
-
-
-###############################################################################################################################################
-class RoomClosedError(RuntimeError):
-    """在已关闭的房间上进入事务时抛出。"""
-
-    def __init__(self, username: str) -> None:
-        super().__init__(f"room closed: {username}")
-        self.username: str = username
+from .errors import RoomClosedError
+from .player_session import PlayerSession
 
 
 ###############################################################################################################################################

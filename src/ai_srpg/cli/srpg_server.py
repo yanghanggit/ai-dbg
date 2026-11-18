@@ -14,21 +14,17 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from starlette.types import Scope
 
-from ai_srpg.models import ASSETS_URL_PREFIX, ApiRouteInfo, ServerInfoResponse
-from ai_srpg.paths import ASSETS_DIR, LOGS_DIR
-from ai_srpg.pgsql import procrastinate_app
-from ai_srpg.services.components_api import components_api_router
-from ai_srpg.services.entity_details import (
-    entity_details_api_router,
-)
-from ai_srpg.services.game_server_runtime import bind_runtime_game_server
-from ai_srpg.services.gameplay_jobs import (
+from ai_srpg.gameplay.jobs import (
     advance_game_job,  # noqa: F401  # 注册 Procrastinate task
 )
-from ai_srpg.services.gameplay_scheduler import run_gameplay_scheduler
-from ai_srpg.services.jobs_api import jobs_api_router
-from ai_srpg.services.player_session import player_session_api_router
-from ai_srpg.services.room_error_handlers import register_room_error_handlers
+from ai_srpg.gameplay.scheduler import run_gameplay_scheduler
+from ai_srpg.models import ASSETS_URL_PREFIX
+from ai_srpg.paths import ASSETS_DIR, LOGS_DIR
+from ai_srpg.pgsql import procrastinate_app
+from ai_srpg.services.api import API_ROUTERS
+from ai_srpg.services.api.schemas import ApiRouteInfo, ServerInfoResponse
+from ai_srpg.services.http_errors import register_room_error_handlers
+from ai_srpg.session.runtime import bind_runtime_game_server
 from ai_srpg.session.server import GameServer
 
 load_dotenv()
@@ -164,10 +160,8 @@ app.mount(
 )
 
 # 注册各个 API 路由
-app.include_router(router=player_session_api_router)
-app.include_router(router=components_api_router)
-app.include_router(router=entity_details_api_router)
-app.include_router(router=jobs_api_router)
+for _router in API_ROUTERS:
+    app.include_router(router=_router)
 
 
 @click.command()

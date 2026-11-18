@@ -8,15 +8,15 @@ import pytest
 from ai_srpg.entitas import ExecuteProcessor, ProcessorPipeline, StopPipeline
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
+from ai_srpg.gameplay.runtime import run_game_pass, run_room_pass
 from ai_srpg.llm.call_context import LlmCallTrace, current_llm_trace
-from ai_srpg.models import PlayerSession
 from ai_srpg.pgsql import pgsql_ensure_database_tables
 from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
 from ai_srpg.pgsql.game_snapshot_operations import list_game_snapshot_ids
-from ai_srpg.services.game_server_runtime import bind_runtime_game_server
-from ai_srpg.services.gameplay_runtime import run_game_pass, run_room_pass
+from ai_srpg.session.player_session import PlayerSession
 from ai_srpg.session.room import PlayerRoom
+from ai_srpg.session.runtime import bind_runtime_game_server
 from ai_srpg.session.server import GameServer
 
 

@@ -10,9 +10,9 @@ from typing import Any, Callable, Optional, Protocol, TypeVar, cast
 from loguru import logger
 from procrastinate import JobContext
 
-from ..job_context import CurrentJob, reset_current_job, set_current_job
 from ..models import JobEvent
 from ..pgsql import append_job_event
+from ..session.job_context import CurrentJob, reset_current_job, set_current_job
 from ..session.room import PlayerRoom
 
 

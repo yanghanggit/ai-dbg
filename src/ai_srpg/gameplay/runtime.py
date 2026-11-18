@@ -1,6 +1,6 @@
 """一次游戏 pass 的运行时编排：快照 → 执行 → 失败回滚。
 
-放在服务层而不是 ``process_pipeline``：ECS 运行辅助不应认识数据库，
+放在编排层而不是 ``process_pipeline``：ECS 运行辅助不应认识数据库，
 快照的保存时机、失败后的回滚、房间锁的获取都属于应用编排。
 
 粒度约定
@@ -20,12 +20,12 @@ from ..entitas.processor_interfaces import ProcessorObserver
 from ..game.context import SRPGGame
 from ..game.lifecycle import rollback_game, snapshot_game
 from ..game.pipelines import process_pipeline
-from ..job_context import get_current_job
 from ..llm.call_context import llm_call_trace
 from ..pgsql import append_game_snapshot
+from ..session.errors import GameNotFoundError
+from ..session.job_context import get_current_job
 from ..session.room import PlayerRoom
-from .game_server_runtime import get_runtime_game_server
-from .game_state_errors import GameNotFoundError
+from ..session.runtime import get_runtime_game_server
 
 
 ###############################################################################

@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ai_srpg.models import COMPONENT_TYPES
-from ai_srpg.services.components_api import components_api_router
+from ai_srpg.services.api.components import components_api_router
 
 COMPONENTS_PATH = "/api/components/v1/"
 

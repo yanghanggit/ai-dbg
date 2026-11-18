@@ -7,12 +7,14 @@
 
 因此模块 / 模型 / 接口统一用 ``job`` 命名；Procrastinate 的 ``task`` 只表示
 框架里的注册模板，不进入业务词汇。
+
+这里只保留**领域侧**的 job 事件：它由执行过程写入并落库，不是传输契约；
+面向客户端的 job 状态/详情见 ``services.api.schemas``。
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, final
+from typing import Any, Dict, Optional, final
 
-from procrastinate.jobs import Status as ProcrastinateJobStatus
 from pydantic import BaseModel, Field
 
 
@@ -27,22 +29,3 @@ class JobEvent(BaseModel):
     message: str = ""
     payload: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-@final
-class JobSnapshot(BaseModel):
-    """由 Procrastinate job 状态与 job_events 推导出的 job 快照。"""
-
-    job_id: int
-    status: ProcrastinateJobStatus
-    error: Optional[str] = None
-
-
-@final
-class JobDetail(BaseModel):
-    """单个 job 的状态 + 执行事件。"""
-
-    job_id: int
-    status: ProcrastinateJobStatus
-    error: Optional[str] = None
-    events: List[JobEvent] = Field(default_factory=list)

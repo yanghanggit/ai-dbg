@@ -8,12 +8,7 @@ import pytest
 
 from ai_srpg.entitas import ExecuteProcessor, ProcessorPipeline
 from ai_srpg.game.context import SRPGGame
-from ai_srpg.pgsql import pgsql_ensure_database_tables
-from ai_srpg.pgsql.client import SessionLocal
-from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
-from ai_srpg.pgsql.game_snapshot_operations import list_game_snapshot_ids
-from ai_srpg.services.gameplay_runtime import run_pass
-from ai_srpg.services.offline_game import (
+from ai_srpg.gameplay.offline import (
     GameAlreadyExistsError,
     OfflinePassFailed,
     create_new_game,
@@ -22,6 +17,11 @@ from ai_srpg.services.offline_game import (
     run_offline_pass,
     save_game_snapshot,
 )
+from ai_srpg.gameplay.runtime import run_pass
+from ai_srpg.pgsql import pgsql_ensure_database_tables
+from ai_srpg.pgsql.client import SessionLocal
+from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
+from ai_srpg.pgsql.game_snapshot_operations import list_game_snapshot_ids
 from seeds import create_seed_blueprint
 
 

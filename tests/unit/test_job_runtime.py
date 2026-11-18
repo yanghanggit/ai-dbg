@@ -6,8 +6,8 @@ import pytest
 
 from ai_srpg.entitas import ProcessorPipeline
 from ai_srpg.entitas.processor_interfaces import ExecuteProcessor
+from ai_srpg.gameplay.job_runtime import JobRecorder, JobRun
 from ai_srpg.models import JobEvent
-from ai_srpg.services.job_runtime import JobRecorder, JobRun
 
 
 class MemoryStore:

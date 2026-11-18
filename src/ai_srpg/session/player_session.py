@@ -1,31 +1,25 @@
+"""用户级会话历史（聚合根）。
+
+会话不随某一局 ``SRPGGame`` 重置：游戏是客户端当前看到的世界，会话是脱离游戏的
+上帝视角。``actor`` / ``game`` 只表示当前上下文，每条 ``SessionMessage`` 自己记录
+产生时的 game / actor / job。
+
+放在 ``session`` 包而不是 ``models``：它是**有行为与不变量的运行期聚合**（追加时
+分配全局序号、按序号增量读取），不是可自由构造的传输/快照数据；DTO 仍在
+``models.session_message``。
+"""
+
 from typing import List, Optional, final
 
 from pydantic import BaseModel
 
-from .agent_event import AnyAgentEvent
-from .session_message import SessionMessage
-
-
-###############################################################################
-@final
-class PlayerSessionInfo(BaseModel):
-    """玩家会话的轻量摘要；完整历史通过增量接口读取。"""
-
-    name: str
-    actor: Optional[str] = None
-    game: Optional[str] = None
-    event_sequence: int = 0
+from ..models import AnyAgentEvent, SessionMessage
 
 
 ###############################################################################
 @final
 class PlayerSession(BaseModel):
-    """用户级、append-only 的会话历史。
-
-    会话不随某一个 ``SRPGGame`` 重置：游戏是客户端当前看到的世界，
-    会话是脱离游戏的上帝视角。``actor`` / ``game`` 只表示当前上下文，
-    每条 ``SessionMessage`` 自己记录产生时的 game / actor / job。
-    """
+    """用户级、append-only 的会话历史。"""
 
     # 玩家的唯一标识符(通常是用户名)
     name: str
@@ -78,13 +72,3 @@ class PlayerSession(BaseModel):
     def get_messages_since(self, last_id: int) -> List[SessionMessage]:
         """获取指定序列号之后的所有消息（增量获取）。"""
         return [e for e in self.session_messages if e.sequence_id > last_id]
-
-    ###############################################################################
-    def info(self) -> PlayerSessionInfo:
-        """返回不包含历史消息的轻量摘要。"""
-        return PlayerSessionInfo(
-            name=self.name,
-            actor=self.actor,
-            game=self.game,
-            event_sequence=self.event_sequence,
-        )

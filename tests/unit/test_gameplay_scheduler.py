@@ -5,7 +5,7 @@ from typing import List
 
 import pytest
 
-from ai_srpg.services import gameplay_scheduler
+from ai_srpg.gameplay import scheduler
 from ai_srpg.session.room import PlayerRoom
 from ai_srpg.session.server import GameServer
 
@@ -20,9 +20,9 @@ async def test_tick_calls_hook_under_lock(monkeypatch: pytest.MonkeyPatch) -> No
         lock_held.append(room.is_busy)  # 回调应在房间锁内执行
         seen.append(room.username)
 
-    monkeypatch.setattr(gameplay_scheduler, "on_room_tick", hook)
+    monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
-    await gameplay_scheduler._tick_once(server)
+    await scheduler._tick_once(server)
 
     assert seen == ["alice"]
     assert lock_held == [True]
@@ -46,9 +46,9 @@ async def test_tick_skips_busy_room(monkeypatch: pytest.MonkeyPatch) -> None:
     async def hook(r: PlayerRoom) -> None:
         seen.append(r.username)
 
-    monkeypatch.setattr(gameplay_scheduler, "on_room_tick", hook)
+    monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
-    await gameplay_scheduler._tick_once(server)
+    await scheduler._tick_once(server)
 
     assert seen == []
 
@@ -65,8 +65,8 @@ async def test_tick_skips_closed_room(monkeypatch: pytest.MonkeyPatch) -> None:
     async def hook(r: PlayerRoom) -> None:
         seen.append(r.username)
 
-    monkeypatch.setattr(gameplay_scheduler, "on_room_tick", hook)
+    monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
-    await gameplay_scheduler._tick_once(server)
+    await scheduler._tick_once(server)
 
     assert seen == []

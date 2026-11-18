@@ -2,6 +2,9 @@
 
 job 执行期间用 contextvar 暴露当前 job；领域事件 sink 与 pipeline observer
 据此把事件关联到具体 job，而不需要把 job 注入 SRPGGame。
+
+放在 ``session`` 包：它是进程内运行态的一部分，且被房间入口（``acquire``）与
+pipeline 编排共同读取；本模块只依赖标准库，不反向依赖上层。
 """
 
 from contextvars import ContextVar, Token

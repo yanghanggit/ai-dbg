@@ -9,26 +9,19 @@ from typing import Any
 
 from procrastinate.exceptions import AlreadyEnqueued
 
-
-###############################################################################################################################################
-class RoomBusyError(Exception):
-    """该房间已有 job 在排队。"""
-
-    def __init__(self, user_name: str) -> None:
-        super().__init__(f"room busy: {user_name}")
-        self.user_name: str = user_name
+from ..session.errors import RoomJobBusyError
 
 
 ###############################################################################################################################################
 async def defer_room_job(job_func: Any, *, user_name: str, **job_kwargs: Any) -> int:
-    """派发房间 job，返回 job id；该房间已有 job 排队时抛 ``RoomBusyError``。"""
+    """派发房间 job，返回 job id；该房间已有 job 排队时抛 ``RoomJobBusyError``。"""
     queueing_lock = f"room:{user_name}"
     try:
         job_id: int = await job_func.configure(queueing_lock=queueing_lock).defer_async(
             user_name=user_name, **job_kwargs
         )
     except AlreadyEnqueued as exc:
-        raise RoomBusyError(user_name) from exc
+        raise RoomJobBusyError(user_name) from exc
     return job_id
 
 

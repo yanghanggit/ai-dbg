@@ -1,12 +1,25 @@
-"""进程内玩家房间注册表与玩家房间。"""
+"""进程内运行时：玩家房间注册表、房间锁与当前 job 上下文。"""
 
-from .room import PlayerRoom, RoomClosedError
-from .server import GameServer, RoomAlreadyExistsError, RoomNotFoundError
+from .errors import (
+    GameNotFoundError,
+    GameStateError,
+    RoomAlreadyExistsError,
+    RoomClosedError,
+    RoomJobBusyError,
+    RoomNotFoundError,
+)
+from .player_session import PlayerSession
+from .room import PlayerRoom
+from .server import GameServer
 
 __all__ = [
+    "GameNotFoundError",
     "GameServer",
+    "GameStateError",
     "PlayerRoom",
+    "PlayerSession",
     "RoomAlreadyExistsError",
     "RoomClosedError",
+    "RoomJobBusyError",
     "RoomNotFoundError",
 ]

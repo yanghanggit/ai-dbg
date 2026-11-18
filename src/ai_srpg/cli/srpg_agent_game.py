@@ -23,10 +23,10 @@ from typing import Any, Coroutine, Final
 import click
 from loguru import logger
 
+from ai_srpg.gameplay.offline import GameAlreadyExistsError, OfflinePassFailed
 from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
-from ai_srpg.services.offline_game import GameAlreadyExistsError, OfflinePassFailed
 from ai_srpg.srpg_game_agent.compact import compact_context_game
 from ai_srpg.srpg_game_agent.core import (
     advance_game,

@@ -1,1 +1,5 @@
-"""Game server services and API endpoints."""
+"""HTTP 适配层：路由、依赖注入与错误映射。
+
+只负责把请求翻译成领域调用并把结果/异常翻译成响应；玩法编排见 ``gameplay``，
+进程内运行时见 ``session``。
+"""

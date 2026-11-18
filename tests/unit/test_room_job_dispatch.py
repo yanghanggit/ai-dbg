@@ -5,7 +5,8 @@ from typing import Any, Optional
 import pytest
 from procrastinate.exceptions import AlreadyEnqueued
 
-from ai_srpg.services.job_dispatch import RoomBusyError, defer_room_job
+from ai_srpg.gameplay.dispatch import defer_room_job
+from ai_srpg.session.errors import RoomJobBusyError
 
 
 class _FakeTask:
@@ -42,7 +43,7 @@ async def test_defer_room_job_sets_lock_and_passes_kwargs() -> None:
 async def test_defer_room_job_duplicate_raises_room_busy() -> None:
     task = _FakeTask(exc=AlreadyEnqueued("already enqueued"))
 
-    with pytest.raises(RoomBusyError) as excinfo:
+    with pytest.raises(RoomJobBusyError) as excinfo:
         await defer_room_job(task, user_name="alice")
 
     assert excinfo.value.user_name == "alice"

@@ -5,8 +5,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from ..game.entities.queries import get_actors_by_stage_as_names
-from ..models import GameSnapshotInfo
-from ..services.offline_game import (
+from ..gameplay.offline import (
     NewGameOutcome,
     OfflinePassOutcome,
     create_new_game,
@@ -14,6 +13,7 @@ from ..services.offline_game import (
     load_or_create_game,
     run_offline_pass,
 )
+from ..models import GameSnapshotInfo
 
 
 ###############################################################################

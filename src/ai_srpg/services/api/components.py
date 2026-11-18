@@ -7,26 +7,15 @@
 `scripts/genApi.mjs` 生成编译期清单使用。
 """
 
-from typing import List
-
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from ..models import COMPONENT_TYPES
+from ...models import COMPONENT_TYPES
+from .schemas import ComponentNamesResponse
 
 ################################################################################################################
 components_api_router = APIRouter()
 
 
-################################################################################################################
-class ComponentNamesResponse(BaseModel):
-    """已注册的 ECS 组件类名清单。"""
-
-    names: List[str]
-
-
-################################################################################################################
-################################################################################################################
 ################################################################################################################
 @components_api_router.get(
     path="/api/components/v1/", response_model=ComponentNamesResponse

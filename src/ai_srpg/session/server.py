@@ -21,26 +21,9 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, List, Optional
 
-from ..job_context import get_current_job
+from .errors import RoomAlreadyExistsError, RoomNotFoundError
+from .job_context import get_current_job
 from .room import PlayerRoom
-
-
-###############################################################################################################################################
-class RoomNotFoundError(Exception):
-    """请求的房间不存在。"""
-
-    def __init__(self, user_name: str) -> None:
-        super().__init__(f"room not found: {user_name}")
-        self.user_name: str = user_name
-
-
-###############################################################################################################################################
-class RoomAlreadyExistsError(Exception):
-    """创建房间时同名房间已存在。"""
-
-    def __init__(self, user_name: str) -> None:
-        super().__init__(f"room already exists: {user_name}")
-        self.user_name: str = user_name
 
 
 ###############################################################################################################################################

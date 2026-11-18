@@ -67,7 +67,7 @@ curl http://127.0.0.1:8000/
 | --- | --- | --- |
 | `GAME_ROOM_REAP_INTERVAL_SECONDS` | `60` | 空闲房间回收的扫描间隔 |
 | `GAME_ROOM_TTL_SECONDS` | `1800` | 房间空闲多久后被回收；`<=0` 关闭回收 |
-| `GAME_TICK_INTERVAL_SECONDS` | `60` | 游戏玩法定时器（`services/gameplay_scheduler.py`）的间隔；`<=0` 关闭 |
+| `GAME_TICK_INTERVAL_SECONDS` | `60` | 游戏玩法定时器（`gameplay/scheduler.py`）的间隔；`<=0` 关闭 |
 
 游戏玩法定时器目前仅为骨架（`on_room_tick` 为空实现），用于后续添加“定时查看 ECS 状态并触发玩法”的逻辑。
 

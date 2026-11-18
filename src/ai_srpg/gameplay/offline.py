@@ -1,7 +1,7 @@
 """离线一局：从蓝图或数据库快照构造可运行的游戏实例。
 
 CLI 没有房间与锁，因此这里只处理「读取 / 创建 / 保存」，不涉及 session。
-运行 pass 复用 ``gameplay_runtime.run_pass``，与后台 job 共享快照与回滚语义。
+运行 pass 复用 ``gameplay.runtime.run_pass``，与后台 job 共享快照与回滚语义。
 """
 
 from dataclasses import dataclass
@@ -23,7 +23,7 @@ from ..pgsql import (
     load_latest_game_snapshot,
 )
 from ..pgsql.game_snapshot_operations import load_game_snapshot
-from .gameplay_runtime import run_pass
+from .runtime import run_pass
 
 
 class GameAlreadyExistsError(RuntimeError):

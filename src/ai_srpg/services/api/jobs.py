@@ -13,13 +13,13 @@ from loguru import logger
 from procrastinate.exceptions import NoResult
 from procrastinate.jobs import Status as ProcrastinateJobStatus
 
-from ..models import (
+from ...pgsql import get_job_error, list_job_events, procrastinate_app
+from .schemas import (
     JobDetail,
     JobEventsResponse,
     JobSnapshot,
     JobStatusListResponse,
 )
-from ..pgsql import get_job_error, list_job_events, procrastinate_app
 
 ################################################################################################################
 jobs_api_router = APIRouter()

@@ -34,6 +34,6 @@
 
 ## 职责分层
 
-Click 层只做参数解析、日志初始化与输出；动作编排在 `ai_srpg/srpg_game_agent/`。离线状态入口单独放在 services 层，负责蓝图/快照的读取与保存；pass 的快照与回滚语义与后台 job 共用，CLI 不重复实现执行规则。
+Click 层只做参数解析、日志初始化与输出；动作编排在 `ai_srpg/srpg_game_agent/`。离线状态入口放在玩法编排层，负责蓝图/快照的读取与保存；pass 的快照与回滚语义与后台 job 共用，CLI 不重复实现执行规则。
 
 → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)

@@ -21,9 +21,7 @@ class NoneEvent(AgentEvent):
     type: Literal["none"] = "none"
 
 
-_ConcreteAgentEvent = Annotated[
+AnyAgentEvent = Annotated[
     Union[NoneEvent,],
     Field(discriminator="type"),
 ]
-
-AnyAgentEvent = _ConcreteAgentEvent

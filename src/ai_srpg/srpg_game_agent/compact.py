@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ..game.memory import compact_agent_memory, get_agent_memory
+from ..gameplay.offline import load_or_create_game, save_game_snapshot
 from ..models import HumanMessage, SystemMessage
-from ..services.offline_game import load_or_create_game, save_game_snapshot
 
 DEFAULT_COMPACT_SUMMARY = "（上下文已手动压缩，此前的对话在此折叠。）"
 
