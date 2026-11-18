@@ -19,6 +19,7 @@ from .processor_interfaces import (
     ErrorPolicy,
     ExecuteProcessor,
     InitializeProcessor,
+    ProcessorObserver,
     TearDownProcessor,
 )
 from .processor_pipeline import ProcessorPipeline
@@ -49,6 +50,7 @@ __all__ = [
     "ExecuteProcessor",
     "CleanupProcessor",
     "TearDownProcessor",
+    "ProcessorObserver",
     "ReactiveProcessor",
     "ErrorPolicy",
     "PassResult",

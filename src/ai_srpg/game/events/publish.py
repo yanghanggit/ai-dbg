@@ -6,7 +6,7 @@ from ...entitas import Entity
 from ...models import AnyAgentEvent, HumanMessage
 from ..context import SRPGGame
 from ..entities import get_actors_in_stage, resolve_stage_entity
-from ..memory import add_human_message
+from ..memory.access import add_human_message
 
 
 #################################################################################################################################################

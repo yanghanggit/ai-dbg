@@ -46,13 +46,17 @@ async def process_pipeline(
 
 
 ###############################################################################
-def close_pipeline(pipeline: ProcessorPipeline) -> None:
+def close_pipeline(
+    pipeline: ProcessorPipeline,
+    observer: Optional[ProcessorObserver] = None,
+) -> None:
     """关闭 pipeline：tear_down 并清空反应式处理器已收集的实体。
 
     ``clear_reactive_processors`` 放在 ``finally`` 里：即使某一步 tear_down
-    失败，已收集的实体也必须被释放。
+    失败，已收集的实体也必须被释放。``tear_down`` 的失败策略与 observer
+    由 pipeline 自身按 processor 声明处理。
     """
     try:
-        pipeline.tear_down()
+        pipeline.tear_down(observer)
     finally:
         pipeline.clear_reactive_processors()

@@ -66,10 +66,33 @@ class ProcessorPipeline(
             self._tear_down_processors.append(processor)
 
     @override
-    async def initialize(self) -> None:
-        """Executes all initialize processors in the order they were added."""
+    async def initialize(self, observer: Optional[ProcessorObserver] = None) -> None:
+        """Executes all initialize processors in the order they were added.
+
+        失败语义由每个 processor 的 ``error_policy`` 决定；``StopPipeline``
+        是显式的启动中止信号，直接向上传递，不计为失败。
+        """
         for processor in self._initialize_processors:
-            await processor.initialize()
+            system = type(processor).__name__
+            if observer is not None:
+                observer.on_processor_started(system)
+            started = time.perf_counter()
+
+            try:
+                await processor.initialize()
+            except StopPipeline:
+                raise
+            except Exception as exc:
+                duration_ms = (time.perf_counter() - started) * 1000.0
+                if observer is not None:
+                    observer.on_processor_failed(system, exc, duration_ms)
+                if processor.error_policy is ErrorPolicy.PROPAGATE:
+                    raise
+            else:
+                if observer is not None:
+                    observer.on_processor_finished(
+                        system, (time.perf_counter() - started) * 1000.0
+                    )
 
     @override
     async def execute(self, observer: Optional[ProcessorObserver] = None) -> None:
@@ -126,10 +149,33 @@ class ProcessorPipeline(
             processor.cleanup()
 
     @override
-    def tear_down(self) -> None:
-        """Executes all tear down processors in the order they were added."""
+    def tear_down(self, observer: Optional[ProcessorObserver] = None) -> None:
+        """Executes all tear down processors in the order they were added.
+
+        失败语义由每个 processor 的 ``error_policy`` 决定；``StopPipeline``
+        是显式的关闭中止信号，直接向上传递，不计为失败。
+        """
         for processor in self._tear_down_processors:
-            processor.tear_down()
+            system = type(processor).__name__
+            if observer is not None:
+                observer.on_processor_started(system)
+            started = time.perf_counter()
+
+            try:
+                processor.tear_down()
+            except StopPipeline:
+                raise
+            except Exception as exc:
+                duration_ms = (time.perf_counter() - started) * 1000.0
+                if observer is not None:
+                    observer.on_processor_failed(system, exc, duration_ms)
+                if processor.error_policy is ErrorPolicy.PROPAGATE:
+                    raise
+            else:
+                if observer is not None:
+                    observer.on_processor_finished(
+                        system, (time.perf_counter() - started) * 1000.0
+                    )
 
     def activate_reactive_processors(self) -> None:
         """Activates all reactive processors in this pipeline and nested pipelines."""

@@ -12,7 +12,7 @@ class _FakePipeline:
     def __init__(self) -> None:
         self.shutdown_called = False
 
-    def tear_down(self) -> None:
+    def tear_down(self, observer: object = None) -> None:
         self.shutdown_called = True
 
     def clear_reactive_processors(self) -> None:

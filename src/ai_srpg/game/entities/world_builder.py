@@ -25,7 +25,7 @@ from ...models import (
     resolve_component_type,
 )
 from ..context import SRPGGame
-from ..memory import add_system_message
+from ..memory.access import add_system_message
 from .queries import get_actor_entity
 
 

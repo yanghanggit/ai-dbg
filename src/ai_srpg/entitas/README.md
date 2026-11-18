@@ -167,6 +167,18 @@ if game.is_over:
 一定运行、把 `StopPipeline` 转成 `PassResult` 而不当作失败。真正的失败仍然
 上抛，由上层决定重试与状态处理；最近一次结果保存在 `pipeline.last_pass`。
 
+### initialize / tear_down 的策略
+
+`initialize()` 与 `tear_down()` 与 `execute()` 共用 `ErrorPolicy` 默认值
+（`PROPAGATE`）：初始化是启动顺序的一部分，关闭也可能相互依赖，失败默认
+中断后续步骤并上抛。需要「失败也继续」的 processor 自行声明
+`CONTINUE`，失败的 processor 仍会通过 observer 的
+`on_processor_failed` 记录。
+
+两者的 `observer` 由调用方显式传入；`StopPipeline` 在任一阶段都表示显式
+中止，不是失败，直接上抛给启动/关闭的边界处理。`cleanup()` 是 pass 的收尾，
+不参与 `error_policy`：`process_pipeline` 保证它一定运行，失败只记录。
+
 ## 序列化（dump / load）
 
 以**实体名作 key** 的纯 dict 表示，只保存「重建 Context 核心」所需的组件；`pools` /
