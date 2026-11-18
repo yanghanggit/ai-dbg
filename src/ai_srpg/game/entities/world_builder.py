@@ -68,11 +68,10 @@ def _create_world_entities(
     world_entities: List[Entity] = []
     for world_model in world_models:
         world_entity = srpg_game.create_entity(world_model.name)
-        srpg_game.world.entity_counter += 1
         world_entity.add(
             IdentityComponent,
             world_model.name,
-            srpg_game.world.entity_counter,
+            srpg_game.entity_naming.next_creation_order(),
             str(uuid.uuid4()),
         )
         world_entity.add(WorldComponent, world_model.name)
@@ -102,11 +101,10 @@ def create_actor_entities(
     actor_entities: List[Entity] = []
     for actor_model in actor_models:
         actor_entity = srpg_game.create_entity(actor_model.name)
-        srpg_game.world.entity_counter += 1
         actor_entity.add(
             IdentityComponent,
             actor_model.name,
-            srpg_game.world.entity_counter,
+            srpg_game.entity_naming.next_creation_order(),
             str(uuid.uuid4()),
         )
         actor_entity.add(ActorComponent, actor_model.name, "")
@@ -153,11 +151,10 @@ def create_stage_entities(
     stage_entities: List[Entity] = []
     for stage_model in stage_models:
         stage_entity = srpg_game.create_entity(stage_model.name)
-        srpg_game.world.entity_counter += 1
         stage_entity.add(
             IdentityComponent,
             stage_model.name,
-            srpg_game.world.entity_counter,
+            srpg_game.entity_naming.next_creation_order(),
             str(uuid.uuid4()),
         )
         stage_entity.add(StageComponent, stage_model.name)

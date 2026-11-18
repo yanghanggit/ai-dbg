@@ -42,23 +42,17 @@ def _dump_messages(
 #################################################################################################################################################
 def get_agent_memory(srpg_game: SRPGGame, entity: Entity) -> AgentMemory:
     """获取或创建实体的 LLM 记忆。"""
-    return srpg_game.world.agent_memories.setdefault(
-        entity.name, AgentMemory(name=entity.name, messages=[])
-    )
-
-
-#################################################################################################################################################
-def get_all_agent_memories(srpg_game: SRPGGame) -> Dict[str, AgentMemory]:
-    """返回所有 agent 的 LLM 记忆。"""
-    return srpg_game.world.agent_memories
+    return srpg_game.agent_memory_store.get_or_create(entity.name)
 
 
 #################################################################################################################################################
 def remove_agent_memory(srpg_game: SRPGGame, entity: Entity) -> None:
-    """从 agent_memories 中移除实体的 LLM 记忆。"""
-    if entity.name in srpg_game.world.agent_memories:
-        logger.debug(f"remove_agent_memory: {entity.name} in agent_memories, pop it")
-        srpg_game.world.agent_memories.pop(entity.name, None)
+    """从 agent 记忆容器中移除实体的 LLM 记忆。"""
+    if entity.name in srpg_game.agent_memory_store:
+        logger.debug(
+            f"remove_agent_memory: {entity.name} in agent_memory_store, remove it"
+        )
+        srpg_game.agent_memory_store.remove(entity.name)
 
 
 #################################################################################################################################################

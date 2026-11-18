@@ -8,7 +8,6 @@
 """
 
 import uuid
-from types import SimpleNamespace
 from typing import Any, Iterator, cast
 
 import pytest
@@ -22,6 +21,7 @@ from ai_srpg.game.entities import (
 )
 from ai_srpg.models import (
     COMPONENT_TYPES,
+    AgentMemoryStore,
     IdentityComponent,
     Stage,
     StageComponent,
@@ -63,7 +63,7 @@ class _GameImpl(ECSContext):
 
     def __init__(self) -> None:
         super().__init__()
-        self.world = SimpleNamespace(agent_memories={})
+        self.agent_memory_store = AgentMemoryStore()
 
 
 def _new_game() -> Any:

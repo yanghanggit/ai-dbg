@@ -3,7 +3,7 @@ Unit tests for game lifecycle/entity/memory/broadcast functions
 
 覆盖范围（不重复 test_rpg_agent_memory.py 中已有的用例）：
   - get_agent_memory
-  - destroy_entity（含 agent_memories 清理）
+  - destroy_entity（含 agent 记忆清理）
   - add_system_message
   - notify_entities
   - broadcast_to_stage
@@ -97,10 +97,10 @@ def second_actor(game: SRPGGame) -> Entity:
 class TestGetAgentMemory:
     def test_creates_memory_on_first_access(self, game: Any, actor: Entity) -> None:
         """首次访问不存在的实体时，自动创建 AgentMemory。"""
-        assert actor.name not in game.world.agent_memories
+        assert actor.name not in game.agent_memory_store
         memory = get_agent_memory(game, actor)
         assert memory is not None
-        assert actor.name in game.world.agent_memories
+        assert actor.name in game.agent_memory_store
 
     def test_returns_same_object_on_repeated_call(
         self, game: Any, actor: Entity
@@ -137,15 +137,15 @@ class TestDestroyEntity:
         assert game.get_entity_by_name(actor.name) is None
 
     def test_destroy_cleans_up_agent_memories(self, game: Any, actor: Entity) -> None:
-        """销毁时，world.agent_memories 中对应 key 被移除。"""
+        """销毁时，agent_memory_store 中对应 key 被移除。"""
         get_agent_memory(game, actor)  # ensure memory exists
-        assert actor.name in game.world.agent_memories
+        assert actor.name in game.agent_memory_store
         game.destroy_entity(actor)
-        assert actor.name not in game.world.agent_memories
+        assert actor.name not in game.agent_memory_store
 
     def test_destroy_entity_without_memory_ok(self, game: Any, actor: Entity) -> None:
-        """没有 agent_memories 的实体销毁时不抛异常。"""
-        assert actor.name not in game.world.agent_memories
+        """没有记忆的实体销毁时不抛异常。"""
+        assert actor.name not in game.agent_memory_store
         game.destroy_entity(actor)  # should not raise
         assert game.get_entity_by_name(actor.name) is None
 

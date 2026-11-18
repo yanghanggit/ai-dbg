@@ -2,7 +2,7 @@
 """数据库初始化脚本：把库重置到可直接开始测试的初始状态。
 
 步骤：
-1. 生成种子蓝图并写入 ``.blueprints/``（内容见 ``seeds/world.py``）；
+1. 生成种子蓝图并写入 ``.blueprints/``（内容见 ``seeds/blueprint.py``）；
 2. 删除并重建 ``postgresql_config.database`` 指定的数据库；
 3. 建业务表（含 pgvector 扩展）；
 4. 建 Procrastinate 任务队列表结构；

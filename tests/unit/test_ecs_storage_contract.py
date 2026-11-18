@@ -1,13 +1,12 @@
 """ECS ↔ 存储契约测试。
 
 护栏一（Step 1）：entitas 核心的句柄 / pools 语义不变。
-护栏二（Stage C）：name-keyed 的 ``serialize_context`` / ``restore_context``
-与 ``WorldState.entities`` 之间的接口契约。
+护栏二（Stage C）：name-keyed 的 ``serialize()`` / ``restore()``
+与 ``ECSContext`` 之间的接口契约。
 """
 
 import json
 import uuid
-from types import SimpleNamespace
 from typing import Any, Iterator
 
 import pytest
@@ -16,6 +15,7 @@ from ai_srpg.entitas import Component, Entity
 from ai_srpg.game.ecs_context import ECSContext
 from ai_srpg.models import (
     COMPONENT_TYPES,
+    AgentMemoryStore,
     IdentityComponent,
     create_component_type,
     resolve_component_type,
@@ -36,7 +36,7 @@ class _GameImpl(ECSContext):
 
     def __init__(self) -> None:
         super().__init__()
-        self.world = SimpleNamespace(agent_memories={})
+        self.agent_memory_store = AgentMemoryStore()
 
 
 def _new_game() -> Any:
