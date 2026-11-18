@@ -15,7 +15,6 @@ from ..game.dungeon import (
 from ..game.entities import (
     get_actor_entity,
 )
-from ..game.persistence.store import store_game_async
 from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
 from ..models import MonsterComponent
@@ -72,7 +71,6 @@ async def execute_init_combat_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储战斗初始化后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 战斗初始化 job 完成: job_id={job_id}, user={user_name}")
 
@@ -129,7 +127,6 @@ async def execute_retreat_job(
                 )
 
             # 存储撤退后进入 post_combat 状态的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(
             f"✅ 撤退 job 完成: job_id={job_id}, user={user_name}, 战斗已标记为失败。请调用 /api/dungeon/exit/v1/ 返回大厅。"
@@ -184,7 +181,6 @@ async def execute_draw_cards_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储抽牌后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 抽卡 job 完成: job_id={job_id}, user={user_name}")
 
@@ -245,7 +241,6 @@ async def execute_play_cards_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储出牌后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 出牌 job 完成: job_id={job_id}, user={user_name}")
 
@@ -298,7 +293,6 @@ async def execute_pass_turn_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储过牌后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 过牌 job 完成: job_id={job_id}, user={user_name}")
 
@@ -352,7 +346,6 @@ async def execute_use_consumable_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储使用消耗品后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 使用消耗品 job 完成: job_id={job_id}, user={user_name}")
 
@@ -399,7 +392,6 @@ async def execute_equip_gear_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储使用装备后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 使用装备 job 完成: job_id={job_id}, user={user_name}")
 

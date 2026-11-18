@@ -1,7 +1,7 @@
 """记忆标记登记表。
 
 标记是挂在记忆消息上的结构化额外属性（`HumanMessage`/`AIMessage` 的 `extra="allow"`），
-用于事后审计：`scripts/inspect_memory.py` 把它们列在 `extra=[...]` 里，据此区分
+用于事后审计：这些标记随消息落在 `extra=[...]` 中，据此区分
 「谁写入的、属于哪一类」。extra 不校验拼写，写错只会静默失去可审计性，
 因此这里集中登记词表，并由 `add_human_message` / `add_ai_message` 强制校验。
 

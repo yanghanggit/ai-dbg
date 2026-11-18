@@ -1,11 +1,10 @@
 """Job 执行记录与 pipeline 观测。
 
 这里把后台 job 的技术过程写成 ``job_events``；它不替代用户级
-``PlayerSession`` 历史，只记录一次执行走到哪、哪个 system 失败、是否回滚。
+``PlayerSession`` 历史，只记录一次执行走到哪、哪个 system 失败。
 """
 
 from functools import wraps
-from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, TypeVar, cast
 
 from loguru import logger
@@ -15,7 +14,6 @@ from ..job_context import CurrentJob, reset_current_job, set_current_job
 from ..models import JobEvent
 from ..pgsql import append_job_event
 from ..session.room import PlayerRoom
-from .job_recovery import restore_room_from_snapshot
 
 
 ###############################################################################
@@ -144,7 +142,6 @@ class JobRun(CurrentJob):
             store=store,
         )
         self._room: Optional[PlayerRoom] = None
-        self._pre_snapshot: Optional[Path] = None
 
     ###############################################################################
     def bind_room(self, room: object) -> None:
@@ -154,10 +151,6 @@ class JobRun(CurrentJob):
         if self._room is not None:
             return
         self._room = room
-        if room.game is not None:
-            from .job_recovery import latest_snapshot_for_room
-
-            self._pre_snapshot = latest_snapshot_for_room(room)
 
     ###############################################################################
     async def __aenter__(self) -> "JobRun":
@@ -176,45 +169,6 @@ class JobRun(CurrentJob):
             return False
 
         self.recorder.failed(exc, system=self.recorder.current_system)
-
-        if self._room is not None and self._room.game is not None:
-            if self._pre_snapshot is None:
-                self.recorder.record(
-                    "rollback_unavailable",
-                    message="没有可用的世界快照，无法回滚",
-                )
-            else:
-                session = self._room.player_session
-                if session is None:
-                    self.recorder.record(
-                        "rollback_failed",
-                        message="房间没有会话，无法恢复",
-                    )
-                else:
-                    self.recorder.record(
-                        "rollback_started",
-                        payload={"snapshot": str(self._pre_snapshot)},
-                    )
-                    try:
-                        # job 函数退出时可能已经释放房间锁，回滚必须重新进入事务
-                        async with self._room.transaction():
-                            await restore_room_from_snapshot(
-                                self._room,
-                                self._pre_snapshot,
-                                session,
-                            )
-                        self.recorder.record("rollback_finished")
-                    except (
-                        Exception
-                    ) as recovery_error:  # noqa: BLE001 - 回滚失败需保留原始 job 失败
-                        logger.exception(
-                            f"job 回滚失败: job_id={self.job_id}, error={recovery_error}"
-                        )
-                        self.recorder.record(
-                            "rollback_failed",
-                            message=str(recovery_error),
-                            payload={"error_type": type(recovery_error).__name__},
-                        )
 
         return False
 
@@ -238,7 +192,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def job_task(action: str) -> Callable[[F], F]:
-    """把 Procrastinate task 包装成带 job 记录/回滚的执行单元。
+    """把 Procrastinate task 包装成带 job 事件记录的执行单元。
 
     用法：放在 ``@procrastinate_app.task(...)`` 内层。
     """

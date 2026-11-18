@@ -2,7 +2,7 @@
 
 护栏一（Step 1）：entitas 核心的句柄 / pools 语义不变。
 护栏二（Stage C）：name-keyed 的 ``serialize_context`` / ``restore_context``
-与 ``game.persistence`` 之间的接口契约。
+与 ``WorldState.entities`` 之间的接口契约。
 """
 
 import json

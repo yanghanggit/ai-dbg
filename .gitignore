@@ -64,7 +64,6 @@ htmlcov/
 # Other Files and Directories to Ignore
 # -----------------------------------------------------------------------------
 .blueprints/
-.worlds/
 .sessions/
 .dungeons/
 .debug_cache/

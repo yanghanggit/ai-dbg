@@ -5,7 +5,6 @@ Unit tests for game lifecycle/entity/memory/broadcast functions
   - get_agent_memory
   - destroy_entity（含 agent_memories 清理）
   - add_system_message
-  - flush_entities / restore_from_snapshot
   - notify_entities
   - broadcast_to_stage
   - exit / initialize（冒烟测试）
@@ -34,10 +33,6 @@ from ai_srpg.game.memory import (
 from ai_srpg.game.messaging import (
     broadcast_to_stage,
     notify_entities,
-)
-from ai_srpg.game.persistence import (
-    flush_entities,
-    restore_from_snapshot,
 )
 from ai_srpg.models import (
     ActorComponent,
@@ -178,52 +173,6 @@ class TestAddSystemMessage:
         add_human_message(game, actor, HumanMessage(content="already something here"))
         with pytest.raises(AssertionError):
             add_system_message(game, actor, SystemMessage(content="system prompt"))
-
-
-# ---------------------------------------------------------------------------
-# flush_entities / restore_from_snapshot
-# ---------------------------------------------------------------------------
-
-
-class TestFlushAndRestoreSnapshot:
-    def test_flush_populates_entities_serialization(self, game: Any) -> None:
-        """flush_entities 后 world.entities 非空。"""
-        _make_entity_with_identity(game, "EntityX", 1)
-        flush_entities(game)
-        assert len(game.world.entities) > 0
-
-    def test_restore_from_empty_raises(self, game: Any) -> None:
-        """entities 为空时 restore_from_snapshot 触发 AssertionError。"""
-        assert len(game.world.entities) == 0
-        with pytest.raises(AssertionError):
-            restore_from_snapshot(game)
-
-    def test_restore_with_existing_entities_raises(self, game: Any) -> None:
-        """游戏中已有实体时 restore_from_snapshot 触发 AssertionError。"""
-        entity = _make_entity_with_identity(game, "EntityY", 1)
-        flush_entities(game)
-        # Now entities exist AND serialization is non-empty → should raise
-        with pytest.raises(AssertionError):
-            restore_from_snapshot(game)
-
-    def test_flush_then_restore_round_trip(self, game: Any) -> None:
-        """flush → 销毁所有实体 → restore：实体可通过名称找回。"""
-        e1 = _make_entity_with_identity(game, "EntityR1", 1)
-        e2 = _make_entity_with_identity(game, "EntityR2", 2)
-
-        # Flush: persist current state
-        flush_entities(game)
-        assert len(game.world.entities) == 2
-
-        # Destroy all entities
-        destroy_entity(game, e1)
-        destroy_entity(game, e2)
-        assert len(game.ecs.entities) == 0
-
-        # Restore: recreate entities from snapshot
-        restore_from_snapshot(game)
-        assert get_entity_by_name(game, "EntityR1") is not None
-        assert get_entity_by_name(game, "EntityR2") is not None
 
 
 # ---------------------------------------------------------------------------

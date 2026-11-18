@@ -1,277 +1,64 @@
-"""副本战斗动作。
+"""副本战斗动作骨架。
 
-包含所有在战斗房间中执行的游戏动作函数（抽牌、出牌、过牌、撤退、使用物品等）。
+当前实现已清空：每个动作只记录调用参数，待 SRPG 战斗规则落地后补充。
 """
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Sequence
 
-from loguru import logger
-
-from ai_srpg.game.context import SRPGGame
-from ai_srpg.game.dungeon import (
-    current_dungeon_combat,
-    is_current_room_dungeon_combat,
-)
-from ai_srpg.game.entities import (
-    get_actor_entity,
-)
-from ai_srpg.game.persistence.store import store_game_async
-from ai_srpg.game.pipelines import process_pipeline
-from ai_srpg.models import CombatState, MonsterComponent, PlayerSession, WorldState
-from ai_srpg.services.dungeon_combat_actions import (
-    activate_all_card_draws,
-    activate_equip_gear,
-    activate_monster_play_trigger,
-    activate_pass_turn,
-    activate_play_cards_specified,
-    activate_retreat,
-    activate_use_consumable,
-)
-
-from .core import restore_game
+from .core import log_call
 
 
 ###############################################################################
-async def init_combat_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    save_dir: Path,
-) -> SRPGGame:
-    """初始化战斗房间（INITIALIZATION → ONGOING）并归档。需进入战斗房间后、抽牌前使用。"""
-
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("combat-init 只能在战斗房间中使用")
-        return terminal_game
-
-    # 状态守卫：只能在战斗初始化阶段使用
-    if not current_dungeon_combat(terminal_game).is_initializing:
-        logger.error("combat-init 只能在战斗初始化阶段使用")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+async def init_combat_game(snapshot: Path) -> None:
+    """战斗房间初始化（骨架）。"""
+    log_call("init_combat_game", snapshot=snapshot)
 
 
 ###############################################################################
-async def draw_cards_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    save_dir: Path,
-) -> SRPGGame:
-    """为所有战斗角色抽牌并归档。需战斗进行中。"""
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("draw-cards 只能在战斗房间中使用")
-        return terminal_game
-
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("draw-cards 只能在战斗进行中使用")
-        return terminal_game
-
-    success, message = activate_all_card_draws(terminal_game)
-    if not success:
-        logger.error(f"激活全员抽牌失败: {message}")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+async def draw_cards_game(snapshot: Path) -> None:
+    """全员抽牌（骨架）。"""
+    log_call("draw_cards_game", snapshot=snapshot)
 
 
 ###############################################################################
 async def play_cards_specified_game(
-    world: WorldState,
-    player_session: PlayerSession,
+    snapshot: Path,
     actor: str,
     card: Optional[str],
-    targets: List[str],
-    save_dir: Path,
-) -> SRPGGame:
-    """让指定角色打出手牌（怪物则由 AI 自动出牌）并归档。需战斗进行中且当前回合未完成。
+    targets: Sequence[str],
+) -> None:
+    """指定角色出牌（骨架）。"""
+    log_call(
+        "play_cards_specified_game",
+        snapshot=snapshot,
+        actor=actor,
+        card=card,
+        targets=list(targets),
+    )
 
-    `card` 仅我方（非怪物）角色必填；怪物由 AI 决策出牌或过牌，可省略。
-    """
-    terminal_game = await restore_game(world, player_session)
 
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("play-cards-specified 只能在战斗房间中使用")
-        return terminal_game
-
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("play-cards-specified 只能在战斗进行中使用")
-        return terminal_game
-
-    last_round = current_dungeon_combat(terminal_game).latest_round
-    if last_round is None or last_round.is_completed or not last_round.draw_completed:
-        logger.error("play-cards-specified 当前没有未完成且已抽牌的回合可供打牌")
-        return terminal_game
-
-    actor_entity = get_actor_entity(terminal_game, actor)
-    if actor_entity is not None and actor_entity.has(MonsterComponent):
-
-        # 如果是怪物，则触发怪物的出牌逻辑，由 AI 决策出牌或过牌。
-        success, message = activate_monster_play_trigger(terminal_game, actor)
-
-    else:
-
-        # 我方角色必须显式指定手牌；怪物才走 AI 决策，可省略 --card。
-        if not card:
-            message = f"角色 {actor} 不是怪物，必须用 --card 指定要打出的手牌；仅怪物可省略 --card（由 AI 决策出牌或过牌）"
-            logger.error(f"play-cards-specified 失败: {message}")
-            return terminal_game
-
-        # 调用指定手牌的处理函数，传入角色、手牌和目标列表，捕获异常以防止整个循环崩溃。
-        success, message = await activate_play_cards_specified(
-            terminal_game, actor, card, list(targets)
-        )
-
-    # 检查指定手牌的处理结果，如果失败则记录错误并返回游戏状态。
-    if not success:
-        logger.error(f"play-cards-specified 失败: {message}")
-        return terminal_game
-
-    # 指定手牌成功处理后，继续执行战斗房间的处理流水线。
-    await process_pipeline(terminal_game.pipeline, None)
-
-    if current_dungeon_combat(terminal_game).state == CombatState.POST_COMBAT:
-        logger.debug("在本次处理中战斗已结束，进入后处理阶段")
-
-    # 将游戏状态存储到指定目录，确保本轮操作的结果被归档。
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+###############################################################################
+async def pass_turn_game(snapshot: Path, actor: str) -> None:
+    """交出行动权（骨架）。"""
+    log_call("pass_turn_game", snapshot=snapshot, actor=actor)
 
 
 ###############################################################################
 async def use_consumable_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    item: str,
-    save_dir: Path,
-) -> SRPGGame:
-    """让当前行动者使用玩家背包内的消耗品并归档。需战斗进行中且当前回合未完成。"""
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("use-consumable 只能在战斗房间中使用")
-        return terminal_game
-
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("use-consumable 只能在战斗进行中使用")
-        return terminal_game
-
-    last_round = current_dungeon_combat(terminal_game).latest_round
-    if last_round is None or last_round.is_completed or not last_round.draw_completed:
-        logger.error("use-consumable 当前没有未完成且已抽牌的回合可供使用消耗品")
-        return terminal_game
-
-    success, message = activate_use_consumable(terminal_game, item)
-    if not success:
-        logger.error(f"use-consumable 失败: {message}")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+    snapshot: Path, item: str, targets: Sequence[str]
+) -> None:
+    """使用消耗品（骨架）。"""
+    log_call("use_consumable_game", snapshot=snapshot, item=item, targets=list(targets))
 
 
 ###############################################################################
-async def equip_gear_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    item: str,
-    save_dir: Path,
-) -> SRPGGame:
-    """将 GearItem 转化为当前行动者（我方）的手牌并归档。需战斗进行中且当前回合未完成。"""
-    terminal_game = await restore_game(world, player_session)
-
-    # 只发起请求；房间、回合、当前行动者、背包与装备查找由 ECS system 处理
-    success, message = activate_equip_gear(terminal_game, item)
-    if not success:
-        logger.error(f"equip-gear 失败: {message}")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+async def equip_gear_game(snapshot: Path, item: str) -> None:
+    """装备装备物（骨架）。"""
+    log_call("equip_gear_game", snapshot=snapshot, item=item)
 
 
 ###############################################################################
-async def pass_turn_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    actor: str,
-    save_dir: Path,
-) -> SRPGGame:
-    """让指定角色跳过本次出牌（过牌）并归档。需战斗进行中且当前回合未完成。"""
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("pass-turn 只能在战斗房间中使用")
-        return terminal_game
-
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("pass-turn 只能在战斗进行中使用")
-        return terminal_game
-
-    last_round = current_dungeon_combat(terminal_game).latest_round
-    if last_round is None or last_round.is_completed or not last_round.draw_completed:
-        logger.error("pass-turn 当前没有未完成且已抽牌的回合可供过牌")
-        return terminal_game
-
-    success, message = activate_pass_turn(terminal_game, actor)
-    if not success:
-        logger.error(f"pass-turn 失败: {message}")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
-
-
-###############################################################################
-async def retreat_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    save_dir: Path,
-) -> SRPGGame:
-    """主动撤退（结算为失败、成员死亡）并归档。需战斗进行中；随后用 exit-dungeon 返回大厅。"""
-    # 复位游戏状态
-    terminal_game = await restore_game(world, player_session)
-
-    if not is_current_room_dungeon_combat(terminal_game):
-        logger.error("retreat 只能在战斗房间中使用")
-        return terminal_game
-
-    # 状态守卫：只能在战斗进行中撤退
-    if not current_dungeon_combat(terminal_game).is_ongoing:
-        logger.error("retreat 只能在战斗进行中使用")
-        return terminal_game
-
-    # 标记撤退意图并正常走一遍战斗流程，让 RetreatActionSystem 和 CombatOutcomeSystem 处理后续结算（失败）
-    success, message = activate_retreat(terminal_game)
-    if not success:
-        logger.error(f"撤退失败: {message}")
-        return terminal_game
-
-    logger.info(f"撤退动作激活成功: {message}")
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    # 与 API 对齐：撤退流程执行后必须已进入 post_combat 状态
-    if not current_dungeon_combat(terminal_game).is_post_combat:
-        logger.error("撤退流程异常：全局 pipeline 执行后未进入 post_combat 状态")
-        return terminal_game
-
-    # 最后归档
-    await store_game_async(terminal_game, save_dir)
-    return terminal_game
+async def retreat_game(snapshot: Path) -> None:
+    """主动撤退（骨架）。"""
+    log_call("retreat_game", snapshot=snapshot)

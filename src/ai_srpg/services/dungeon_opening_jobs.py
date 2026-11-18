@@ -9,7 +9,6 @@ from ..game.context import SRPGGame
 from ..game.dungeon import (
     is_current_room_dungeon_opening,
 )
-from ..game.persistence.store import store_game_async
 from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
 from ..pgsql import procrastinate_app
@@ -52,7 +51,6 @@ async def execute_opening_room_init_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储开场房间初始化后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 开场房间初始化 job 完成: job_id={job_id}, user={user_name}")
 

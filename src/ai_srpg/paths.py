@@ -19,13 +19,7 @@ DUNGEONS_DIR.mkdir(parents=True, exist_ok=True)
 assert DUNGEONS_DIR.exists(), f"找不到目录: {DUNGEONS_DIR}"
 
 ###########################################################################################################################################
-# 游戏世界运行时数据目录
-WORLDS_DIR: Path = Path(".worlds")
-WORLDS_DIR.mkdir(parents=True, exist_ok=True)
-assert WORLDS_DIR.exists(), f"找不到目录: {WORLDS_DIR}"
-
-###########################################################################################################################################
-# 用户会话历史目录（跨游戏、append-only，不随世界快照回滚）
+# 用户会话历史目录（跨游戏、append-only，不随游戏实例重建清空）
 SESSIONS_DIR: Path = Path(".sessions")
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 assert SESSIONS_DIR.exists(), f"找不到目录: {SESSIONS_DIR}"

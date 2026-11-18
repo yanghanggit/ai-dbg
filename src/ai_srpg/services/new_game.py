@@ -13,7 +13,6 @@ from ..game.entities import (
 from ..game.lifecycle import (
     initialize_game,
 )
-from ..game.persistence.store import store_game_async
 from ..models import (
     Blueprint,
     BlueprintListResponse,
@@ -139,9 +138,6 @@ async def new_game(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"进入副本失败: {error_detail}",
             )
-
-        # 存档初始世界状态，便于调试和回放
-        await store_game_async(game)
 
     # 返回成功响应
     return NewGameResponse(

@@ -4,7 +4,6 @@ from loguru import logger
 from procrastinate import JobContext
 
 from ..game.context import SRPGGame
-from ..game.persistence.store import store_game_async
 from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
 from ..pgsql import procrastinate_app
@@ -48,7 +47,6 @@ async def execute_exit_dungeon_job(
             await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储退出后的世界状态，便于调试和回放
-            await store_game_async(rpg_game)
 
         logger.info(f"✅ 退出副本 job 完成: job_id={job_id}, user={user_name}")
 

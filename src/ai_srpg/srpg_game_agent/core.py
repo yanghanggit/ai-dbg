@@ -1,6 +1,7 @@
-"""游戏动作基础设施层。
+"""游戏动作骨架：新局创建与场景名单。
 
-提供游戏实例的创建与从存档复位的共享入口，供各动作模块 import 使用。
+当前实现已清空：动作只记录调用参数，不读写世界状态。
+待数据层与 SRPG 规则落地后在此补充。
 """
 
 from pathlib import Path
@@ -8,127 +9,26 @@ from typing import Dict, List
 
 from loguru import logger
 
-from ai_srpg.game.assembly import create_srpg_game
-from ai_srpg.game.context import SRPGGame
-from ai_srpg.game.entities import (
-    build_from_blueprint,
-    get_actors_by_stage_as_names,
-)
-from ai_srpg.game.lifecycle import (
-    initialize_game,
-)
-from ai_srpg.game.persistence.snapshot import restore_from_snapshot
-from ai_srpg.game.persistence.store import store_game_async
-from ai_srpg.models import Blueprint, PlayerSession, WorldState
-from ai_srpg.paths import BLUEPRINTS_DIR
-from ai_srpg.services.dungeon_enter_action import enter_dungeon
-from ai_srpg.services.dungeon_setup_action import setup_dungeon
-from ai_srpg.session import PlayerSessionEventSink, SessionStore
+
+###############################################################################
+def log_call(action: str, **params: object) -> None:
+    """统一记录骨架调用的参数，便于确认 CLI 契约。"""
+    logger.info(f"[skeleton] {action}: {params}")
 
 
 ###############################################################################
-async def create_and_initialize_game(
-    user: str, game: str, dungeon_name: str, save_dir: Path
-) -> SRPGGame:
-    """从蓝图文件和副本文件创建并初始化新游戏实例，完成后归档。"""
-
-    # 从 JSON 文件加载蓝图
-    blueprint_path = BLUEPRINTS_DIR / f"{game}.json"
-    assert blueprint_path.exists(), f"蓝图文件不存在: {blueprint_path}"
-    world_blueprint = Blueprint.model_validate_json(
-        blueprint_path.read_text(encoding="utf-8")
-    )
-    assert world_blueprint is not None, "world blueprint 反序列化失败"
-
-    # 创建游戏世界数据实例
-    world_data = WorldState(
-        entity_counter=1000,
-        entities={},
-        agent_memories={},
-        blueprint=world_blueprint,
-    )
-
-    # 会话属于用户，跨游戏保留；新局只更新当前上下文
-    session_store = SessionStore()
-    session = session_store.load_or_create(
-        user,
-        actor=world_data.blueprint.player_actor,
+async def create_and_initialize_game(user: str, game: str, dungeon: str) -> None:
+    """创建并初始化一局游戏（骨架）。"""
+    log_call(
+        "create_and_initialize_game",
+        user=user,
         game=game,
+        dungeon=dungeon,
     )
-    session.set_context(actor=world_data.blueprint.player_actor, game=game)
-    session_store.save_meta(session)
-
-    # 创建 SRPGGame 实例并初始化；领域事件写入用户会话
-    assert world_data is not None, "WorldState data must exist to create a game"
-    terminal_game = create_srpg_game(
-        name=game,
-        player_name=user,
-        player_actor=world_data.blueprint.player_actor,
-        world=world_data,
-        events=PlayerSessionEventSink(session, session_store),
-    )
-
-    # 创建实体数据（敌人和场景），并初始化游戏状态
-    assert len(terminal_game.world.entities) == 0, "新游戏创建时不应该有实体数据！"
-    build_from_blueprint(terminal_game)
-
-    # 初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    await initialize_game(terminal_game)
-
-    # 加载预置副本并直接进入首间：新局不再经过大厅中转
-    success, error_detail = setup_dungeon(terminal_game, dungeon_name)
-    if not success:
-        raise RuntimeError(f"副本实体创建失败: {error_detail}")
-    success, error_detail = enter_dungeon(terminal_game)
-    if not success:
-        raise RuntimeError(f"进入副本失败: {error_detail}")
-
-    logger.info(
-        f"游戏创建并初始化完成：user={user}, game={game}, dungeon={dungeon_name}"
-    )
-
-    # 持久化游戏世界数据到存档目录，并启用 gzip 快照功能
-    await store_game_async(terminal_game, save_dir)
-
-    # 返回游戏实例
-    return terminal_game
 
 
 ###############################################################################
-async def stages_game(
-    world: WorldState,
-    player_session: PlayerSession,
-) -> Dict[str, List[str]]:
-    """返回当前各场景内角色名单（只读，不归档）。"""
-    terminal_game = await restore_game(world, player_session)
-    return get_actors_by_stage_as_names(terminal_game)
-
-
-###############################################################################
-async def restore_game(
-    world: WorldState,
-    player_session: PlayerSession,
-) -> SRPGGame:
-    """从 WorldState/PlayerSession 快照还原 SRPGGame 实例。所有动作命令的共享入口。"""
-
-    # 创建 SRPGGame 实例并从快照恢复游戏状态
-    game = str(world.blueprint.name)
-    session_store = SessionStore()
-    player_actor = player_session.actor or world.blueprint.player_actor
-    terminal_game = create_srpg_game(
-        name=game,
-        player_name=player_session.name,
-        player_actor=player_actor,
-        world=world,
-        events=PlayerSessionEventSink(player_session, session_store),
-    )
-
-    # 从快照恢复游戏状态，并初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    restore_from_snapshot(terminal_game)
-
-    # 初始化游戏状态，包括场景描述、初始状态效果、创建新回合等
-    await initialize_game(terminal_game)
-    logger.info(f"游戏已从存档恢复：user={player_session.name}, game={game}")
-
-    # 返回游戏实例
-    return terminal_game
+async def stages_game(snapshot: Path) -> Dict[str, List[str]]:
+    """返回各场景内角色名单（骨架：返回空映射）。"""
+    log_call("stages_game", snapshot=snapshot)
+    return {}

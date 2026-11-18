@@ -22,7 +22,7 @@ class PlayerSessionInfo(BaseModel):
 class PlayerSession(BaseModel):
     """用户级、append-only 的会话历史。
 
-    会话不随某一个 ``SRPGGame`` 重置或回滚：游戏是客户端当前看到的世界，
+    会话不随某一个 ``SRPGGame`` 重置：游戏是客户端当前看到的世界，
     会话是脱离游戏的上帝视角。``actor`` / ``game`` 只表示当前上下文，
     每条 ``SessionMessage`` 自己记录产生时的 game / actor / job。
     """

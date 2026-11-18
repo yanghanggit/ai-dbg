@@ -12,7 +12,6 @@
 """
 
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -104,12 +103,6 @@ def game_server_url() -> Iterator[str]:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
-        # 清理本次冒烟产生的世界快照
-        worlds_dir = ROOT / ".worlds"
-        if worlds_dir.exists():
-            for child in worlds_dir.iterdir():
-                if child.name.startswith("e2e-api-"):
-                    shutil.rmtree(child, ignore_errors=True)
 
 
 def _post(
@@ -245,7 +238,6 @@ def test_api_e2e_smoke(game_server_url: str) -> None:
     assert code == 200
     kinds = {event["kind"] for event in detail["events"]}
     assert "job_failed" in kinds
-    assert "rollback_finished" in kinds
     code, events = _get(
         client,
         f"/api/jobs/v1/{failed_job_id}/events",

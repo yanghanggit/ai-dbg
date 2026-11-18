@@ -1,38 +1,14 @@
-"""上下文压缩动作。
+"""上下文压缩动作骨架。
 
-包含手动触发指定实体上下文压缩的游戏动作函数。
+当前实现已清空：手动压缩只记录调用参数。
 """
 
 from pathlib import Path
 
-from loguru import logger
-
-from ai_srpg.game.context import SRPGGame
-from ai_srpg.game.persistence.store import store_game_async
-from ai_srpg.game.pipelines import process_pipeline
-from ai_srpg.models import PlayerSession, WorldState
-from ai_srpg.services.compact_action import activate_compact_context
-
-from .core import restore_game
+from .core import log_call
 
 
 ###############################################################################
-async def compact_context_game(
-    world: WorldState,
-    player_session: PlayerSession,
-    target_name: str,
-    save_dir: Path,
-) -> SRPGGame:
-    """手动压缩指定实体的 LLM 记忆并归档。"""
-    terminal_game = await restore_game(world, player_session)
-
-    success, error_detail = activate_compact_context(terminal_game, target_name)
-    if not success:
-        logger.error(f"激活上下文压缩失败: {error_detail}")
-        return terminal_game
-
-    await process_pipeline(terminal_game.pipeline, None)
-
-    await store_game_async(terminal_game, save_dir)
-    logger.info(f"已完成上下文压缩: target={target_name}, 存档: {save_dir}")
-    return terminal_game
+async def compact_context_game(snapshot: Path, target: str) -> None:
+    """手动压缩指定实体的 LLM 记忆（骨架）。"""
+    log_call("compact_context_game", snapshot=snapshot, target=target)
