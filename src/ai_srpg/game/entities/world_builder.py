@@ -25,7 +25,7 @@ from ...models import (
 )
 from ..context import SRPGGame
 from ..memory import add_system_message
-from .repository import get_actor_entity
+from .queries import get_actor_entity
 
 
 def build_from_blueprint(srpg_game: SRPGGame) -> None:

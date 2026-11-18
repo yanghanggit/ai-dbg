@@ -5,9 +5,9 @@ from typing import Dict, Final, List, final, override
 
 from loguru import logger
 
-from ..entitas import ExecuteProcessor
-from ..game.context import SRPGGame
-from ..game.entities import (
+from ...entitas import ExecuteProcessor
+from ..context import SRPGGame
+from ..entities import (
     get_actors_by_stage,
 )
 

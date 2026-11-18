@@ -7,7 +7,7 @@
 
 from typing import List, Protocol
 
-from ..models import AnyAgentEvent
+from ...models import AnyAgentEvent
 
 
 ###############################################################################

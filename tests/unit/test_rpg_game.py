@@ -17,6 +17,10 @@ import pytest
 
 from ai_srpg.entitas.entity import Entity
 from ai_srpg.game.context import SRPGGame
+from ai_srpg.game.events.publish import (
+    broadcast_to_stage,
+    notify_entities,
+)
 from ai_srpg.game.lifecycle import (
     exit_game,
     initialize_game,
@@ -25,10 +29,6 @@ from ai_srpg.game.memory import (
     add_human_message,
     add_system_message,
     get_agent_memory,
-)
-from ai_srpg.game.messaging import (
-    broadcast_to_stage,
-    notify_entities,
 )
 from ai_srpg.models import (
     ActorComponent,

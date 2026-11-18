@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_srpg.game.ecs_context import ECSContext
+from ai_srpg.game.systems.destroy_entity_system import DestroyEntitySystem
 from ai_srpg.models import DestroyComponent
-from ai_srpg.systems.destroy_entity_system import DestroyEntitySystem
 from ecs_testing import Position
 
 # ---------------------------------------------------------------------------

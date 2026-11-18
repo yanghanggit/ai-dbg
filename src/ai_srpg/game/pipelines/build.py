@@ -12,10 +12,10 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     """构建全局唯一的线性 system 流程。"""
 
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
-    from ...systems.action_cleanup_system import ActionCleanupSystem
-    from ...systems.destroy_entity_system import DestroyEntitySystem
-    from ...systems.epilogue_system import EpilogueSystem
-    from ...systems.prologue_system import PrologueSystem
+    from ..systems.action_cleanup_system import ActionCleanupSystem
+    from ..systems.destroy_entity_system import DestroyEntitySystem
+    from ..systems.epilogue_system import EpilogueSystem
+    from ..systems.prologue_system import PrologueSystem
 
     pipeline = ProcessorPipeline()
 

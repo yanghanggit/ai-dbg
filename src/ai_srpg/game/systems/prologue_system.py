@@ -4,8 +4,8 @@ from typing import Final, final, override
 
 from loguru import logger
 
-from ..entitas import ExecuteProcessor
-from ..game.context import SRPGGame
+from ...entitas import ExecuteProcessor
+from ..context import SRPGGame
 
 
 @final

@@ -4,7 +4,7 @@ from typing import Optional
 
 from ..models import WorldState
 from .context import SRPGGame
-from .events import DomainEventSink
+from .events.sink import DomainEventSink
 from .pipelines.build import build_game_pipeline
 
 

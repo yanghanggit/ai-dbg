@@ -12,7 +12,7 @@ from loguru import logger
 from ..entitas import Entity, ProcessorPipeline
 from ..models import WorldState
 from .ecs_context import ECSContext
-from .events import DomainEventSink, NullEventSink
+from .events.sink import DomainEventSink, NullEventSink
 
 
 #################################################################################################################################################

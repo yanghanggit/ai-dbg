@@ -4,9 +4,9 @@ from typing import final, override
 
 from loguru import logger
 
-from ..entitas import ExecuteProcessor, Matcher
-from ..game.context import SRPGGame
-from ..models import DestroyComponent
+from ...entitas import ExecuteProcessor, Matcher
+from ...models import DestroyComponent
+from ..context import SRPGGame
 
 
 @final

@@ -2,12 +2,12 @@
 
 from typing import Final, FrozenSet, Mapping, Type, final, override
 
-from ..entitas import CleanupProcessor, ExecuteProcessor, Matcher
-from ..entitas.components import Component
-from ..game.context import SRPGGame
-from ..models import (
+from ...entitas import CleanupProcessor, ExecuteProcessor, Matcher
+from ...entitas.components import Component
+from ...models import (
     ACTION_COMPONENT_TYPES,
 )
+from ..context import SRPGGame
 
 
 @final

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ..game.events import DomainEventSink
+from ..game.events.sink import DomainEventSink
 from ..job_context import current_job_id
 from ..models import AnyAgentEvent, PlayerSession
 from .store import SessionStore

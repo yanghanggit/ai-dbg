@@ -12,7 +12,7 @@ import pytest
 from ai_srpg.entitas import CleanupProcessor, ExecuteProcessor
 from ai_srpg.entitas.components import Component
 from ai_srpg.game.ecs_context import ECSContext
-from ai_srpg.systems.action_cleanup_system import ActionCleanupSystem
+from ai_srpg.game.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
 
 # ---------------------------------------------------------------------------

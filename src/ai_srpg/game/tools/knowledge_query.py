@@ -4,9 +4,9 @@ from typing import Final
 
 from loguru import logger
 
-from ..embedding_model import embedding_model
-from ..game.context import SRPGGame
-from ..rag import search_documents
+from ...embedding_model import embedding_model
+from ...rag import search_documents
+from ..context import SRPGGame
 
 DEFAULT_TOP_K: Final[int] = 5
 
