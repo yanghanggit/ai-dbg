@@ -6,7 +6,7 @@
 命令一览：
   new              从蓝图创建新游戏并写入基线快照
   snapshots        列出快照历史
-  stages           列出场景-角色映射
+  stages           列出舞台-角色映射
   compact-context  手动压缩指定实体的 LLM 记忆并保存快照
   advance          执行一次 pass 并保存结果快照
 """
@@ -286,7 +286,7 @@ def snapshots(user: str, game: str, limit: int, as_json: bool) -> None:
 @click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
 @click.option("--json", "as_json", is_flag=True, help="输出 JSON")
 def stages(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None:
-    """列出场景-角色映射。"""
+    """列出舞台-角色映射。"""
     _setup_logger()
     try:
         mapping = _run_game(
@@ -304,7 +304,7 @@ def stages(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None
         click.echo(json.dumps(mapping, ensure_ascii=False, indent=2))
         return
     if not mapping:
-        click.echo("（没有场景）")
+        click.echo("（没有舞台）")
         return
     for stage_name, actor_names in mapping.items():
         actors = ", ".join(actor_names) if actor_names else "（无角色）"

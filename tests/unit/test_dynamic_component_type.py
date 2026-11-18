@@ -48,7 +48,7 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
     return Stage(
         name=name,
         type=StageType.NONE,
-        profile="测试场景",
+        profile="测试舞台",
         system_message=f"{name} 的系统消息",
         actors=[],
         components={component_name: {"name": name}},
@@ -125,12 +125,12 @@ class TestResolveComponentType:
         assert COMPONENT_TYPES["TestResolveRebuild"] is cls
 
     def test_rebuilds_unknown_non_empty_data_with_inferred_fields(self) -> None:
-        cls = resolve_component_type("TestResolveWithField", {"name": "场景.测试"})
+        cls = resolve_component_type("TestResolveWithField", {"name": "舞台.测试"})
 
         assert cls.__name__ == "TestResolveWithField"
         assert COMPONENT_TYPES["TestResolveWithField"] is cls
-        inst = cls.model_validate({"name": "场景.测试"})
-        assert inst.model_dump() == {"name": "场景.测试"}
+        inst = cls.model_validate({"name": "舞台.测试"})
+        assert inst.model_dump() == {"name": "舞台.测试"}
 
 
 ############################################################################################################
@@ -140,7 +140,7 @@ class TestCreateStageEntitiesDynamicComponent:
     def test_attaches_dynamic_component(self, sample_game: Any) -> None:
         tag_name = "integration_001"
         tag_cls = create_component_type(tag_name, name=(str, ...))
-        stage_model = _make_stage_model("场景.测试房", "integration_001")
+        stage_model = _make_stage_model("舞台.测试房", "integration_001")
 
         stage_entities = create_stage_entities(sample_game, [stage_model])
 
@@ -148,7 +148,7 @@ class TestCreateStageEntitiesDynamicComponent:
         stage_entity = stage_entities[0]
         assert stage_entity.has(StageComponent)
         assert stage_entity.has(tag_cls)
-        assert stage_entity.get(tag_cls).model_dump() == {"name": "场景.测试房"}
+        assert stage_entity.get(tag_cls).model_dump() == {"name": "舞台.测试房"}
 
     def test_each_stage_gets_its_own_unique_component(self, sample_game: Any) -> None:
         cls_a = create_component_type("integration_a", name=(str, ...))
@@ -157,18 +157,18 @@ class TestCreateStageEntitiesDynamicComponent:
         entities = create_stage_entities(
             sample_game,
             [
-                _make_stage_model("场景.A", "integration_a"),
-                _make_stage_model("场景.B", "integration_b"),
+                _make_stage_model("舞台.A", "integration_a"),
+                _make_stage_model("舞台.B", "integration_b"),
             ],
         )
         by_name = {e.name: e for e in entities}
 
-        assert by_name["场景.A"].has(cls_a)
-        assert not by_name["场景.A"].has(cls_b)
-        assert by_name["场景.B"].has(cls_b)
-        assert not by_name["场景.B"].has(cls_a)
-        assert by_name["场景.A"].get(cls_a).model_dump() == {"name": "场景.A"}
-        assert by_name["场景.B"].get(cls_b).model_dump() == {"name": "场景.B"}
+        assert by_name["舞台.A"].has(cls_a)
+        assert not by_name["舞台.A"].has(cls_b)
+        assert by_name["舞台.B"].has(cls_b)
+        assert not by_name["舞台.B"].has(cls_a)
+        assert by_name["舞台.A"].get(cls_a).model_dump() == {"name": "舞台.A"}
+        assert by_name["舞台.B"].get(cls_b).model_dump() == {"name": "舞台.B"}
 
 
 ############################################################################################################
@@ -180,9 +180,9 @@ class TestRestoreContextDynamicComponent:
         tag_cls = create_component_type(tag_name, name=(str, ...))
 
         source = _new_game()
-        entity = source.create_entity("场景.序列化测试")
-        entity.add(IdentityComponent, "场景.序列化测试", 1, str(uuid.uuid4()))
-        entity.set(tag_cls, tag_cls.model_validate({"name": "场景.序列化测试"}))
+        entity = source.create_entity("舞台.序列化测试")
+        entity.add(IdentityComponent, "舞台.序列化测试", 1, str(uuid.uuid4()))
+        entity.set(tag_cls, tag_cls.model_validate({"name": "舞台.序列化测试"}))
 
         serialized = source.serialize()
 
@@ -196,8 +196,8 @@ class TestRestoreContextDynamicComponent:
         restored_entity = next(iter(restored.values()))
         assert tag_name in COMPONENT_TYPES  # 反序列化时已惰性重建
         rebuilt_cls = COMPONENT_TYPES[tag_name]
-        assert restored_entity.name == "场景.序列化测试"
+        assert restored_entity.name == "舞台.序列化测试"
         assert restored_entity.has(rebuilt_cls)
         assert restored_entity.get(rebuilt_cls).model_dump() == {
-            "name": "场景.序列化测试"
+            "name": "舞台.序列化测试"
         }

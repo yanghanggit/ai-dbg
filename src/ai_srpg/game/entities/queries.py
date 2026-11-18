@@ -1,4 +1,4 @@
-"""实体查询：按名称/组件定位实体、场景分组与归属判定。"""
+"""实体查询：按名称/组件定位实体、舞台分组与归属判定。"""
 
 from typing import Dict, List, Optional, Set
 
@@ -15,7 +15,7 @@ from ..context import SRPGGame
 def get_actors_in_stage(
     srpg_game: SRPGGame, entity: Entity, matcher: Optional[Matcher] = None
 ) -> Set[Entity]:
-    """获取指定场景上匹配 matcher 的 Actor 实体。"""
+    """获取指定舞台上匹配 matcher 的 Actor 实体。"""
     stage_entity = resolve_stage_entity(srpg_game, entity)
     assert stage_entity is not None, f"entity = {entity}"
 
@@ -44,7 +44,7 @@ def get_actors_in_stage(
 
 
 def get_actors_by_stage(srpg_game: SRPGGame) -> Dict[Entity, List[Entity]]:
-    """获取所有场景到 Actor 的分组映射。"""
+    """获取所有舞台到 Actor 的分组映射。"""
     ret: Dict[Entity, List[Entity]] = {}
     actor_entities = srpg_game.get_group(Matcher(all_of=[ActorComponent])).entities
     for actor_entity in actor_entities:
@@ -60,7 +60,7 @@ def get_actors_by_stage(srpg_game: SRPGGame) -> Dict[Entity, List[Entity]]:
 
 
 def get_actors_by_stage_as_names(srpg_game: SRPGGame) -> Dict[str, List[str]]:
-    """获取所有场景到 Actor 的分组映射（名称版本）。"""
+    """获取所有舞台到 Actor 的分组映射（名称版本）。"""
     ret: Dict[str, List[str]] = {}
     for stage_entity, actor_entities in get_actors_by_stage(srpg_game).items():
         ret[stage_entity.name] = [actor_entity.name for actor_entity in actor_entities]
@@ -76,7 +76,7 @@ def get_world_entity(srpg_game: SRPGGame, world_name: str) -> Optional[Entity]:
 
 
 def get_stage_entity(srpg_game: SRPGGame, stage_name: str) -> Optional[Entity]:
-    """通过场景名称获取场景实体。"""
+    """通过舞台名称获取舞台实体。"""
     entity = srpg_game.get_entity_by_name(stage_name)
     if entity is not None and entity.has(StageComponent):
         return entity

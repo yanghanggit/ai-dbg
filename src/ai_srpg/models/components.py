@@ -21,7 +21,7 @@ class IdentityComponent(Component):
 @final
 @register_component_type
 class WorldComponent(Component):
-    """标记实体为世界级实体（全局、唯一、独立于场景）。"""
+    """标记实体为世界级实体（全局、唯一、独立于舞台）。"""
 
     name: str
 
@@ -30,7 +30,7 @@ class WorldComponent(Component):
 @final
 @register_component_type
 class StageComponent(Component):
-    """标记实体为场景类型。"""
+    """标记实体为舞台类型。"""
 
     name: str
 
@@ -39,17 +39,17 @@ class StageComponent(Component):
 @final
 @register_component_type
 class ActorComponent(Component):
-    """标记实体为角色类型，记录当前所在场景。"""
+    """标记实体为角色类型，记录当前所在舞台。"""
 
     name: str
-    current_stage: str  # 当前所在场景名称
+    current_stage: str  # 当前所在舞台名称
 
 
 ############################################################################################################
 @final
 @register_component_type
 class EnvironmentComponent(Component):
-    """场景环境叙述，由 AI 根据当前状态动态生成，为后续行动规划提供背景信息。"""
+    """舞台环境叙述，由 AI 根据当前状态动态生成，为后续行动规划提供背景信息。"""
 
     name: str
     narrative: str  # 叙述性描述文本

@@ -29,3 +29,9 @@ assert LLM_CALLS_DIR.exists(), f"找不到目录: {LLM_CALLS_DIR}"
 LOGS_DIR: Path = Path("logs")
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 assert LOGS_DIR.exists(), f"找不到目录: {LOGS_DIR}"
+
+###########################################################################################################################################
+# 蓝图 prompt 留痕目录（构建蓝图时按实体导出 system prompt，便于逐段核对提示词）
+PROMPTS_DIR: Path = LOGS_DIR / "blueprints"
+PROMPTS_DIR.mkdir(parents=True, exist_ok=True)
+assert PROMPTS_DIR.exists(), f"找不到目录: {PROMPTS_DIR}"

@@ -19,7 +19,7 @@ class ActorType(StrEnum):
 @final
 @unique
 class StageType(StrEnum):
-    """场景类别。当前仅 ``NONE``（未分类）；具体类别随玩法扩展再补。"""
+    """舞台类别。当前仅 ``NONE``（未分类）；具体类别随玩法扩展再补。"""
 
     NONE = "None"
 

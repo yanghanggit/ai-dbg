@@ -46,14 +46,14 @@ def _remember(game: SRPGGame, name: str, content: str) -> None:
 def test_ecs_snapshot_roundtrip_into_fresh_game() -> None:
     game = _new_game()
     _add_entity(game, "角色.甲")
-    _add_entity(game, "场景.营地")
+    _add_entity(game, "舞台.营地")
 
     snapshot = game.ecs_snapshot()
 
     assert snapshot.format_version == SNAPSHOT_FORMAT_VERSION
     assert snapshot.game == "Game1"
     assert snapshot.entity_naming_counter == 2
-    assert list(snapshot.entities) == ["角色.甲", "场景.营地"]
+    assert list(snapshot.entities) == ["角色.甲", "舞台.营地"]
 
     restored = _new_game()
     restored.restore_ecs_snapshot(snapshot)

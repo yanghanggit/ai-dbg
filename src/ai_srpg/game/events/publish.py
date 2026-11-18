@@ -1,4 +1,4 @@
-"""场景广播与定向通知。
+"""舞台广播与定向通知。
 
 两条投递路径只差「目标集合怎么来」与「是否标记广播范围」：投递与发布事件本身是
 同一件事，因此统一由 ``notify_entities`` 完成，``broadcast_to_stage`` 只负责解析
@@ -21,9 +21,9 @@ def broadcast_to_stage(
     agent_event: AnyAgentEvent,
     exclude_entities: Optional[Set[Entity]] = None,
 ) -> None:
-    """向场景内所有角色与场景实体广播事件。"""
+    """向舞台内所有角色与舞台实体广播事件。"""
     stage_entity = resolve_stage_entity(srpg_game, entity)
-    assert stage_entity is not None, f"{entity.name} 无所在场景，无法广播"
+    assert stage_entity is not None, f"{entity.name} 无所在舞台，无法广播"
 
     excluded = exclude_entities or set()
     targets = (get_actors_in_stage(srpg_game, stage_entity) | {stage_entity}) - excluded
@@ -40,7 +40,7 @@ def notify_entities(
 ) -> None:
     """向指定实体投递事件消息，并发布到游戏的事件出口。
 
-    ``broadcast_stage`` 只由全场景广播传入，用于在记忆里标记广播范围；私发不传，
+    ``broadcast_stage`` 只由全舞台广播传入，用于在记忆里标记广播范围；私发不传，
     消息上就不会出现这个标记。
     """
     for entity in entities:

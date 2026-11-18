@@ -45,7 +45,7 @@ from ai_srpg.models import (
 
 
 def _make_stage(game: SRPGGame, stage_name: str) -> Entity:
-    """创建带 StageComponent 的场景实体。"""
+    """创建带 StageComponent 的舞台实体。"""
     entity: Entity = game.create_entity(stage_name)
     entity.add(StageComponent, stage_name)
     return entity
@@ -196,7 +196,7 @@ class TestNotifyEntities:
     def test_notify_stamps_event_type_without_broadcast_stage(
         self, game: Any, actor: Entity
     ) -> None:
-        """私发消息只盖 agent_event 标记，不盖 broadcast_stage（不是全场景广播）。"""
+        """私发消息只盖 agent_event 标记，不盖 broadcast_stage（不是全舞台广播）。"""
         notify_entities(game, {actor}, _agent_event("private note"))
 
         message: Any = get_agent_memory(game, actor).messages[-1]
@@ -223,7 +223,7 @@ class TestNotifyEntities:
 
 class TestBroadcastToStage:
     def test_broadcast_reaches_stage_and_actors(self, game: Any) -> None:
-        """广播时，场景实体及其所有 actor 都收到消息。"""
+        """广播时，舞台实体及其所有 actor 都收到消息。"""
         stage = _make_stage(game, "Stage_1")
         a1 = _make_actor(game, "NPC_1", "Stage_1")
         a2 = _make_actor(game, "NPC_2", "Stage_1")
@@ -250,7 +250,7 @@ class TestBroadcastToStage:
         assert len(get_agent_memory(game, a2).messages) == 0
 
     def test_broadcast_with_no_actors_reaches_stage_only(self, game: Any) -> None:
-        """场景中无 actor 时，只有场景实体收到广播。"""
+        """舞台中无 actor 时，只有舞台实体收到广播。"""
         stage = _make_stage(game, "Stage_3")
         other_stage = _make_stage(game, "Stage_other")  # must exist for actor resolve
         unrelated_actor = _make_actor(game, "NPC_5", "Stage_other")

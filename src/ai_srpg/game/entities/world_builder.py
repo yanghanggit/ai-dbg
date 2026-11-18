@@ -1,4 +1,4 @@
-"""从蓝图构建世界、角色与场景实体。"""
+"""从蓝图构建世界、角色与舞台实体。"""
 
 import uuid
 from typing import List, Optional
@@ -33,7 +33,7 @@ def build_from_blueprint(
     player_name: str,
     player_actor: Optional[str] = None,
 ) -> None:
-    """按蓝图创建并初始化新游戏世界，包括世界、角色和场景。
+    """按蓝图创建并初始化新游戏世界，包括世界、角色和舞台。
 
     ``blueprint`` 是构建期输入，不写进任何运行时容器；``player_name`` 是玩家身份
     （来自会话/房间），``player_actor`` 缺省时取蓝图声明的受控角色。两者只在构建期
@@ -137,7 +137,7 @@ def create_actor_entities(
 def create_stage_entities(
     srpg_game: SRPGGame, stage_models: List[Stage]
 ) -> List[Entity]:
-    """创建场景实体，并建立角色与场景的关联关系。"""
+    """创建舞台实体，并建立角色与舞台的关联关系。"""
     stage_entities: List[Entity] = []
     for stage_model in stage_models:
         stage_entity = srpg_game.create_entity(stage_model.name)

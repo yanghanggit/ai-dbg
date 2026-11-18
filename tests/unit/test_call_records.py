@@ -68,7 +68,7 @@ def _dummy_tool() -> ToolDefinition:
 
 
 def _request(
-    label: str = "场景.测试",
+    label: str = "舞台.测试",
     input_message: str = "p",
     **kwargs: object,
 ) -> ChatCompletionRequest:
@@ -129,7 +129,7 @@ def test_records_messages_response_and_usage(calls_dir: Path) -> None:
     assert len(records) == 1
     record = records[0]
     assert record.request_id == request_id
-    assert record.label == "场景.测试"
+    assert record.label == "舞台.测试"
     assert [m["type"] for m in record.messages] == ["system", "human"]
     assert record.messages[1]["content"] == "请描述环境"
     assert record.response["ai_message"]["content"] == "洞顶低矮"
@@ -156,7 +156,7 @@ def test_failure_record_contains_error(calls_dir: Path) -> None:
     request = _request()
     result = ChatCompletionResult(
         request=request,
-        error=ChatError("场景.测试", "HTTP 500", kind="api", status_code=500),
+        error=ChatError("舞台.测试", "HTTP 500", kind="api", status_code=500),
     )
 
     record_llm_call(request, result)
@@ -300,7 +300,7 @@ def test_cli_lists_and_shows_record(calls_dir: Path) -> None:
     listed = runner.invoke(main, ["llm-calls", "--limit", "1"])
     assert listed.exit_code == 0
     assert request_id[:8] in listed.output
-    assert "场景.测试" in listed.output
+    assert "舞台.测试" in listed.output
 
     shown = runner.invoke(main, ["llm-call", request_id[:8]])
     assert shown.exit_code == 0

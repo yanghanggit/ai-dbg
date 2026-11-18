@@ -395,7 +395,7 @@ def test_conversation_vector_operations() -> None:
 
 
 # ================================
-# 第三部分：实际应用场景演示
+# 第三部分：实际应用演示
 # ================================
 
 
@@ -593,7 +593,7 @@ def test_comprehensive_pgvector_demos(setup_database_tables: Any) -> None:
     try:
         # 第三部分：实际应用演示
         logger.info("\n" + "=" * 50)
-        logger.info("第三部分：实际应用场景演示")
+        logger.info("第三部分：实际应用演示")
         logger.info("=" * 50)
         demo_document_rag_system()
         demo_conversation_memory()  # 现在是占位符函数

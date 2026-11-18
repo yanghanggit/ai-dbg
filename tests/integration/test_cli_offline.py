@@ -57,7 +57,7 @@ def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
         main, ["stages", "--user", user_name, "--game", "Game1", "--json"]
     )
     assert stages.exit_code == 0, stages.output
-    assert "场景.营地" in stages.output
+    assert "舞台.营地" in stages.output
     assert "角色.无名" in stages.output
 
     advanced = runner.invoke(main, ["advance", "--user", user_name, "--game", "Game1"])

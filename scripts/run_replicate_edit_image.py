@@ -5,7 +5,7 @@
     --input PATH [-i PATH ...]                          输入图片（可多个）
     --prompt TEXT                                       编辑指令
     --model nano-banana|nano-banana-pro                 模型选择（必填）
-    --list-demos                                        列出预设场景
+    --list-demos                                        列出预设方案
     --test                                              测试 API 连接
 
 资产固定输出到 .assets/image/，每个 raw 文件配一个同名 .meta。
@@ -51,7 +51,7 @@ DEMO_SCENARIOS = {
     },
     "night": {
         "name": "时间转换",
-        "prompt": "Change the scene to nighttime with stars and moonlight",
+        "prompt": "Change the background to nighttime with stars and moonlight",
         "description": "将场景改为夜晚，添加星空和月光",
     },
     "hat": {
@@ -82,8 +82,8 @@ def find_test_images(directory: Path = ASSETS_DIR, limit: int = 3) -> List[Path]
 
 
 def print_demo_scenarios() -> None:
-    """打印所有预设场景"""
-    print("\n📋 可用的预设测试场景:\n")
+    """打印所有预设方案"""
+    print("\n📋 可用的预设测试方案:\n")
     for key, scenario in DEMO_SCENARIOS.items():
         print(f"  {key:12} - {scenario['name']}")
         print(f"               {scenario['description']}")
@@ -147,7 +147,7 @@ async def run_image_edit(
 
 
 async def run_demo_scenario(scenario_key: str, model: str) -> None:
-    """运行预设测试场景"""
+    """运行预设测试方案"""
     if scenario_key not in DEMO_SCENARIOS:
         print(f"❌ 未知场景: {scenario_key}")
         print_demo_scenarios()
@@ -156,7 +156,7 @@ async def run_demo_scenario(scenario_key: str, model: str) -> None:
     scenario = DEMO_SCENARIOS[scenario_key]
 
     print("\n" + "=" * 70)
-    print(f"🚀 运行预设场景: {scenario['name']}")
+    print(f"🚀 运行预设方案: {scenario['name']}")
     print("=" * 70)
     print(f"描述: {scenario['description']}")
     print(f"提示词: {scenario['prompt']}")
@@ -230,12 +230,12 @@ async def run_demo_scenario(scenario_key: str, model: str) -> None:
 @click.option(
     "--demo",
     type=click.Choice(list(DEMO_SCENARIOS.keys())),
-    help="运行预设测试场景",
+    help="运行预设测试方案",
 )
 @click.option(
     "--list-demos",
     is_flag=True,
-    help="列出所有预设场景",
+    help="列出所有预设方案",
 )
 @click.option(
     "--test",
@@ -279,7 +279,7 @@ async def _async_main(
 ) -> None:
     """异步主函数"""
 
-    # 列出预设场景
+    # 列出预设方案
     if list_demos:
         print_demo_scenarios()
         return
@@ -289,7 +289,7 @@ async def _async_main(
         check_replicate_connection()
         return
 
-    # 运行预设场景
+    # 运行预设方案
     if demo:
         if not model:
             print("❌ 必须通过 --model 显式指定模型")
@@ -302,9 +302,9 @@ async def _async_main(
     if not input_images or not prompt:
         print("🎨 Nano Banana 图像编辑工具\n")
         print("快速开始:")
-        print("  # 列出所有预设场景")
+        print("  # 列出所有预设方案")
         print(f"  python scripts/{script} --list-demos\n")
-        print("  # 运行预设场景")
+        print("  # 运行预设方案")
         print(f"  python scripts/{script} --demo blur\n")
         print("  # 自定义编辑")
         print(f"  python scripts/{script} \\")
@@ -313,7 +313,7 @@ async def _async_main(
         print("  # 多图融合")
         print(f"  python scripts/{script} \\")
         print("    --input img1.png img2.png img3.png \\")
-        print("    --prompt 'Combine into one scene'\n")
+        print("    --prompt 'Combine into one image'\n")
         print("详细帮助:")
         print(f"  python scripts/{script} --help")
         return

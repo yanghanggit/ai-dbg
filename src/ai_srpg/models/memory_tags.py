@@ -18,7 +18,7 @@ MEMORY_TAGS: Final[FrozenSet[str]] = frozenset(
     {
         # ---- 事件投递（广播 / 私发）----
         "agent_event",  # 事件类型（speak / trans_stage / none …）
-        "broadcast_stage",  # 广播所属场景；私发不带此标记
+        "broadcast_stage",  # 广播所属舞台；私发不带此标记
         # ---- agent loop ----
         "loop_id",  # agent_loop 起止标记
         "loop_id_end",

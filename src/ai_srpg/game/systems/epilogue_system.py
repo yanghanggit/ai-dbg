@@ -26,7 +26,7 @@ class EpilogueSystem(ExecuteProcessor):
     ############################################################################################################
     @override
     async def execute(self) -> None:
-        """记录各场景中的角色分布情况到日志。"""
+        """记录各舞台中的角色分布情况到日志。"""
         actor_distribution = get_actors_by_stage(self._game)
 
         actor_distribution_info: Dict[str, List[str]] = {}

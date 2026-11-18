@@ -80,7 +80,7 @@ async def test_create_from_blueprint_writes_baseline_snapshot(
     game = await load_or_create_game(user_name, "Game1")
 
     assert game.entity_count > 0
-    assert game.get_entity_by_name("场景.营地") is not None
+    assert game.get_entity_by_name("舞台.营地") is not None
     assert game.get_entity_by_name("角色.无名") is not None
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
 

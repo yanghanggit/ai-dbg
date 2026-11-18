@@ -1,8 +1,8 @@
 """
 游戏实体工厂模块。
 
-system prompt 段序原则：内容向的「游戏设定」「角色/场景设定」「基础体型」等在前，
-具备规则效果的「全局规则」在后——让 agent 先建立人物与世界观，最后读到必须遵守的规则。
+system prompt 段序原则：内容向的「游戏设定」「角色/舞台设定」「基础体型」等在前，
+具备规则效果的「全局规则」在后——让 agent 先建立角色与世界观，最后读到必须遵守的规则。
 """
 
 from . import (
@@ -21,7 +21,7 @@ def create_actor(
     profile: str,
     base_body: str,
     campaign_setting: str,
-    system_rules: str,
+    global_rules: str,
 ) -> Actor:
     """
     创建一个游戏角色(Actor)实例。
@@ -33,7 +33,7 @@ def create_actor(
     assert (
         campaign_setting.strip() != ""
     ), "SRPG 游戏要求必须有游戏设定(campaign_setting)"
-    assert system_rules.strip() != "", "SRPG 游戏要求必须有系统规则(system_rules)"
+    assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
 
     actor = Actor(
         name=name,
@@ -62,7 +62,7 @@ def create_actor(
 
 ## 全局规则
 
-{system_rules}"""
+{global_rules}"""
 
     return actor
 
@@ -73,20 +73,20 @@ def create_stage(
     stage_type: StageType,
     profile: str,
     campaign_setting: str,
-    system_rules: str,
+    global_rules: str,
 ) -> Stage:
     """
-    创建一个游戏场景(Stage)实例。
+    创建一个游戏舞台(Stage)实例。
     """
 
-    assert name.strip() != "", "SRPG 游戏要求必须有场景名称(name)"
-    assert profile.strip() != "", "SRPG 游戏要求必须有场景设定(profile)"
+    assert name.strip() != "", "SRPG 游戏要求必须有舞台名称(name)"
+    assert profile.strip() != "", "SRPG 游戏要求必须有舞台设定(profile)"
     assert (
         campaign_setting.strip() != ""
     ), "SRPG 游戏要求必须有游戏设定(campaign_setting)"
-    assert system_rules.strip() != "", "SRPG 游戏要求必须有系统规则(system_rules)"
+    assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
 
-    # 创建场景实例
+    # 创建舞台实例
     stage = Stage(
         name=name,
         type=stage_type,
@@ -98,19 +98,19 @@ def create_stage(
     # 系统提示词词
     stage.system_message = f"""# {stage.name}
 
-你扮演场景: {stage.name}
+你扮演舞台: {stage.name}
 
 ## 游戏设定
 
 {campaign_setting}
 
-## 场景设定
+## 舞台设定
 
 {profile}
 
 ## 全局规则
 
-{system_rules}"""
+{global_rules}"""
 
     return stage
 
@@ -119,7 +119,7 @@ def create_stage(
 
 
 def create_world(
-    name: str, campaign_setting: str, system_rules: str, role_rules: str
+    name: str, campaign_setting: str, global_rules: str, role_rules: str
 ) -> World:
     """
     创建一个世界(World)实例。
@@ -129,7 +129,7 @@ def create_world(
     assert (
         campaign_setting.strip() != ""
     ), "SRPG 游戏要求必须有游戏设定(campaign_setting)"
-    assert system_rules.strip() != "", "SRPG 游戏要求必须有系统规则(system_rules)"
+    assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
     assert role_rules.strip() != "", "SRPG 游戏要求必须有角色扮演规则(role_rules)"
 
     # 创建世界实例
@@ -152,6 +152,6 @@ def create_world(
 
 ## 全局规则
 
-{system_rules}"""
+{global_rules}"""
 
     return world

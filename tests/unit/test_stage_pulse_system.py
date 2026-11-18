@@ -1,6 +1,6 @@
-"""场景心跳 system：发布链路与「第一段业务」的接线。
+"""舞台心跳 system：发布链路与「第一段业务」的接线。
 
-覆盖三件事：每个有角色的场景只广播一次、广播同时进入 agent 记忆、以及事件经
+覆盖三件事：每个有角色的舞台只广播一次、广播同时进入 agent 记忆、以及事件经
 ``SessionEventSink`` 落进会话历史并带上当前 job 标识。
 """
 
@@ -12,7 +12,7 @@ from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.events.sink import RecordingEventSink
 from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.game.pipelines.runner import process_pipeline
-from ai_srpg.game.systems.scene_pulse_system import ScenePulseSystem
+from ai_srpg.game.systems.stage_pulse_system import StagePulseSystem
 from ai_srpg.gameplay.session_history import SessionEventSink
 from ai_srpg.models import ActorComponent, SessionMessage, StageComponent
 from ai_srpg.session.job_context import reset_current_job, set_current_job
@@ -70,33 +70,33 @@ class _FakeJob:
 ###############################################################################
 async def test_broadcasts_once_per_non_empty_stage() -> None:
     game = create_srpg_game(name="Game1", events=RecordingEventSink())
-    _make_stage(game, "场景.营地")
-    _make_actor(game, "角色.乙", "场景.营地")
-    _make_actor(game, "角色.甲", "场景.营地")
-    _make_stage(game, "场景.空")
+    _make_stage(game, "舞台.营地")
+    _make_actor(game, "角色.乙", "舞台.营地")
+    _make_actor(game, "角色.甲", "舞台.营地")
+    _make_stage(game, "舞台.空")
 
-    await ScenePulseSystem(game).execute()
+    await StagePulseSystem(game).execute()
 
     events: List[Any] = game.events.events  # type: ignore[attr-defined]
     assert len(events) == 1
-    assert events[0].message == "场景.营地：当前在场 角色.乙、角色.甲。"
+    assert events[0].message == "舞台.营地：当前在场 角色.乙、角色.甲。"
 
 
 async def test_broadcast_reaches_stage_and_actors_memory() -> None:
     game = create_srpg_game(name="Game1", events=RecordingEventSink())
-    stage = _make_stage(game, "场景.营地")
-    actor = _make_actor(game, "角色.无名", "场景.营地")
+    stage = _make_stage(game, "舞台.营地")
+    actor = _make_actor(game, "角色.无名", "舞台.营地")
 
-    await ScenePulseSystem(game).execute()
+    await StagePulseSystem(game).execute()
 
-    assert get_agent_memory(game, stage).messages[-1].content.startswith("场景.营地：")
-    assert get_agent_memory(game, actor).messages[-1].content.startswith("场景.营地：")
+    assert get_agent_memory(game, stage).messages[-1].content.startswith("舞台.营地：")
+    assert get_agent_memory(game, actor).messages[-1].content.startswith("舞台.营地：")
 
 
 async def test_empty_game_publishes_nothing() -> None:
     game = create_srpg_game(name="Game1", events=RecordingEventSink())
 
-    await ScenePulseSystem(game).execute()
+    await StagePulseSystem(game).execute()
 
     assert game.events.events == []  # type: ignore[attr-defined]
 
@@ -107,8 +107,8 @@ async def test_pipeline_writes_session_history_with_job_id() -> None:
     store = _FakeStore()
     session = PlayerSession(name="alice")
     game = create_srpg_game(name="Game1", events=SessionEventSink(session, store=store))
-    _make_stage(game, "场景.营地")
-    _make_actor(game, "角色.无名", "场景.营地")
+    _make_stage(game, "舞台.营地")
+    _make_actor(game, "角色.无名", "舞台.营地")
     session.set_context(actor="角色.无名", game="Game1")
 
     token = set_current_job(_FakeJob(job_id=7))
@@ -124,17 +124,17 @@ async def test_pipeline_writes_session_history_with_job_id() -> None:
     assert message.actor == "角色.无名"
     assert message.sequence_id == 1
     assert message.agent_event is not None
-    assert message.agent_event.message == "场景.营地：当前在场 角色.无名。"
+    assert message.agent_event.message == "舞台.营地：当前在场 角色.无名。"
 
 
-async def test_scene_pulse_runs_between_prologue_and_cleanup() -> None:
-    """装配检查：业务段里确实挂着场景心跳，且位于前置与清理之间。"""
+async def test_stage_pulse_runs_between_prologue_and_cleanup() -> None:
+    """装配检查：业务段里确实挂着舞台心跳，且位于前置与清理之间。"""
     game = create_srpg_game(name="Game1")
 
     result = await process_pipeline(game.pipeline, None)
 
-    assert "ScenePulseSystem" in result.ran
-    assert result.ran.index("PrologueSystem") < result.ran.index("ScenePulseSystem")
-    assert result.ran.index("ScenePulseSystem") < result.ran.index(
+    assert "StagePulseSystem" in result.ran
+    assert result.ran.index("PrologueSystem") < result.ran.index("StagePulseSystem")
+    assert result.ran.index("StagePulseSystem") < result.ran.index(
         "ActionCleanupSystem"
     )

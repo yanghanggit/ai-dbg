@@ -1,4 +1,4 @@
-"""游戏动作：新局、场景名单、快照列表与离线推进。"""
+"""游戏动作：新局、舞台名单、快照列表与离线推进。"""
 
 from typing import Dict, List, Optional
 
@@ -46,7 +46,7 @@ async def create_and_initialize_game(
 async def stages_game(
     user: str, game: str, snapshot_id: Optional[int]
 ) -> Dict[str, List[str]]:
-    """读取快照并返回「场景 → 角色名」映射。"""
+    """读取快照并返回「舞台 → 角色名」映射。"""
     srpg_game = await load_or_create_game(user, game, snapshot_id=snapshot_id)
     mapping = get_actors_by_stage_as_names(srpg_game)
     return {
