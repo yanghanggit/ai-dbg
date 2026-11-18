@@ -1,11 +1,10 @@
-"""initialize / tear_down 阶段的 observer 与失败策略测试。"""
+"""initialize / tear_down 阶段的 observer 与失败传播测试。"""
 
 from typing import List, Optional, Tuple
 
 import pytest
 
 from ai_srpg.entitas import (
-    ErrorPolicy,
     InitializeProcessor,
     ProcessorObserver,
     ProcessorPipeline,
@@ -40,12 +39,9 @@ class _Init(InitializeProcessor):
         log: List[str],
         *,
         error: Optional[Exception] = None,
-        policy: Optional[ErrorPolicy] = None,
     ) -> None:
         self._log = log
         self._error = error
-        if policy is not None:
-            self.error_policy = policy
 
     async def initialize(self) -> None:
         self._log.append("init")
@@ -59,12 +55,9 @@ class _TearDown(TearDownProcessor):
         log: List[str],
         *,
         error: Optional[Exception] = None,
-        policy: Optional[ErrorPolicy] = None,
     ) -> None:
         self._log = log
         self._error = error
-        if policy is not None:
-            self.error_policy = policy
 
     def tear_down(self) -> None:
         self._log.append("tear_down")
@@ -89,7 +82,7 @@ async def test_initialize_notifies_observer() -> None:
     assert observer.failures == []
 
 
-async def test_initialize_propagate_stops_remaining() -> None:
+async def test_initialize_error_stops_remaining() -> None:
     log: List[str] = []
     observer = _Observer()
     pipeline = ProcessorPipeline()
@@ -104,31 +97,11 @@ async def test_initialize_propagate_stops_remaining() -> None:
     assert str(observer.failures[0][1]) == "init boom"
 
 
-async def test_initialize_continue_policy_keeps_going() -> None:
+async def test_tear_down_notifies_observer() -> None:
     log: List[str] = []
     observer = _Observer()
     pipeline = ProcessorPipeline()
-    pipeline.add(_Init(log, error=RuntimeError("local"), policy=ErrorPolicy.CONTINUE))
-    pipeline.add(_Init(log))
-
-    await pipeline.initialize(observer)
-
-    assert log == ["init", "init"]
-    assert observer.events == [
-        ("start", "_Init"),
-        ("fail", "_Init"),
-        ("start", "_Init"),
-        ("finish", "_Init"),
-    ]
-
-
-async def test_tear_down_notifies_observer_and_continues_on_policy() -> None:
-    log: List[str] = []
-    observer = _Observer()
-    pipeline = ProcessorPipeline()
-    pipeline.add(
-        _TearDown(log, error=RuntimeError("local"), policy=ErrorPolicy.CONTINUE)
-    )
+    pipeline.add(_TearDown(log))
     pipeline.add(_TearDown(log))
 
     pipeline.tear_down(observer)
@@ -136,13 +109,13 @@ async def test_tear_down_notifies_observer_and_continues_on_policy() -> None:
     assert log == ["tear_down", "tear_down"]
     assert observer.events == [
         ("start", "_TearDown"),
-        ("fail", "_TearDown"),
+        ("finish", "_TearDown"),
         ("start", "_TearDown"),
         ("finish", "_TearDown"),
     ]
 
 
-async def test_tear_down_propagate_stops_remaining() -> None:
+async def test_tear_down_error_stops_remaining() -> None:
     log: List[str] = []
     observer = _Observer()
     pipeline = ProcessorPipeline()

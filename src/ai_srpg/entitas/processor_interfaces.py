@@ -7,15 +7,7 @@ that runs them in order.
 """
 
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Protocol
-
-
-class ErrorPolicy(Enum):
-    """What the pipeline does when a processor raises."""
-
-    PROPAGATE = "propagate"
-    CONTINUE = "continue"
 
 
 class InitializeProcessor(ABC):
@@ -25,9 +17,6 @@ class InitializeProcessor(ABC):
     Use this for one-time setup operations like loading resources or
     initializing system state.
     """
-
-    #: 失败后的调度策略；默认传播：初始化是启动顺序的一部分，失败后后续步骤不应继续。
-    error_policy: ErrorPolicy = ErrorPolicy.PROPAGATE
 
     @abstractmethod
     async def initialize(self) -> None:
@@ -58,10 +47,6 @@ class ExecuteProcessor(ABC):
     Execute processors contain the main game logic and are called
     repeatedly during the game loop.
     """
-
-    #: 失败后的调度策略，由组装方按 processor 在 pipeline 中的位置声明。
-    #: 默认传播：pipeline 的意义就是顺序依赖，某一步没有完成时序列不再可信。
-    error_policy: ErrorPolicy = ErrorPolicy.PROPAGATE
 
     @abstractmethod
     async def execute(self) -> None:
@@ -95,9 +80,6 @@ class TearDownProcessor(ABC):
     shutting down. Use this for final cleanup operations like saving
     data or releasing resources.
     """
-
-    #: 失败后的调度策略；默认传播：关闭顺序同样可能相互依赖，失败应显式暴露。
-    error_policy: ErrorPolicy = ErrorPolicy.PROPAGATE
 
     @abstractmethod
     def tear_down(self) -> None:

@@ -120,39 +120,25 @@ pipeline.cleanup()
 
 ## 失败与提前结束（pass 语义）
 
-pipeline 只定义调度，不解释失败的严重性。一次 `execute()` 称为一个 **pass**，
-结果是 `PassResult`：
+pipeline 只区分三件事：
 
-- `completed`：所有 processor 都正常返回（可能含 `CONTINUE` 记录的失败）；
-- `interrupted`：失败按策略传播，剩余 processor 被跳过；
-- `aborted_by is not None`：显式提前结束；
-- `ran` / `failures` / `skipped`：逐项记录执行、失败与被跳过的 processor。
+- **正常结束**：所有 processor 依序返回；
+- **提前结束**：processor 抛 `StopPipeline`，剩余 processor 跳过；
+- **失败**：任何其他异常原样上抛，pipeline 不做逐 system 的错误处理。
 
-### 错误策略由组装方声明
+一次 `execute()` 称为一个 **pass**。`PassResult` 只记录调度结果：
+`ran`、`skipped`、`aborted_by`；`completed` 表示没有被提前结束截断。
+普通失败没有结果对象——异常本身就是结果。
 
-processor 抛异常只表示「这一步没完成」，不表示「整条 pipeline 该停」。
-停不停由组装方按 processor 在序列中的位置声明：
+### 为什么只有 StopPipeline 被特殊处理
 
-```python
-from ai_srpg.entitas import ErrorPolicy, ExecuteProcessor
+错误由上层统一兜底：游戏快照在 pass 前写入，任何异常（包括一个 `assert`）
+都会上抛到编排层，由快照回滚到运行前状态。因此 pass 内部不需要
+`PROPAGATE` / `CONTINUE` 这类逐 system 策略，也不需要把失败包进结果对象。
 
-
-class CollectBonus(ExecuteProcessor):
-    error_policy = ErrorPolicy.CONTINUE  # 旁路逻辑：失败也继续
-
-    async def execute(self) -> None:
-        ...
-```
-
-默认 `ErrorPolicy.PROPAGATE`：pipeline 的意义就是顺序依赖，某一步没有完成时
-序列不再可信，剩余 processor 被跳过，异常继续上抛。`CONTINUE` 的失败会进
-`PassResult.failures`，pass 仍算 `completed`。
-
-### 显式提前结束
-
-`StopPipeline` 是控制流信号，不是错误。它继承 `BaseException`，因此不会被
-`except Exception` 吞掉；pipeline 记录 `aborted_by` 与 `skipped` 后逐层上抛，
-由应用边界消费。
+`StopPipeline` 不同：它表示「没有出错，但本轮到此为止」。如果把它当普通
+异常，编排层会误判为失败并回滚；所以用一个独立信号在 pass 内截断剩余
+system，并由应用边界消费。
 
 ```python
 from ai_srpg.entitas import StopPipeline
@@ -161,23 +147,21 @@ if game.is_over:
     raise StopPipeline("campaign finished")
 ```
 
+它继承 `BaseException`，避免被 `except Exception` 顺手吞掉；嵌套 pipeline
+会逐层传递，内层中止同时中止外层。
+
 ### 应用边界
 
-`process_pipeline(pipeline, observer)` 负责：执行一次 pass、保证 `cleanup()`
-一定运行、把 `StopPipeline` 转成 `PassResult` 而不当作失败。真正的失败仍然
-上抛，由上层决定重试与状态处理；最近一次结果保存在 `pipeline.last_pass`。
+`process_pipeline(pipeline, observer)` 保证 `cleanup()` 一定运行；`StopPipeline`
+在这里被消费并转成 `PassResult`，其他异常在 cleanup 后原样上抛。最近一次
+结果保存在 `pipeline.last_pass`；失败路径不更新它，调用方应以上抛的异常为准。
 
-### initialize / tear_down 的策略
+### initialize / tear_down
 
-`initialize()` 与 `tear_down()` 与 `execute()` 共用 `ErrorPolicy` 默认值
-（`PROPAGATE`）：初始化是启动顺序的一部分，关闭也可能相互依赖，失败默认
-中断后续步骤并上抛。需要「失败也继续」的 processor 自行声明
-`CONTINUE`，失败的 processor 仍会通过 observer 的
-`on_processor_failed` 记录。
-
-两者的 `observer` 由调用方显式传入；`StopPipeline` 在任一阶段都表示显式
-中止，不是失败，直接上抛给启动/关闭的边界处理。`cleanup()` 是 pass 的收尾，
-不参与 `error_policy`：`process_pipeline` 保证它一定运行，失败只记录。
+`initialize()` 与 `tear_down()` 不做错误策略：任何异常都中断后续步骤并上抛；
+`StopPipeline` 同样只表示显式中止。两者的 `observer` 由调用方显式传入。
+`cleanup()` 是 pass 的收尾，不参与 `StopPipeline` 消费：`process_pipeline`
+保证它一定运行，失败只记录。
 
 ## 序列化（dump / load）
 

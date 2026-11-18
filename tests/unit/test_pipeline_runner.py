@@ -7,7 +7,6 @@ import pytest
 from ai_srpg.entitas import (
     CleanupProcessor,
     Entity,
-    ErrorPolicy,
     ExecuteProcessor,
     GroupEvent,
     Matcher,
@@ -94,21 +93,18 @@ def test_close_pipeline_tears_down() -> None:
 
 
 class _Step(ExecuteProcessor):
-    """可配置的 processor：正常返回、抛错（带策略）或提前结束。"""
+    """可配置的 processor：正常返回、抛错或提前结束。"""
 
     def __init__(
         self,
         events: List[str],
         *,
         error: Optional[Exception] = None,
-        policy: Optional[ErrorPolicy] = None,
         stop: bool = False,
     ) -> None:
         self._events = events
         self._error = error
         self._stop = stop
-        if policy is not None:
-            self.error_policy = policy
 
     async def execute(self) -> None:
         self._events.append("step")
@@ -118,7 +114,7 @@ class _Step(ExecuteProcessor):
             raise self._error
 
 
-async def test_propagate_policy_interrupts_pass() -> None:
+async def test_execute_error_propagates_and_stops_remaining() -> None:
     events: List[str] = []
     pipeline = ProcessorPipeline()
     pipeline.add(_Step(events, error=RuntimeError("boom")))
@@ -127,30 +123,7 @@ async def test_propagate_policy_interrupts_pass() -> None:
     with pytest.raises(RuntimeError, match="boom"):
         await process_pipeline(pipeline, None)
 
-    result = pipeline.last_pass
     assert events == ["step"]
-    assert result.interrupted
-    assert not result.completed
-    assert result.skipped == ("_Step",)
-    assert [f.system for f in result.failures] == ["_Step"]
-    assert str(result.failures[0].error) == "boom"
-
-
-async def test_continue_policy_records_failure_and_keeps_going() -> None:
-    events: List[str] = []
-    pipeline = ProcessorPipeline()
-    pipeline.add(
-        _Step(events, error=RuntimeError("local"), policy=ErrorPolicy.CONTINUE)
-    )
-    pipeline.add(_Step(events))
-
-    result = await process_pipeline(pipeline, None)
-
-    assert events == ["step", "step"]
-    assert result.completed
-    assert not result.interrupted
-    assert result.skipped == ()
-    assert str(result.failures[0].error) == "local"
 
 
 async def test_stop_pipeline_aborts_without_raising() -> None:
@@ -166,7 +139,6 @@ async def test_stop_pipeline_aborts_without_raising() -> None:
     assert result.aborted_by == "_Step"
     assert result.skipped == ("_Step",)
     assert not result.completed
-    assert not result.interrupted
 
 
 async def test_nested_pipeline_abort_propagates_to_parent() -> None:

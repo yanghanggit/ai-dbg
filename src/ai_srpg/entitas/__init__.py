@@ -13,10 +13,9 @@ from .exceptions import (
 )
 from .group import Group, GroupEvent
 from .matcher import Matcher
-from .pass_result import PassResult, ProcessorFailure
+from .pass_result import PassResult
 from .processor_interfaces import (
     CleanupProcessor,
-    ErrorPolicy,
     ExecuteProcessor,
     InitializeProcessor,
     ProcessorObserver,
@@ -52,9 +51,7 @@ __all__ = [
     "TearDownProcessor",
     "ProcessorObserver",
     "ReactiveProcessor",
-    "ErrorPolicy",
     "PassResult",
-    "ProcessorFailure",
     "StopPipeline",
     "Event",
     "ComponentData",

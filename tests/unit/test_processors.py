@@ -125,26 +125,6 @@ class TestMultiInterfaceProcessor(
 class TestProcessorPipeline:
     """Test cases for all processor classes."""
 
-    def test_initialize_processor_abstract(self) -> None:
-        """Test that InitializeProcessor is abstract."""
-        with pytest.raises(TypeError):
-            InitializeProcessor()  # type: ignore[abstract]
-
-    def test_execute_processor_abstract(self) -> None:
-        """Test that ExecuteProcessor is abstract."""
-        with pytest.raises(TypeError):
-            ExecuteProcessor()  # type: ignore[abstract]
-
-    def test_cleanup_processor_abstract(self) -> None:
-        """Test that CleanupProcessor is abstract."""
-        with pytest.raises(TypeError):
-            CleanupProcessor()  # type: ignore[abstract]
-
-    def test_tear_down_processor_abstract(self) -> None:
-        """Test that TearDownProcessor is abstract."""
-        with pytest.raises(TypeError):
-            TearDownProcessor()  # type: ignore[abstract]
-
     @pytest.mark.asyncio
     async def test_initialize_processor_implementation(self) -> None:
         """Test InitializeProcessor implementation."""

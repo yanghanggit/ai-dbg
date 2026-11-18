@@ -26,10 +26,10 @@ class EntitasException(Exception):
 class StopPipeline(BaseException):
     """调度信号：本 pass 不再执行后续 processor。
 
-    它是**控制流**而不是错误：不参与 ``ErrorPolicy``，也不会被
-    ``except Exception`` 吞掉（继承 ``BaseException``，与
-    :class:`asyncio.CancelledError` 同类）。pipeline 逐层向上传递，
-    由应用边界（``process_pipeline``）消费并转成 ``PassResult(aborted_by=...)``。
+    它是**控制流**而不是错误：不会被 ``except Exception`` 吞掉
+    （继承 ``BaseException``，与 :class:`asyncio.CancelledError` 同类）。
+    pipeline 逐层向上传递，由应用边界（``process_pipeline``）消费并转成
+    ``PassResult(aborted_by=...)``；其他异常则原样上抛，由快照回滚兜底。
     """
 
     def __init__(self, reason: str = "") -> None:

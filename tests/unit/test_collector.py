@@ -80,3 +80,14 @@ class TestCollector:
         other = context.create_entity()
         other.add(Position, 3, 4)
         assert collector.collected_entity_count == 0
+
+
+def test_repr_lists_registered_groups() -> None:
+    context = Context()
+    collector = Collector()
+    collector.add(context.get_group(Matcher(Position)), GroupEvent.ADDED)
+
+    text = repr(collector)
+
+    assert "Collector" in text
+    assert "Group" in text

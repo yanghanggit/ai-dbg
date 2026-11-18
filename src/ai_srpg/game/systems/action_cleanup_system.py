@@ -4,9 +4,6 @@ from typing import Final, FrozenSet, Mapping, Type, final, override
 
 from ...entitas import CleanupProcessor, ExecuteProcessor, Matcher
 from ...entitas.components import Component
-from ...models import (
-    ACTION_COMPONENT_TYPES,
-)
 from ..context import SRPGGame
 
 
@@ -22,7 +19,7 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
     def __init__(
         self,
         game: SRPGGame,
-        action_component_types: Mapping[str, Type[Component]] = ACTION_COMPONENT_TYPES,
+        action_component_types: Mapping[str, Type[Component]],
     ) -> None:
         self._game: Final[SRPGGame] = game
         self._registered_actions: Final[FrozenSet[Type[Component]]] = frozenset(
