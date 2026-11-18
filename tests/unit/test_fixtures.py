@@ -20,7 +20,7 @@ def test_sample_actor_fixture(sample_actor: Any) -> None:
     assert sample_actor.name == "test_actor"
     assert hasattr(sample_actor, "profile")
     assert hasattr(sample_actor, "base_body")
-    assert sample_actor.type == ActorType.NPC
+    assert sample_actor.type == ActorType.NONE
     assert hasattr(sample_actor, "system_message")
     assert sample_actor.system_message == "test system message"
     # assert hasattr(sample_actor, "kick_off_message")

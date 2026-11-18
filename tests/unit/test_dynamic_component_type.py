@@ -47,7 +47,7 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
     """构造一个挂载了指定动态组件的 Stage 模型。"""
     return Stage(
         name=name,
-        type=StageType.LOBBY,
+        type=StageType.NONE,
         profile="测试场景",
         system_message=f"{name} 的系统消息",
         actors=[],

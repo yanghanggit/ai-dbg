@@ -10,12 +10,9 @@ from ...models import (
     COMPONENT_TYPES,
     Actor,
     ActorComponent,
-    ActorType,
     AppearanceComponent,
     Blueprint,
     IdentityComponent,
-    MonsterComponent,
-    NPCComponent,
     PlayerComponent,
     Stage,
     StageComponent,
@@ -97,7 +94,7 @@ def _create_world_entities(
 def create_actor_entities(
     srpg_game: SRPGGame, actor_models: List[Actor]
 ) -> List[Entity]:
-    """创建角色实体（玩家、NPC、敌人）。"""
+    """创建蓝图声明的全部角色实体；谁被玩家控制由 ``PlayerComponent`` 决定。"""
     actor_entities: List[Entity] = []
     for actor_model in actor_models:
         actor_entity = srpg_game.create_entity(actor_model.name)
@@ -127,13 +124,6 @@ def create_actor_entities(
             actor_model.base_body,
             actor_model.base_body,
         )
-        match actor_model.type:
-            case ActorType.NPC:
-                actor_entity.add(NPCComponent, actor_model.name)
-            case ActorType.MONSTER:
-                actor_entity.add(MonsterComponent, actor_model.name)
-            case _:
-                assert False, f"未知的 ActorType: {actor_model.type}"
 
         for comp_name, comp_data in actor_model.components.items():
             comp_class = COMPONENT_TYPES.get(comp_name)

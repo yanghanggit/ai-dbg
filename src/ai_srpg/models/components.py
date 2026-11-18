@@ -82,21 +82,3 @@ class AppearanceComponent(Component):
     name: str
     base_body: str  # 基础身体形态描述（不含装备）
     appearance: str  # 最终外观描述（含装备）
-
-
-############################################################################################################
-@final
-@register_component_type
-class NPCComponent(Component):
-    """标记角色为 NPC（非玩家控制的友方角色），属于友方阵营。"""
-
-    name: str
-
-
-############################################################################################################
-@final
-@register_component_type
-class MonsterComponent(Component):
-    """标记角色为怪物（敌方阵营战斗单位）。"""
-
-    name: str

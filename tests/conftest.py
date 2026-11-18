@@ -19,7 +19,7 @@ def sample_actor() -> Actor:
     """Create a sample actor for testing."""
     return Actor(
         name="test_actor",
-        type=ActorType.NPC,
+        type=ActorType.NONE,
         profile="test profile",
         base_body="",
         system_message="test system message",

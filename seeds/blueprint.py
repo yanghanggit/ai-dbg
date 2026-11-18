@@ -94,7 +94,7 @@ def create_nameless() -> Actor:
 
     return create_actor(
         name="角色.无名",
-        actor_type=ActorType.NPC,
+        actor_type=ActorType.NONE,
         profile="""**历史**: 你醒来时想不起自己是谁，也想不起自己从哪儿来。你身上穿着一件不属于此地样式的旧斗篷，脑海深处只残留着一些断裂的碎片——那里没有魔法，也没有刀剑横行的荒野。你说不清那是什么地方，却清楚一件事：你不是这里的人。这件事你对谁都没有提过，也说不清。于是你给自己取了一个称呼：「无名」。把你从路边捡回来的，是个落魄的老佣兵，他给你起了名，也没多问，就这样把你带进了这一行。
 **性格**: 你沉默，观察多于开口。面对陌生的事物不会慌乱，而是停下来，仔细看，仔细想，再决定怎么做。你不排斥危险，但也不会轻易莽撞。
 **禁忌**: 你对任何人追问你的来历、强行拿走你身上仅有的东西、或强迫你去某个地方，都有本能的抵触。
@@ -106,12 +106,12 @@ def create_nameless() -> Actor:
 
 
 #######################################################################################################################################
-def create_lobby() -> Stage:
-    """创建极简大厅/营地：作为场景与据点数据的起点。"""
+def create_camp_stage() -> Stage:
+    """创建极简营地：作为场景与据点数据的起点。"""
 
     stage = create_stage(
         name="场景.营地",
-        stage_type=StageType.LOBBY,
+        stage_type=StageType.NONE,
         profile="""一处背风的营地。碎石围出一圈浅坑，余烬还带着一点温度；几件行囊靠在岩根，远处是通往荒野的旧道。
 这里没有常驻的人，也没有可做的事，只是出发前与归来后短暂停留的地方。""",
         campaign_setting=CAMPAIGN_SETTING,
@@ -153,14 +153,14 @@ def _assert_no_dangling_world_refs(blueprint: Blueprint) -> None:
 
 #######################################################################################################################################
 def create_seed_blueprint(game_name: str) -> Blueprint:
-    """创建种子蓝图：单人大厅，等待后续 SRPG 内容扩展。"""
+    """创建种子蓝图：单人营地，等待后续 SRPG 内容扩展。"""
 
     blueprint = Blueprint(
         name=game_name,
         player_actor="角色.无名",
         campaign_setting=CAMPAIGN_SETTING,
         system_rules=SYSTEM_RULES,
-        stages=[create_lobby()],
+        stages=[create_camp_stage()],
         world_entities=[],
     )
 
