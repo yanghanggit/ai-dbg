@@ -20,7 +20,7 @@ from typing import List
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-_SCAN_DIRS = ("src", "tests", "demo", "scripts")
+_SCAN_DIRS = ("src", "tests", "seeds", "scripts")
 
 # 这些 token 出现在两个字面量之间时，不构成「隐式拼接」以外的语义
 _IGNORABLE = {

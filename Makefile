@@ -34,9 +34,9 @@ test:
 # 因此可单次运行、共用 .mypy_cache（早期跨目录缓存冲突已消除）。
 lint:
 	@echo "🔍 运行类型检查..."
-	uv run mypy --strict src scripts tests demo
+	uv run mypy --strict src scripts tests seeds
 	@echo "🔍 运行 ruff 检查..."
-	uv run ruff check src scripts tests demo
+	uv run ruff check src scripts tests seeds
 
 # 格式化代码
 format:

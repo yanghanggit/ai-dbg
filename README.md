@@ -39,13 +39,13 @@ source .venv/bin/activate        # macOS/Linux
 
 复制 `cp .env.example .env`，填好数据库连接、`DEEPSEEK_API_KEY`、`GAME_SERVER_PORT` 等。
 
-### 首次初始化演示数据
+### 初始化测试数据库
 
 ```bash
-python -m scripts.setup_demo     # 把 demo/ 的硬编码设定刷入 .blueprints/、.dungeons/ 与数据库
+uv run python -m scripts.seed_db     # 种子蓝图写入 .blueprints/，并重建空库（表结构 + Procrastinate + 测试用户）
 ```
 
-> `demo/` 在仓库根，故须**从项目根目录**以模块方式运行。
+> 会删除目标库中的全部数据，运行前请确认 `.env` 指向的是开发库。
 
 ## ▶️ 启动与使用
 

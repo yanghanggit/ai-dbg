@@ -7,7 +7,6 @@
 
 from loguru import logger
 
-from .card_prototype import CardPrototypeDB
 from .job_event import JobEventDB
 from .vector_document import VectorDocumentDB
 
@@ -15,7 +14,6 @@ from .vector_document import VectorDocumentDB
 
 __all__ = [
     "VectorDocumentDB",
-    "CardPrototypeDB",
     "JobEventDB",
     "register_all_models",
 ]
@@ -29,4 +27,4 @@ def register_all_models() -> None:
     """
 
     logger.debug("数据库模型注册完成")
-    logger.debug(f"已注册模型: VectorDocumentDB, CardPrototypeDB, JobEventDB")
+    logger.debug("已注册模型: VectorDocumentDB, JobEventDB")

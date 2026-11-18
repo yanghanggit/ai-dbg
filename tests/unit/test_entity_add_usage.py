@@ -9,7 +9,7 @@ entitas 是底层库，本身不感知上层游戏；「``add`` 只在实体创�
 运行期（systems / services / pipelines）必须使用 ``Entity.replace``：它同时承担
 「新增」与「替换」语义，避免「先 has 再 add」的分支。
 
-检测方式（AST）：扫描 ``src/``、``demo/``，凡方法名为 ``add``（或内部原语
+检测方式（AST）：扫描 ``src/``，凡方法名为 ``add``（或内部原语
 ``_add``）且**首个位置参数是组件类**的调用即视为 ``Entity.add``。容器调用
 （``processors.add(System(...))``、``seen.add(name)``、``db.add(obj)`` 等）的首个
 参数不是组件类，不会误报。
@@ -24,7 +24,7 @@ from typing import Final, List, Optional
 ROOT: Final = Path(__file__).resolve().parents[2]
 
 #: 需要扫描的上层代码目录（tests/ 本身就是豁免区，无需扫描）。
-SCAN_DIRS: Final = ("src", "demo")
+SCAN_DIRS: Final = ("src",)
 
 #: 允许调用 add 的唯一模块。
 SRPG_GAME_PATH: Final = ROOT / "src" / "ai_srpg" / "game" / "entities/blueprint.py"

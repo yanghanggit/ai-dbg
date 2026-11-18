@@ -25,7 +25,7 @@ from typing import Dict, Final, FrozenSet, List, Optional, Set, Tuple
 ROOT: Final = Path(__file__).resolve().parents[2]
 
 #: 需要扫描的运行期代码目录（tests/ 豁免）。
-SCAN_DIRS: Final = ("src", "demo")
+SCAN_DIRS: Final = ("src", "seeds")
 
 #: 会就地修改容器的列表方法。
 MUTATING_METHODS: Final = frozenset(

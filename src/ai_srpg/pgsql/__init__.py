@@ -5,15 +5,6 @@ Database access layer for the nirva_service application.
 from typing import List
 
 from .base import *
-from .card_prototype import CardPrototypeDB
-from .card_prototype_operations import (
-    CardPrototypeIndexEntry,
-    delete_card_prototypes,
-    get_card_prototype,
-    get_card_prototype_by_name,
-    list_card_prototype_index,
-    save_card_prototype,
-)
 from .client import *
 from .config import PostgreSQLConfig, postgresql_config
 from .job_event import JobEventDB
@@ -37,15 +28,6 @@ __all__: List[str] = [
     # Vector document operations (low-level)
     "save_vector_document",
     "search_similar_documents",
-    # Card prototype models
-    "CardPrototypeDB",
-    "CardPrototypeIndexEntry",
-    # Card prototype operations
-    "save_card_prototype",
-    "delete_card_prototypes",
-    "list_card_prototype_index",
-    "get_card_prototype",
-    "get_card_prototype_by_name",
     # Job event models
     "JobEventDB",
     # Job event operations
