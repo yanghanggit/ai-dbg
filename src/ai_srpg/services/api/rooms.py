@@ -9,11 +9,23 @@ from fastapi import APIRouter, Response, status
 from ...session import PlayerSession
 from ...session.access import require_room
 from ...session.errors import RoomNotFoundError
+from ...session.room import PlayerRoom
 from ..dependencies import CurrentGameServer
 from .schemas import RoomStateResponse
 
 ################################################################################################################
 rooms_api_router = APIRouter(prefix="/api/rooms/v1", tags=["rooms"])
+
+
+################################################################################################################
+def room_state(room: PlayerRoom) -> RoomStateResponse:
+    """把房间内存态映射成传输契约。"""
+    session = room.player_session
+    return RoomStateResponse(
+        user_name=room.username,
+        game=room.game.name if room.game is not None else None,
+        session_event_sequence=session.event_sequence if session is not None else 0,
+    )
 
 
 ################################################################################################################
@@ -39,7 +51,7 @@ async def enter_room(
         if room.player_session is None:
             room.attach_session(PlayerSession(name=user_name))
 
-    return RoomStateResponse.from_room(room)
+    return room_state(room)
 
 
 ################################################################################################################
@@ -51,7 +63,7 @@ async def enter_room(
 async def get_room(game_server: CurrentGameServer, user_name: str) -> RoomStateResponse:
     """查询房间当前状态；房间不存在时抛 ``RoomNotFoundError``（404）。"""
 
-    return RoomStateResponse.from_room(require_room(game_server, user_name))
+    return room_state(require_room(game_server, user_name))
 
 
 ################################################################################################################

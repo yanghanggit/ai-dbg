@@ -87,6 +87,7 @@ dev = [
 
 [project.scripts]
 ai-srpg-server = "ai_srpg.cli.srpg_server:main"
+ai-srpg-client = "ai_srpg.cli.srpg_client:main"
 ai-srpg-agent-game = "ai_srpg.cli.srpg_agent_game:main"
 
 [tool.setuptools.packages.find]

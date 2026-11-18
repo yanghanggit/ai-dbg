@@ -62,45 +62,35 @@ curl http://127.0.0.1:8000/
 ### 客户端-服务端基本操作（无鉴权阶段）
 
 当前是基建阶段：**没有鉴权**，路径里的 `user_name` 就是身份；**没有玩法**，一次
-`advance` 只是跑一遍 pass 并追加快照。整条链路可用下面的 curl 走通。
-
-前提：`.blueprints/Game1.json` 已存在（`uv run python -m scripts.reset_dev_db` 会
-一并生成蓝图与建表）。
+`advance` 只是跑一遍 pass 并追加快照。用客户端 CLI 走完整条链路（服务端另开终端）：
 
 ```bash
-B=http://127.0.0.1:8000
+uv run ai-srpg-server --host 127.0.0.1 --port 8000
 
-# 1. 进入房间（=登录）；不存在则建，已存在则复用（201 / 200）
-curl -X POST $B/api/rooms/v1/alice
+export AI_SRPG_SERVER_URL=http://127.0.0.1:8000     # 或每条命令传 --server
 
-# 2. 开局：加载最新快照，没有则从蓝图新建；重复调用幂等
-curl -X POST $B/api/games/v1/alice/Game1
-
-# 3. 派发一次 pass，立即拿到 job id（202）
-curl -X POST $B/api/games/v1/alice/Game1/advance
-
-# 4. 查询 job 状态 / 事件 / SSE 监听
-curl $B/api/jobs/v1/1
-curl "$B/api/jobs/v1/1/events?after_id=0"
-curl -N "$B/api/jobs/v1/watch/1"
-
-# 5. 快照是持久化真相：每次 pass 前追加一条
-curl "$B/api/games/v1/alice/Game1/snapshots?limit=5"
-
-# 6. 读世界状态（需房间与游戏都在）
-curl -G "$B/api/entities/v1/alice/Game1/group" --data-urlencode "all_of=PlayerComponent"
-
-# 7. 离开房间（关闭并移除）
-curl -X DELETE $B/api/rooms/v1/alice
+uv run ai-srpg-client info                         # 服务自描述与路由清单
+uv run ai-srpg-client enter alice                  # 进入房间（=登录）
+uv run ai-srpg-client open alice Game1             # 开局：最新快照或蓝图新建
+uv run ai-srpg-client advance alice Game1          # 派发一次 pass 并等待终态
+uv run ai-srpg-client snapshots alice Game1        # 每次 pass 前追加一条快照
+uv run ai-srpg-client messages alice               # 会话历史增量
+uv run ai-srpg-client play alice Game1 --rounds 3  # 无人值守连跑 3 轮
+uv run ai-srpg-client leave alice                  # 离开房间（快照保留）
 ```
+
+前提：`.blueprints/Game1.json` 已存在（`uv run python -m scripts.reset_dev_db`
+会一并生成蓝图与建表）。
 
 约定与注意：
 
-- 房间与游戏是两个生命周期：先进入房间，再开局；离开房间不影响已落库的快照。
-- `advance` 的房间级 queueing_lock 只挡「排队中」的重复派发（409）；已出队执行时
-  可再次派发，执行期由房间锁串行。
-- OpenAPI 全量可用：`/openapi.json`、`/docs`（Swagger UI）、`/redoc`。路由按
-  `rooms` / `games` / `session-messages` / `components` / `entities` / `jobs` 分组。
+- 房间与游戏是两个生命周期：先 `enter` 再 `open`；`leave` 不影响已落库的快照。
+- `advance` 默认等 job 终态；`--no-wait` 只返回 job id，进度用 `job` 子命令看。
+- 房间级 queueing_lock 只挡「排队中」的重复派发（409）；已出队执行时可再次派发，
+  执行期由房间锁串行。
+- 客户端与服务端共用同一份传输契约；原始 HTTP 与 OpenAPI 同样可用：
+  `/openapi.json`、`/docs`、`/redoc`，路由按 `rooms` / `games` /
+  `session-messages` / `components` / `entities` / `jobs` 分组。
 - **不要**在不可信网络上用 `--host 0.0.0.0`：路由本身没有鉴权。
 
 ### 后台定时任务
@@ -123,6 +113,7 @@ curl -X DELETE $B/api/rooms/v1/alice
 | 命令 | 用途 | 文档 |
 | --- | --- | --- |
 | `ai-srpg-agent-game` | 离线、快照驱动推进（建局、查看、推进、压缩；含 LLM 调用观测） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
+| `ai-srpg-client` | 进程内 HTTP 驱动服务端（进入房间、开局、推进、快照与会话读取） | [docs/wiki/run-game-client.md](docs/wiki/run-game-client.md) |
 
 `uv run <命令> --help` 可列出全部子命令。
 

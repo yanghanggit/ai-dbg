@@ -13,6 +13,7 @@ from ...pgsql import list_game_snapshots
 from ...session import PlayerSession
 from ...session.access import require_game, require_room
 from ..dependencies import CurrentGameServer
+from .rooms import room_state
 from .schemas import DispatchJobResponse, RoomStateResponse, SnapshotListResponse
 
 ################################################################################################################
@@ -32,7 +33,7 @@ async def open_game(
 
     room = require_room(game_server, user_name)
     if room.game is not None and room.game.name == game_name:
-        return RoomStateResponse.from_room(room)
+        return room_state(room)
 
     # 读快照/建蓝图都要访问数据库，放在房间锁外，避免阻塞同房间的其他请求
     game = await load_or_create_game(user_name, game_name)
@@ -41,7 +42,7 @@ async def open_game(
         session = room.player_session or PlayerSession(name=user_name)
         room.bind(game=game, player_session=session)
 
-    return RoomStateResponse.from_room(room)
+    return room_state(room)
 
 
 ################################################################################################################

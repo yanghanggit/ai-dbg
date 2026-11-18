@@ -22,7 +22,7 @@ from ai_srpg.gameplay.scheduler import run_gameplay_scheduler
 from ai_srpg.models import ASSETS_URL_PREFIX
 from ai_srpg.paths import ASSETS_DIR, LOGS_DIR
 from ai_srpg.pgsql import procrastinate_app
-from ai_srpg.services.api import API_ROUTERS
+from ai_srpg.services.api.routes import API_ROUTERS
 from ai_srpg.services.api.schemas import ApiRouteInfo, ServerInfoResponse
 from ai_srpg.services.http_errors import register_room_error_handlers
 from ai_srpg.session.runtime import bind_runtime_game_server

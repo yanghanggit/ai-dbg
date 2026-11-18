@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 
 from ...entitas import ContextData
 from ...models import GameSnapshotInfo, JobEvent, SessionMessage
-from ...session import PlayerRoom
 
 ################################################################################################################
 # 组件 / 实体
@@ -46,17 +45,6 @@ class RoomStateResponse(BaseModel):
     user_name: str
     game: Optional[str] = None
     session_event_sequence: int = 0
-
-    @classmethod
-    def from_room(cls, room: PlayerRoom) -> "RoomStateResponse":
-        session = room.player_session
-        return cls(
-            user_name=room.username,
-            game=room.game.name if room.game is not None else None,
-            session_event_sequence=(
-                session.event_sequence if session is not None else 0
-            ),
-        )
 
 
 ################################################################################################################
