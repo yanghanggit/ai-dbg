@@ -12,8 +12,11 @@ class _FakePipeline:
     def __init__(self) -> None:
         self.shutdown_called = False
 
-    def shutdown(self) -> None:
+    def tear_down(self) -> None:
         self.shutdown_called = True
+
+    def clear_reactive_processors(self) -> None:
+        pass
 
 
 class _FakeGame:

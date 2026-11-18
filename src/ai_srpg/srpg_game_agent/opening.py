@@ -9,6 +9,7 @@ from ai_srpg.game.dungeon import (
     is_current_room_dungeon_opening,
 )
 from ai_srpg.game.persistence.store import store_game_async
+from ai_srpg.game.pipelines import process_pipeline
 from ai_srpg.models import PlayerSession, WorldState
 
 from .core import restore_game
@@ -31,7 +32,7 @@ async def init_opening_game(
         return terminal_game
 
     # 推动全局 pipeline（各 system 自守卫；开场初始化按消息标记幂等）
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

@@ -4,11 +4,11 @@
 由 system 自己判断当前 world 状态是否适用；调用方不再选择房间或动作 pipeline。
 """
 
+from ...entitas import ProcessorPipeline
 from ..context import SRPGGame
-from .manager import RPGGameProcessPipeline
 
 
-def build_game_pipeline(srpg_game: SRPGGame) -> RPGGameProcessPipeline:
+def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     """构建全局唯一的线性 system 流程。"""
 
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
@@ -17,7 +17,7 @@ def build_game_pipeline(srpg_game: SRPGGame) -> RPGGameProcessPipeline:
     from ...systems.epilogue_system import EpilogueSystem
     from ...systems.prologue_system import PrologueSystem
 
-    pipeline = RPGGameProcessPipeline()
+    pipeline = ProcessorPipeline()
 
     # ---------------------------------------------------------------------
     # 通用前置：每轮固定入口

@@ -17,6 +17,7 @@ from ai_srpg.game.entities import (
     get_actor_entity,
 )
 from ai_srpg.game.persistence.store import store_game_async
+from ai_srpg.game.pipelines import process_pipeline
 from ai_srpg.models import CombatState, MonsterComponent, PlayerSession, WorldState
 from ai_srpg.services.dungeon_combat_actions import (
     activate_all_card_draws,
@@ -50,7 +51,7 @@ async def init_combat_game(
         logger.error("combat-init 只能在战斗初始化阶段使用")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     await store_game_async(terminal_game, save_dir)
     return terminal_game
@@ -78,7 +79,7 @@ async def draw_cards_game(
         logger.error(f"激活全员抽牌失败: {message}")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     await store_game_async(terminal_game, save_dir)
     return terminal_game
@@ -137,7 +138,7 @@ async def play_cards_specified_game(
         return terminal_game
 
     # 指定手牌成功处理后，继续执行战斗房间的处理流水线。
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     if current_dungeon_combat(terminal_game).state == CombatState.POST_COMBAT:
         logger.debug("在本次处理中战斗已结束，进入后处理阶段")
@@ -175,7 +176,7 @@ async def use_consumable_game(
         logger.error(f"use-consumable 失败: {message}")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     await store_game_async(terminal_game, save_dir)
     return terminal_game
@@ -197,7 +198,7 @@ async def equip_gear_game(
         logger.error(f"equip-gear 失败: {message}")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     await store_game_async(terminal_game, save_dir)
     return terminal_game
@@ -231,7 +232,7 @@ async def pass_turn_game(
         logger.error(f"pass-turn 失败: {message}")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     await store_game_async(terminal_game, save_dir)
     return terminal_game
@@ -264,7 +265,7 @@ async def retreat_game(
 
     logger.info(f"撤退动作激活成功: {message}")
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     # 与 API 对齐：撤退流程执行后必须已进入 post_combat 状态
     if not current_dungeon_combat(terminal_game).is_post_combat:

@@ -7,6 +7,7 @@ from procrastinate import JobContext
 
 from ..game.context import SRPGGame
 from ..game.persistence.store import store_game_async
+from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
 from ..pgsql import procrastinate_app
 from .compact_action import activate_compact_context
@@ -45,7 +46,7 @@ async def execute_compact_context_job(
                 raise ValueError(message)
 
             # 执行全局 pipeline，由 CompactContextActionSystem 处理手动触发的压缩动作
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存档压缩后的世界状态，便于调试和回放
             await store_game_async(rpg_game)

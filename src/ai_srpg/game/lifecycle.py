@@ -3,6 +3,7 @@
 from loguru import logger
 
 from .context import SRPGGame
+from .pipelines import close_pipeline
 
 
 ###############################################################################################################################################
@@ -15,7 +16,7 @@ async def initialize_pipeline(srpg_game: SRPGGame) -> None:
 ###############################################################################################################################################
 def shutdown_pipeline(srpg_game: SRPGGame) -> None:
     """关闭唯一 pipeline 并清理资源。"""
-    srpg_game.pipeline.shutdown()
+    close_pipeline(srpg_game.pipeline)
 
 
 ###############################################################################################################################################

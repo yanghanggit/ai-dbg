@@ -23,7 +23,7 @@ from ..models import WorldState
 from .events import DomainEventSink, NullEventSink
 
 if TYPE_CHECKING:
-    from .pipelines.manager import RPGGameProcessPipeline
+    from ..entitas import ProcessorPipeline
 
 
 #################################################################################################################################################
@@ -87,7 +87,7 @@ class SRPGGame:
     world: WorldState
     ecs: ECSContext = field(default_factory=ECSContext)
     events: DomainEventSink = field(default_factory=NullEventSink)
-    pipeline: RPGGameProcessPipeline = field(init=False)
+    pipeline: ProcessorPipeline = field(init=False)
 
     def __repr__(self) -> str:
         return f"<SRPGGame name={self.name!r} player={self.player_name!r} entities={self.ecs.entity_count}>"

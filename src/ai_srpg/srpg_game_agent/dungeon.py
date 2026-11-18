@@ -18,6 +18,7 @@ from ai_srpg.game.dungeon import (
     is_player_in_dungeon_stage,
 )
 from ai_srpg.game.persistence.store import store_game_async
+from ai_srpg.game.pipelines import process_pipeline
 from ai_srpg.models import PlayerSession, WorldState
 from ai_srpg.services.dungeon_advance_action import (
     advance_dungeon,
@@ -159,7 +160,7 @@ async def exit_dungeon_game(
         logger.error(f"exit-dungeon 失败: {msg}")
         return terminal_game
 
-    await terminal_game.pipeline.process(None)
+    await process_pipeline(terminal_game.pipeline, None)
 
     # 最后归档
     await store_game_async(terminal_game, save_dir)

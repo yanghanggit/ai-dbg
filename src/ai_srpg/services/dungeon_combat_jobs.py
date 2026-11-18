@@ -16,6 +16,7 @@ from ..game.entities import (
     get_actor_entity,
 )
 from ..game.persistence.store import store_game_async
+from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
 from ..models import MonsterComponent
 from ..pgsql import procrastinate_app
@@ -68,7 +69,7 @@ async def execute_init_combat_job(
                 raise ValueError("战斗未处于开始阶段")
 
             # 推进战斗流程处理战斗初始化
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储战斗初始化后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -119,7 +120,7 @@ async def execute_retreat_job(
                 raise ValueError(message)
 
             # 执行战斗流程让 CombatOutcomeSystem 检测到角色死亡并判定失败
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 确认已进入 post_combat 状态
             if not current_dungeon_combat(rpg_game).is_post_combat:
@@ -180,7 +181,7 @@ async def execute_draw_cards_job(
                 raise ValueError(message)
 
             # 推进战斗流程处理抽牌
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储抽牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -241,7 +242,7 @@ async def execute_play_cards_job(
                 raise ValueError(message)
 
             # 推进战斗流程处理出牌
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储出牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -294,7 +295,7 @@ async def execute_pass_turn_job(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储过牌后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -348,7 +349,7 @@ async def execute_use_consumable_job(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储使用消耗品后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
@@ -395,7 +396,7 @@ async def execute_equip_gear_job(
                 raise ValueError(message)
 
             # 处理战斗流水线
-            await rpg_game.pipeline.process(get_current_job())
+            await process_pipeline(rpg_game.pipeline, get_current_job())
 
             # 存储使用装备后的世界状态，便于调试和回放
             await store_game_async(rpg_game)
