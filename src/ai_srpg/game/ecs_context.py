@@ -4,7 +4,7 @@
 创建、销毁、按名称查找、快照序列化/恢复都通过本类的方法完成，业务代码不需要感知索引。
 """
 
-from typing import Dict, Optional, Set, Type
+from typing import Dict, Optional, Set, Type, override
 
 from ..entitas import (
     Component,
@@ -87,15 +87,10 @@ class ECSContext(Context):
         ordered = sorted(self.entities, key=lambda entity: entity.index)
         return dump_entities(ordered, component_filter=_require_registered_component)
 
+    @override
     def clear(self) -> None:
-        """清空 context：实体、组件池、分组与名称索引全部重置。
-
-        分组对象会失效；reactive processors 的 collector 仍持有旧 group 引用，
-        因此调用方在 ``clear()`` 之后必须重建 pipeline。
-        """
-        self._pools.clear()
-        self._handles.clear()
-        self._groups.clear()
+        """先清父类的实体/组件/分组，再清游戏层派生的名称索引。"""
+        super().clear()
         self._entity_index.clear()
 
     def restore(

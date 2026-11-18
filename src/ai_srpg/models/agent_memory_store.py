@@ -29,6 +29,21 @@ class AgentMemoryStore:
         self._memories.pop(name, None)
 
     ###########################################################################
+    def snapshot(self) -> Dict[str, AgentMemory]:
+        """导出深拷贝，避免快照被后续写入污染。"""
+        return {
+            name: memory.model_copy(deep=True)
+            for name, memory in self._memories.items()
+        }
+
+    ###########################################################################
+    def restore(self, memories: Dict[str, AgentMemory]) -> None:
+        """用快照整体替换当前记忆（深拷贝入容器）。"""
+        self._memories = {
+            name: memory.model_copy(deep=True) for name, memory in memories.items()
+        }
+
+    ###########################################################################
     def all(self) -> Dict[str, AgentMemory]:
         """返回内部字典（只读用途；不要用它做结构性修改）。"""
         return self._memories

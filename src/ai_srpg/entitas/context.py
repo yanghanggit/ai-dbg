@@ -151,6 +151,17 @@ class Context:
 
         return entity
 
+    def clear(self) -> None:
+        """Clears the context core: component pools, entity slots and groups.
+
+        Groups are discarded together with their cached indices; callers that
+        hold references to groups must recreate them afterwards. Subclasses that
+        keep derived indexes should override this and clear them too.
+        """
+        self._pools.clear()
+        self._handles.clear()
+        self._groups.clear()
+
     def destroy_entity(self, entity: Entity) -> None:
         """Removes an entity from the context and marks its slot dead.
 

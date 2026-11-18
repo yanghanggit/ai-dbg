@@ -13,7 +13,9 @@ from loguru import logger
 
 from ..entitas import Entity, ProcessorPipeline
 from ..models import (
+    MEMORY_SNAPSHOT_FORMAT_VERSION,
     SNAPSHOT_FORMAT_VERSION,
+    AgentMemorySnapshot,
     AgentMemoryStore,
     ContextSnapshot,
     EntityNaming,
@@ -41,7 +43,7 @@ class SRPGGame(ECSContext):
         # 由 `create_srpg_game` 装配后替换为空 pipeline 之上的真实流程。
         self.pipeline: ProcessorPipeline = ProcessorPipeline()
 
-    def snapshot(self) -> ContextSnapshot:
+    def ecs_snapshot(self) -> ContextSnapshot:
         """导出当前 ECS 核心状态（实体与组件）。
 
         不包含 agent 记忆：记忆管理与 ECS 是平级系统，各自维护自己的快照。
@@ -52,7 +54,7 @@ class SRPGGame(ECSContext):
             entities=self.snapshot_entities(),
         )
 
-    def restore_snapshot(self, snapshot: ContextSnapshot) -> None:
+    def restore_ecs_snapshot(self, snapshot: ContextSnapshot) -> None:
         """在空 context 上恢复快照。
 
         :raises ValueError: 格式版本或游戏名不匹配
@@ -69,14 +71,29 @@ class SRPGGame(ECSContext):
         self.restore(snapshot.entities, resolve_component_type)
         self.entity_naming = EntityNaming(snapshot.entity_naming_counter)
 
-    def rollback(self, snapshot: ContextSnapshot) -> None:
+    def rollback_ecs(self, snapshot: ContextSnapshot) -> None:
         """清空当前状态并回到快照（用于运行失败后的回滚）。
 
         ``clear()`` 会让既有 group 与 reactive collector 失效，调用方必须随后
         重建 pipeline（``build_game_pipeline``）并重新 initialize。
         """
         self.clear()
-        self.restore_snapshot(snapshot)
+        self.restore_ecs_snapshot(snapshot)
+
+    def memory_snapshot(self) -> AgentMemorySnapshot:
+        """导出 agent 记忆快照（与 ECS 快照平级）。"""
+        return AgentMemorySnapshot(memories=self.agent_memory_store.snapshot())
+
+    def restore_memory_snapshot(self, snapshot: AgentMemorySnapshot) -> None:
+        """整体恢复 agent 记忆。
+
+        :raises ValueError: 格式版本不匹配
+        """
+        if snapshot.format_version != MEMORY_SNAPSHOT_FORMAT_VERSION:
+            raise ValueError(
+                f"记忆快照格式版本不匹配: {snapshot.format_version} != {MEMORY_SNAPSHOT_FORMAT_VERSION}"
+            )
+        self.agent_memory_store.restore(snapshot.memories)
 
     def destroy_entity(self, entity: Entity) -> None:
         """销毁实体：先清理它的 LLM 记忆，再从 ECS 销毁（名称索引同步移除）。"""
