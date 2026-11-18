@@ -107,6 +107,26 @@ async def test_run_game_pass_acquires_room(user_name: str) -> None:
     result = await run_game_pass(user_name)
 
     assert result.completed
+    # 一条执行前（回滚基线）+ 一条结果（当前状态）
+    assert len(list_game_snapshot_ids(user_name, "Game1")) == 2
+
+
+async def test_run_game_pass_failure_keeps_only_pre_run_snapshot(
+    user_name: str,
+) -> None:
+    game = create_srpg_game(name="Game1")
+    game.pipeline = ProcessorPipeline()
+    game.pipeline.add(_CreateThenFail(game))
+
+    server = GameServer()
+    room = await server.create_room(user_name)
+    room.bind(game=game, player_session=PlayerSession(name=user_name))
+    bind_runtime_game_server(server)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await run_game_pass(user_name)
+
+    assert game.entity_count == 0
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
 
 

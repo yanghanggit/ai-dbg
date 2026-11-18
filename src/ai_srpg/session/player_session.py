@@ -1,15 +1,12 @@
-"""用户级会话历史（聚合根）。
+"""用户级会话历史的游标与上下文指针。
 
-会话不随某一局 ``SRPGGame`` 重置：游戏是客户端当前看到的世界，会话是脱离游戏的
-上帝视角。``actor`` / ``game`` 只表示当前上下文，每条 ``SessionMessage`` 自己记录
-产生时的 game / actor / job。
+历史消息本身是 append-only 的持久化数据（见 ``pgsql.session_messages``），不在
+内存里累积；这个聚合只负责两件事：分配用户级递增序号、承载「当前游戏/角色」指针。
 
-放在 ``session`` 包而不是 ``models``：它是**有行为与不变量的运行期聚合**（追加时
-分配全局序号、按序号增量读取），不是可自由构造的传输/快照数据；DTO 仍在
-``models.session_message``。
+因此它可以在任何进程里从存储恢复：按最大序号构造，追加时递增，读历史走存储层。
 """
 
-from typing import List, Optional, final
+from typing import Optional, final
 
 from pydantic import BaseModel
 
@@ -19,7 +16,7 @@ from ..models import AnyAgentEvent, SessionMessage
 ###############################################################################
 @final
 class PlayerSession(BaseModel):
-    """用户级、append-only 的会话历史。"""
+    """用户级会话：脱离单局游戏的「上帝视角」。"""
 
     # 玩家的唯一标识符(通常是用户名)
     name: str
@@ -30,15 +27,12 @@ class PlayerSession(BaseModel):
     # 当前游戏名字（当前上下文，不是历史身份）
     game: Optional[str] = None
 
-    # 会话的完整消息/事件历史列表，按 sequence_id 递增
-    session_messages: List[SessionMessage] = []
-
-    # 全局事件序号，跨游戏持续递增
+    # 已分配的最大事件序号，跨游戏持续递增；从存储恢复
     event_sequence: int = 0
 
     ###############################################################################
     def set_context(self, *, actor: Optional[str], game: Optional[str]) -> None:
-        """更新当前游戏上下文；不会清理历史消息与序号。"""
+        """更新当前游戏上下文；不影响历史与序号。"""
         self.actor = actor
         self.game = game
 
@@ -51,24 +45,12 @@ class PlayerSession(BaseModel):
         game_name: Optional[str] = None,
         actor: Optional[str] = None,
     ) -> SessionMessage:
-        """追加一条代理事件，并返回已经分配序号的 ``SessionMessage``。"""
-        agent_event_message = SessionMessage(
+        """分配序号并构造一条 ``SessionMessage``；落盘由调用方（sink）负责。"""
+        self.event_sequence += 1
+        return SessionMessage(
             agent_event=agent_event,
+            sequence_id=self.event_sequence,
             job_id=job_id,
             game_name=game_name if game_name is not None else self.game,
             actor=actor if actor is not None else self.actor,
         )
-        return self._add_session_message(agent_event_message)
-
-    ###############################################################################
-    def _add_session_message(self, message: SessionMessage) -> SessionMessage:
-        """内部方法：添加会话消息并分配序列号。"""
-        self.event_sequence += 1
-        message.sequence_id = self.event_sequence
-        self.session_messages.append(message)
-        return message
-
-    ###############################################################################
-    def get_messages_since(self, last_id: int) -> List[SessionMessage]:
-        """获取指定序列号之后的所有消息（增量获取）。"""
-        return [e for e in self.session_messages if e.sequence_id > last_id]

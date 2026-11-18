@@ -17,6 +17,7 @@ from ai_srpg.services.api.games import games_api_router
 from ai_srpg.services.api.rooms import rooms_api_router
 from ai_srpg.services.http_errors import register_room_error_handlers
 from ai_srpg.session.errors import RoomJobBusyError
+from ai_srpg.session.player_session import PlayerSession
 from ai_srpg.session.server import GameServer
 
 ROOMS = "/api/rooms/v1"
@@ -44,7 +45,7 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Dict[str, List[Any]]:
     """替换开局与派发：记录调用参数，避免访问数据库与队列。"""
     recorded: Dict[str, List[Any]] = {"load": [], "defer": []}
 
-    async def fake_load(user_name: str, game_name: str) -> Any:
+    async def fake_load(user_name: str, game_name: str, **kwargs: Any) -> Any:
         recorded["load"].append((user_name, game_name))
         return create_srpg_game(name=game_name)
 
@@ -53,6 +54,11 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Dict[str, List[Any]]:
         return 42
 
     monkeypatch.setattr(games_module, "load_or_create_game", fake_load)
+    monkeypatch.setattr(
+        games_module,
+        "open_session",
+        lambda user_name: PlayerSession(name=user_name),
+    )
     monkeypatch.setattr(games_module, "defer_room_job", fake_defer)
     monkeypatch.setattr(games_module, "list_game_snapshots", lambda *a, **k: [])
     return recorded

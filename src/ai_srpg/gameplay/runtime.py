@@ -36,9 +36,19 @@ async def run_game_pass(
 
     必须从 job 体调用，不要嵌套在已持有 ``game_server.acquire`` 的代码里，
     否则会重复获取同一把非重入的房间锁。
+
+    成功后追加一条**结果快照**：房间内存只是当前工作副本，进程重启或房间回收
+    后由最新快照恢复，因此「最新快照 = 当前状态」必须在这里保证。失败路径不追加，
+    只保留 ``run_pass`` 写入的执行前快照作为回滚基线。
     """
     async with get_runtime_game_server().acquire(user_name) as room:
-        return await run_room_pass(room, observer=observer)
+        result = await run_room_pass(room, observer=observer)
+
+        game = room.game
+        assert game is not None, "pass 成功后房间必然仍有游戏"
+        snapshot_id = append_game_snapshot(user_name, snapshot_game(game))
+        logger.debug(f"pass result snapshot saved: user={user_name}, id={snapshot_id}")
+        return result
 
 
 ###############################################################################

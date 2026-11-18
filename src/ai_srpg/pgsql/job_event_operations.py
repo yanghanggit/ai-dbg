@@ -1,7 +1,6 @@
 """job_events 的读写操作。"""
 
-import json
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from ..models import JobEvent
 from .client import SessionLocal
@@ -9,21 +8,13 @@ from .job_event import JobEventDB
 
 
 def _to_model(row: JobEventDB) -> JobEvent:
-    payload: Dict[str, Any] = {}
-    if row.payload:
-        try:
-            value = json.loads(row.payload)
-            if isinstance(value, dict):
-                payload = value
-        except json.JSONDecodeError:
-            payload = {"raw": row.payload}
     return JobEvent(
         id=row.id,
         job_id=row.job_id,
         kind=row.kind,
         system=row.system,
         message=row.message,
-        payload=payload,
+        payload=row.payload,
         created_at=row.created_at,
     )
 
@@ -37,7 +28,7 @@ def append_job_event(event: JobEvent) -> JobEvent:
             kind=event.kind,
             system=event.system,
             message=event.message,
-            payload=json.dumps(event.payload, ensure_ascii=False),
+            payload=event.payload,
             created_at=event.created_at,
         )
         db.add(row)

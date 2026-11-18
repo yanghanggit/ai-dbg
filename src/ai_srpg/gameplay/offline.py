@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from ..entitas import PassResult, ProcessorObserver
 from ..game.context import SRPGGame
+from ..game.events.sink import DomainEventSink
 from ..game.lifecycle import (
     initialize_pipeline,
     rebuild_pipeline,
@@ -62,6 +63,7 @@ async def create_new_game(
     *,
     player_actor: Optional[str] = None,
     reset: bool = False,
+    events: Optional[DomainEventSink] = None,
 ) -> NewGameOutcome:
     """从蓝图新建一局并写入基线快照；``reset`` 允许覆盖已有对局语义。"""
     if not reset and load_latest_game_snapshot(user_name, game_name) is not None:
@@ -75,6 +77,7 @@ async def create_new_game(
         user_name,
         game_name,
         player_actor=player_actor,
+        events=events,
     )
     await initialize_pipeline(game)
     snapshot_id = append_game_snapshot(user_name, snapshot_game(game))
@@ -88,11 +91,15 @@ async def load_or_create_game(
     *,
     snapshot_id: Optional[int] = None,
     player_actor: Optional[str] = None,
+    events: Optional[DomainEventSink] = None,
 ) -> SRPGGame:
-    """读取指定快照；没有快照时从蓝图新建，并写入基线快照。"""
+    """读取指定快照；没有快照时从蓝图新建，并写入基线快照。
+
+    ``events`` 会注入到构造出的游戏实例，用于把领域事件接入会话历史等出口。
+    """
     snapshot = _load_snapshot(user_name, game_name, snapshot_id)
     if snapshot is not None:
-        game = restore_game_from_snapshot(game_name, snapshot)
+        game = restore_game_from_snapshot(game_name, snapshot, events=events)
         await rebuild_pipeline(game)
         return game
 
@@ -105,6 +112,7 @@ async def load_or_create_game(
         user_name,
         game_name,
         player_actor=player_actor,
+        events=events,
     )
     return outcome.game
 

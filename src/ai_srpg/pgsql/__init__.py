@@ -18,6 +18,12 @@ from .game_snapshot_operations import (
 from .job_event import JobEventDB
 from .job_event_operations import append_job_event, get_job_error, list_job_events
 from .procrastinate_app import procrastinate_app
+from .session_message import SessionMessageDB
+from .session_message_operations import (
+    append_session_message,
+    list_session_messages,
+    max_session_sequence,
+)
 from .user import *
 from .vector_document import VectorDocumentDB
 from .vector_document_operations import save_vector_document, search_similar_documents
@@ -49,6 +55,11 @@ __all__: List[str] = [
     "append_job_event",
     "get_job_error",
     "list_job_events",
+    # Session history (user-level append-only)
+    "SessionMessageDB",
+    "append_session_message",
+    "list_session_messages",
+    "max_session_sequence",
     # Procrastinate task queue app
     "procrastinate_app",
 ]

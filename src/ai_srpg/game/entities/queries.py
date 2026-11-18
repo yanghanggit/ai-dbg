@@ -103,6 +103,13 @@ def resolve_stage_entity(srpg_game: SRPGGame, entity: Entity) -> Optional[Entity
     return None
 
 
+def get_player_actor_name(srpg_game: SRPGGame) -> Optional[str]:
+    """玩家控制的角色名；没有玩家角色时返回 None（读侧不抛）。"""
+    player_entities = srpg_game.get_group(Matcher(all_of=[PlayerComponent])).entities
+    entity = next(iter(player_entities), None)
+    return entity.name if entity is not None else None
+
+
 def get_player_entity(srpg_game: SRPGGame) -> Optional[Entity]:
     """获取玩家实体。"""
     player_entities = srpg_game.get_group(Matcher(all_of=[PlayerComponent])).entities

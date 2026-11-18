@@ -9,6 +9,7 @@ from loguru import logger
 
 from .game_snapshot import GameSnapshotDB
 from .job_event import JobEventDB
+from .session_message import SessionMessageDB
 from .vector_document import VectorDocumentDB
 
 # 导入所有数据库模型以确保它们被注册到Base.metadata中
@@ -17,6 +18,7 @@ __all__ = [
     "VectorDocumentDB",
     "JobEventDB",
     "GameSnapshotDB",
+    "SessionMessageDB",
     "register_all_models",
 ]
 
@@ -29,4 +31,6 @@ def register_all_models() -> None:
     """
 
     logger.debug("数据库模型注册完成")
-    logger.debug("已注册模型: VectorDocumentDB, JobEventDB, GameSnapshotDB")
+    logger.debug(
+        "已注册模型: VectorDocumentDB, JobEventDB, GameSnapshotDB, SessionMessageDB"
+    )

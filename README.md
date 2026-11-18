@@ -73,7 +73,7 @@ uv run ai-srpg-client info                         # 服务自描述与路由清
 uv run ai-srpg-client enter alice                  # 进入房间（=登录）
 uv run ai-srpg-client open alice Game1             # 开局：最新快照或蓝图新建
 uv run ai-srpg-client advance alice Game1          # 派发一次 pass 并等待终态
-uv run ai-srpg-client snapshots alice Game1        # 每次 pass 前追加一条快照
+uv run ai-srpg-client snapshots alice Game1        # 执行前 + 成功后各一条快照
 uv run ai-srpg-client messages alice               # 会话历史增量
 uv run ai-srpg-client play alice Game1 --rounds 3  # 无人值守连跑 3 轮
 uv run ai-srpg-client leave alice                  # 离开房间（快照保留）

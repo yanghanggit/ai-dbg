@@ -1,18 +1,26 @@
-"""玩家会话消息增量查询接口。
+"""用户级会话历史的增量读取接口。
 
-会话历史是用户级、append-only 的，不要求当前存在游戏；当前实现只要求房间与
-会话仍在内存中（持久化待接入数据库）。
+会话历史是 append-only 的持久化数据，与「当前是否有房间 / 是否有游戏」无关：
+只按用户 + 序号游标读取。实时性由客户端轮询 + job 终态即时拉取保证。
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query
 from loguru import logger
 
-from ...session.errors import RoomNotFoundError
-from ..dependencies import CurrentGameServer
+from ...gameplay.session_history import (
+    DatabaseSessionMessageStore,
+    SessionMessageStore,
+)
 from .schemas import SessionMessageResponse
 
 ################################################################################################################
 session_messages_api_router = APIRouter(tags=["session-messages"])
+
+
+################################################################################################################
+def _session_store() -> SessionMessageStore:
+    """存储入口；测试可替换这一层，避免访问数据库。"""
+    return DatabaseSessionMessageStore()
 
 
 ################################################################################################################
@@ -21,32 +29,15 @@ session_messages_api_router = APIRouter(tags=["session-messages"])
     response_model=SessionMessageResponse,
 )
 async def get_session_messages(
-    game_server: CurrentGameServer,
     user_name: str,
     last_sequence_id: int = Query(..., alias="last_sequence_id"),
+    limit: int = Query(default=500, ge=1, le=2000),
 ) -> SessionMessageResponse:
-    """增量查询玩家会话消息接口。
-
-    会话是用户级历史，不要求当前存在游戏；只要房间/会话还在即可读。
-    """
+    """按序号增量读取会话历史（升序返回）。"""
 
     logger.info(
-        f"get_session_messages: user_name={user_name}, last_sequence_id={last_sequence_id}"
+        f"get_session_messages: user_name={user_name}, last_sequence_id={last_sequence_id}, limit={limit}"
     )
 
-    # 读路径不取房间锁：单事件循环下 has_room + get_room 之间没有 await
-    current_room = game_server.get_room(user_name)
-    if current_room is None:
-        raise RoomNotFoundError(user_name)
-
-    player_session = current_room.player_session
-    if player_session is None:
-        logger.error(f"get_session_messages: {user_name} has no session")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="没有会话",
-        )
-
-    # 会话历史与当前游戏无关，直接按用户级 sequence 增量读取
-    messages = player_session.get_messages_since(last_sequence_id)
+    messages = _session_store().messages_since(user_name, last_sequence_id, limit=limit)
     return SessionMessageResponse(session_messages=messages)

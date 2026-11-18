@@ -6,7 +6,7 @@
 
 from fastapi import APIRouter, Response, status
 
-from ...session import PlayerSession
+from ...gameplay.session_history import open_session
 from ...session.access import require_room
 from ...session.errors import RoomNotFoundError
 from ...session.room import PlayerRoom
@@ -49,7 +49,7 @@ async def enter_room(
     # 会话与游戏互不依赖：先进入房间，之后再开局
     async with room.transaction():
         if room.player_session is None:
-            room.attach_session(PlayerSession(name=user_name))
+            room.attach_session(open_session(user_name))
 
     return room_state(room)
 

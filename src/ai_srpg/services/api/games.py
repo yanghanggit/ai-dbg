@@ -6,11 +6,12 @@
 
 from fastapi import APIRouter, Query, status
 
+from ...game.entities.queries import get_player_actor_name
 from ...gameplay.dispatch import defer_room_job
 from ...gameplay.jobs import advance_game_job
 from ...gameplay.offline import load_or_create_game
+from ...gameplay.session_history import SessionEventSink, open_session
 from ...pgsql import list_game_snapshots
-from ...session import PlayerSession
 from ...session.access import require_game, require_room
 from ..dependencies import CurrentGameServer
 from .rooms import room_state
@@ -35,11 +36,15 @@ async def open_game(
     if room.game is not None and room.game.name == game_name:
         return room_state(room)
 
+    # 会话先就位，游戏才能把领域事件写进历史
+    session = room.player_session or open_session(user_name)
+    sink = SessionEventSink(session)
+
     # 读快照/建蓝图都要访问数据库，放在房间锁外，避免阻塞同房间的其他请求
-    game = await load_or_create_game(user_name, game_name)
+    game = await load_or_create_game(user_name, game_name, events=sink)
+    session.set_context(actor=get_player_actor_name(game), game=game_name)
 
     async with room.transaction():
-        session = room.player_session or PlayerSession(name=user_name)
         room.bind(game=game, player_session=session)
 
     return room_state(room)

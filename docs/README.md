@@ -35,7 +35,7 @@
 | ------ | ------ |
 | [System 错误处理与回滚边界](wiki/system-error-handling.md) | system 何时可自行处理失败、何时必须上抛；整次 pass 的回滚粒度与 `StopPipeline` 的区别 |
 | [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与事件记录 |
-| [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件；当前仅内存，持久化待接入数据库 |
+| [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件；按用户 + 序号落库，内存只留游标与上下文 |
 | [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | agent 记忆膨胀的基础能力：上下文占比信号与手动压缩原语；自动触发待玩法规则落地 |
 | [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
 | [SRPG AI 操作 CLI（ai-srpg-agent-game）](wiki/run-agent-game.md) | 离线、快照驱动的游戏开发辅助入口；建局、查看、推进与记忆压缩，附 LLM 调用观测 |

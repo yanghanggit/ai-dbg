@@ -1,5 +1,6 @@
 from loguru import logger
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import sessionmaker
 
 from .base import Base
@@ -136,6 +137,29 @@ def pgsql_drop_database(database_name: str) -> None:
 
 
 ############################################################################################################
+def _upgrade_job_event_payload(conn: Connection) -> None:
+    """把 ``job_events.payload`` 从 ``text`` 升级为 ``jsonb``（幂等）。
+
+    ``Base.metadata.create_all`` 只建缺失的表，不会修改已存在列的类型；旧库在这里
+    补一次，升级后直接对 JSON 内部字段做 SQL 查询。
+    """
+    current = conn.execute(
+        text(
+            """
+            SELECT data_type FROM information_schema.columns
+            WHERE table_name = 'job_events' AND column_name = 'payload'
+            """
+        )
+    ).scalar()
+    if current is None or current == "jsonb":
+        return
+
+    sql = "ALTER TABLE job_events ALTER COLUMN payload TYPE jsonb USING payload::jsonb"
+    conn.execute(text(sql))
+    logger.info(f"✅ job_events.payload 类型已从 {current} 升级为 jsonb")
+
+
+############################################################################################################
 def pgsql_ensure_database_tables() -> None:
     """
     确保数据库表已创建
@@ -157,6 +181,10 @@ def pgsql_ensure_database_tables() -> None:
         # 确保所有表都已创建
         Base.metadata.create_all(bind=engine)
         logger.info("✅ 数据库表结构已确保存在")
+
+        # 历史库的列类型升级（create_all 不会改已存在的列）
+        with engine.begin() as conn:
+            _upgrade_job_event_payload(conn)
 
     except Exception as e:
         logger.error(f"❌ 创建数据库表时出错: {e}")
