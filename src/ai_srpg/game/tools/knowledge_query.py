@@ -1,4 +1,7 @@
-"""共享知识库检索工具：把 query 工具的结果回灌给调用方。"""
+"""共享知识库检索工具：把 query 工具的结果回灌给调用方。
+
+当前仅作为独立函数保留，尚未接入 pipeline 或 agent 工具表。
+"""
 
 from typing import Final
 

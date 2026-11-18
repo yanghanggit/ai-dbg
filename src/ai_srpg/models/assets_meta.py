@@ -8,9 +8,9 @@
 - ``filename`` 是资产唯一键，生成后不再变更；
 - ``.assets/image/`` 是系统固定目录，``local_path`` / ``url`` 可由 ``filename`` 完全推导，
   因此不写入 meta；
-- :class:`AssetMeta` 是通用基类，携带判别字段 ``type``（与 ``DungeonRoom.type`` 同构），
+- :class:`AssetMeta` 是通用基类，携带判别字段 ``type``，
   具体资源类型（当前仅 :class:`ImageMeta`）继承基类并下沉专属字段；
-- 持有方（``Dungeon`` / ``Stage``）只保存 meta 地址（``assets: Dict[AssetKey, str]``），
+- 持有方（当前为 ``Stage``）只保存 meta 地址（``assets: Dict[str, str]``），
   不再内连 :class:`AssetMeta` 对象，使用时按地址 :meth:`AssetMeta.load` 读取。
 """
 
@@ -73,16 +73,8 @@ def asset_meta_path(filename: str) -> Path:
 
 
 ###############################################################################################################################################
-@final
-@unique
-class AssetKey(StrEnum):
-    """资源角色键：持有方按语义键写入 meta 地址，消费方（如客户端）按键取用。
-
-    服务端只负责"设置完毕"，之后不再依赖具体取值；新增角色只需在此扩展。
-    """
-
-    COVER = "cover"  # 副本封面（Dungeon.assets）
-    ILLUSTRATION = "illustration"  # 场景插图（Stage.assets）
+# 资源角色键不做枚举约束：持有方用自由字符串写入（如 "illustration"），
+# 具体约定由业务层定义；models 层只负责存取，不限制键的集合。
 
 
 ###############################################################################################################################################

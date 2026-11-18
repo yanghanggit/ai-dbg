@@ -4,7 +4,6 @@ from typing import Dict, List, final
 from pydantic import BaseModel, Field
 
 from ..entitas import EntityData
-from .assets_meta import AssetKey
 
 
 ###############################################################################################################################################
@@ -22,7 +21,6 @@ class ActorType(StrEnum):
 class StageType(StrEnum):
     NONE = "None"
     LOBBY = "Lobby"
-    DUNGEON = "Dungeon"
 
 
 ###############################################################################################################################################
@@ -34,9 +32,9 @@ class Actor(BaseModel):
     base_body: str
     system_message: str
     components: EntityData = {}
-    assets: Dict[AssetKey, str] = Field(
+    assets: Dict[str, str] = Field(
         default_factory=dict
-    )  # 场景插图等资源：AssetKey -> meta 路径（.assets/image/<file>.meta）
+    )  # 资源键（业务层约定）-> meta 路径（.assets/image/<file>.meta）
 
 
 ###############################################################################################################################################
@@ -48,9 +46,9 @@ class Stage(BaseModel):
     system_message: str
     actors: List[Actor]
     components: EntityData = {}
-    assets: Dict[AssetKey, str] = Field(
+    assets: Dict[str, str] = Field(
         default_factory=dict
-    )  # 场景插图等资源：AssetKey -> meta 路径（.assets/image/<file>.meta）
+    )  # 资源键（业务层约定）-> meta 路径（.assets/image/<file>.meta）
 
 
 ###############################################################################################################################################

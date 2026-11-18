@@ -1,9 +1,9 @@
 # AI-SRPG
 
 一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 SRPG（Strategy RPG）框架：
-以 ECS 承载副本、卡牌与战斗规则，以 LLM（DeepSeek）驱动战斗决策与叙事生成。
+以 ECS 承载可重建的世界状态与快照，以 LLM（DeepSeek）驱动叙事生成；玩法规则与 LLM 决策待重建。
 
-> 本仓库是**引擎 + 常驻服务端 + 服务端真相**，同时自带两个面向 AI 代理的命令行工具。
+> 本仓库是**引擎 + 常驻服务端 + 服务端真相**，自带一个面向 AI 代理的命令行工具与 LLM 调用留痕。
 
 ## 🛠️ 技术栈
 
@@ -84,7 +84,7 @@ pm2 start ecosystem.config.js
 
 | 命令 | 用途 | 文档 |
 | --- | --- | --- |
-| `ai-srpg-agent-game` | 离线、快照驱动推进（当前为骨架） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
+| `ai-srpg-agent-game` | 离线、快照驱动推进（动作骨架；含 LLM 调用观测） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
 
 `uv run <命令> --help` 可列出全部子命令。
 

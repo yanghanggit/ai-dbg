@@ -34,9 +34,10 @@ async def on_room_tick(room: PlayerRoom) -> None:
     未来在此实现玩法，例如：
 
         # 满足条件时派发 job；长流程交给 worker，不要在本回调里直接跑 pipeline。
+        # from .gameplay_jobs import advance_game_job
         # from .job_dispatch import defer_room_job
-        # if should_spawn_dungeon(room.game):
-        #     await defer_room_job(spawn_dungeon_job, user_name=room.username)
+        # if room.game is not None:
+        #     await defer_room_job(advance_game_job, user_name=room.username)
     """
     return
 

@@ -4,7 +4,6 @@ from typing import List, final
 from pydantic import BaseModel
 
 from ..entitas import ContextData
-from .blueprint import Blueprint
 from .job import JobEvent, JobSnapshot
 from .session_message import SessionMessage
 
@@ -55,8 +54,3 @@ class ServerInfoResponse(BaseModel):
     timestamp: datetime
     version: str
     routes: List[ApiRouteInfo]
-
-
-@final
-class BlueprintListResponse(BaseModel):
-    blueprints: List[Blueprint]

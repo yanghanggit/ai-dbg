@@ -15,7 +15,6 @@ import ai_srpg.models.assets_meta as assets_module
 from ai_srpg.models import (
     ASSET_META_SUFFIX,
     ASSETS_URL_PREFIX,
-    AssetKey,
     AssetMeta,
     AssetSource,
     ImageMeta,
@@ -58,11 +57,6 @@ def test_path_and_url_derivation() -> None:
     assert asset_path(name) == ASSETS_DIR / name
     assert asset_url(name) == f"{ASSETS_URL_PREFIX}/{name}"
     assert asset_meta_path(name) == ASSETS_DIR / f"{name}{ASSET_META_SUFFIX}"
-
-
-def test_asset_key_values() -> None:
-    assert AssetKey.COVER.value == "cover"
-    assert AssetKey.ILLUSTRATION.value == "illustration"
 
 
 # ---------------------------------------------------------------------------
