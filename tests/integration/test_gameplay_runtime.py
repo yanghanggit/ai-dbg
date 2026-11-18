@@ -5,7 +5,7 @@ from typing import Iterator
 
 import pytest
 
-from ai_srpg.entitas import ExecuteProcessor, ProcessorPipeline
+from ai_srpg.entitas import ExecuteProcessor, ProcessorPipeline, StopPipeline
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
 from ai_srpg.llm.call_context import LlmCallTrace, current_llm_trace
@@ -127,3 +127,79 @@ async def test_pass_sets_room_trace(user_name: str) -> None:
     assert trace.game == "Game1"
     assert trace.room == user_name
     assert trace.snapshot_id is not None
+
+
+class _HandledRecoverableFailure(ExecuteProcessor):
+    """模拟 system 内部处理可恢复失败，并写入状态后正常返回。"""
+
+    def __init__(self, game: SRPGGame, entity_name: str) -> None:
+        self._game = game
+        self._entity_name = entity_name
+        self.handled = False
+
+    async def execute(self) -> None:
+        try:
+            raise RuntimeError("recoverable llm failure")
+        except RuntimeError:
+            self.handled = True
+            self._game.create_entity(self._entity_name)
+
+
+class _StopAfterMutation(ExecuteProcessor):
+    """模拟 system 完成一部分工作后显式提前结束。"""
+
+    def __init__(self, game: SRPGGame, entity_name: str) -> None:
+        self._game = game
+        self._entity_name = entity_name
+
+    async def execute(self) -> None:
+        self._game.create_entity(self._entity_name)
+        raise StopPipeline("intentional early end")
+
+
+async def test_recoverable_failure_handled_inside_system_does_not_rollback(
+    user_name: str,
+) -> None:
+    game = create_srpg_game(name="Game1")
+    game.pipeline = ProcessorPipeline()
+    handler = _HandledRecoverableFailure(game, "已处理失败的实体")
+    game.pipeline.add(handler)
+    game.pipeline.add(_Noop())
+    room = _room_with(game, user_name)
+
+    result = await run_room_pass(room)
+
+    assert handler.handled
+    assert result.completed
+    assert game.get_entity_by_name("已处理失败的实体") is not None
+    assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
+
+
+async def test_swallowed_failure_still_rolls_back_when_later_system_fails(
+    user_name: str,
+) -> None:
+    game = create_srpg_game(name="Game1")
+    game.pipeline = ProcessorPipeline()
+    game.pipeline.add(_HandledRecoverableFailure(game, "已处理失败的实体"))
+    game.pipeline.add(_CreateThenFail(game))
+    room = _room_with(game, user_name)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await run_room_pass(room)
+
+    assert game.get_entity_by_name("已处理失败的实体") is None
+    assert game.entity_count == 0
+    assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
+
+
+async def test_stop_pipeline_after_mutation_does_not_rollback(user_name: str) -> None:
+    game = create_srpg_game(name="Game1")
+    game.pipeline = ProcessorPipeline()
+    game.pipeline.add(_StopAfterMutation(game, "提前结束的实体"))
+    room = _room_with(game, user_name)
+
+    result = await run_room_pass(room)
+
+    assert result.aborted_by == "_StopAfterMutation"
+    assert game.get_entity_by_name("提前结束的实体") is not None
+    assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
