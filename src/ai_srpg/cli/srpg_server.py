@@ -24,7 +24,6 @@ from ai_srpg.services.entity_details import (
 from ai_srpg.services.game_server_runtime import bind_runtime_game_server
 from ai_srpg.services.gameplay_scheduler import run_gameplay_scheduler
 from ai_srpg.services.jobs_api import jobs_api_router
-from ai_srpg.services.login import login_api_router
 from ai_srpg.services.player_session import player_session_api_router
 from ai_srpg.services.room_error_handlers import register_room_error_handlers
 from ai_srpg.session.server import GameServer
@@ -166,7 +165,6 @@ app.include_router(router=player_session_api_router)
 app.include_router(router=components_api_router)
 app.include_router(router=entity_details_api_router)
 app.include_router(router=jobs_api_router)
-app.include_router(router=login_api_router)
 
 
 @click.command()

@@ -25,26 +25,26 @@ class NoneEvent(AgentEvent):
     type: Literal["none"] = "none"
 
 
-####################################################################################################################################
-@final
-class TransStageEvent(AgentEvent):
-    """场景转换事件"""
+# ####################################################################################################################################
+# @final
+# class TransStageEvent(AgentEvent):
+#     """场景转换事件"""
 
-    type: Literal["trans_stage"] = "trans_stage"
-    actor: str
-    stage: str
-    target: str
+#     type= Literal["trans_stage"]  # "trans_stage"
+#     actor: str
+#     stage: str
+#     target: str
 
 
-####################################################################################################################################
-@final
-class CombatArbitrationEvent(AgentEvent):
-    """战斗裁决事件"""
+# ####################################################################################################################################
+# @final
+# class CombatArbitrationEvent(AgentEvent):
+#     """战斗裁决事件"""
 
-    type: Literal["combat_arbitration"] = "combat_arbitration"
-    stage: str
-    combat_log: str
-    narrative: str
+#     type= Literal["combat_arbitration"]  # "combat_arbitration"
+#     stage: str
+#     combat_log: str
+#     narrative: str
 
 
 ####################################################################################################################################
@@ -54,8 +54,8 @@ class CombatArbitrationEvent(AgentEvent):
 # 未知 type 会明确报 ValidationError，不再靠 smart-union 兜。
 _ConcreteAgentEvent = Annotated[
     Union[
-        TransStageEvent,
-        CombatArbitrationEvent,
+        # TransStageEvent,
+        # CombatArbitrationEvent,
         NoneEvent,
     ],
     Field(discriminator="type"),

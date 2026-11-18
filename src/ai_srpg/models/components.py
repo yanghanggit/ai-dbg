@@ -296,20 +296,20 @@ class ReliquaryComponent(Component):
 @final
 @register_component_type
 class DrawPileComponent(Component):
-    """战斗内抽牌堆；Draw 阶段 FIFO 消耗，耗尽时自动将 DiscardPile 洗牌补入；存放 DeckComponent 原始牌的 model_copy() 副本，战斗结束后由 CombatPileTeardownSystem 清空。"""
+    """战斗内抽牌堆；Draw 阶段 FIFO 消耗，耗尽时自动将 DiscardPile 洗牌补入；存放 DeckComponent 原始牌的 model_copy() 副本。"""
 
     name: str
     cards: List[Card]  # FIFO 消耗，耗尽时由 DiscardPile 洗牌补充
     retained_cards: List[Card] = (
         []
-    )  # retain 牌临时中转队列：回合末由 CombatHandCleanupSystem 写入，下回合 DrawCardsActionSystem 优先取回手牌（不占用抓牌名额）
+    )  # retain 牌临时中转队列：回合末写入，下回合抓牌时优先取回手牌（不占用抓牌名额）
 
 
 ############################################################################################################
 @final
 @register_component_type
 class ExhaustPileComponent(Component):
-    """消耗堆；存放主动弃置的自有牌副本，战斗内永久移出抽牌循环；战斗结束后由 CombatPileTeardownSystem 清空。"""
+    """消耗堆；存放主动弃置的自有牌副本，战斗内永久移出抽牌循环。"""
 
     name: str
     cards: List[Card]  # 按时间顺序追加，战斗内只增不减
