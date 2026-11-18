@@ -25,7 +25,7 @@ from ...models import (
 )
 from ..context import SRPGGame
 from ..memory import add_system_message
-from .repository import create_entity, get_actor_entity
+from .repository import get_actor_entity
 
 
 def build_from_blueprint(srpg_game: SRPGGame) -> None:
@@ -61,7 +61,7 @@ def _create_world_entities(
     """创建世界实体（全局规则管理器、叙事者）。"""
     world_entities: List[Entity] = []
     for world_model in world_models:
-        world_entity = create_entity(srpg_game, world_model.name)
+        world_entity = srpg_game.create_entity(world_model.name)
         srpg_game.world.entity_counter += 1
         world_entity.add(
             IdentityComponent,
@@ -95,7 +95,7 @@ def create_actor_entities(
     """创建角色实体（玩家、NPC、敌人）。"""
     actor_entities: List[Entity] = []
     for actor_model in actor_models:
-        actor_entity = create_entity(srpg_game, actor_model.name)
+        actor_entity = srpg_game.create_entity(actor_model.name)
         srpg_game.world.entity_counter += 1
         actor_entity.add(
             IdentityComponent,
@@ -146,7 +146,7 @@ def create_stage_entities(
     """创建场景实体，并建立角色与场景的关联关系。"""
     stage_entities: List[Entity] = []
     for stage_model in stage_models:
-        stage_entity = create_entity(srpg_game, stage_model.name)
+        stage_entity = srpg_game.create_entity(stage_model.name)
         srpg_game.world.entity_counter += 1
         stage_entity.add(
             IdentityComponent,

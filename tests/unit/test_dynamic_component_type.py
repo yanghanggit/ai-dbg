@@ -16,12 +16,9 @@ from pydantic import ValidationError
 
 from ai_srpg.entitas import Context
 from ai_srpg.entitas.components import Component
-from ai_srpg.game.context import ECSContext
+from ai_srpg.game.ecs_context import ECSContext
 from ai_srpg.game.entities import (
-    create_entity,
     create_stage_entities,
-    restore_context,
-    serialize_context,
 )
 from ai_srpg.models import (
     COMPONENT_TYPES,
@@ -61,11 +58,11 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
 ############################################################################################################
 # create_component_type
 ############################################################################################################
-class _GameImpl:
-    """最小 SRPGGame 替身：只提供函数所需的 ECS context。"""
+class _GameImpl(ECSContext):
+    """最小 SRPGGame 替身：直接复用 ECSContext 的实体与快照能力。"""
 
     def __init__(self) -> None:
-        self.ecs = ECSContext()
+        super().__init__()
         self.world = SimpleNamespace(agent_memories={})
 
 
@@ -183,18 +180,18 @@ class TestRestoreContextDynamicComponent:
         tag_cls = create_component_type(tag_name, name=(str, ...))
 
         source = _new_game()
-        entity = create_entity(source, "场景.序列化测试")
+        entity = source.create_entity("场景.序列化测试")
         entity.add(IdentityComponent, "场景.序列化测试", 1, str(uuid.uuid4()))
         entity.set(tag_cls, tag_cls.model_validate({"name": "场景.序列化测试"}))
 
-        serialized = serialize_context(source)
+        serialized = source.serialize()
 
         # 模拟全新进程：动态类不在注册表中
         del COMPONENT_TYPES[tag_name]
         assert tag_name not in COMPONENT_TYPES
 
         target = _new_game()
-        restored = restore_context(target, serialized)
+        restored = target.restore(serialized, resolve_component_type)
 
         restored_entity = next(iter(restored.values()))
         assert tag_name in COMPONENT_TYPES  # 反序列化时已惰性重建

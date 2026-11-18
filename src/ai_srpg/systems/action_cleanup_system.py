@@ -43,7 +43,7 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
     def _clear_actions(self) -> None:
 
         # 清除行动！
-        action_entities = self._game.ecs.get_group(
+        action_entities = self._game.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities.copy()
 
@@ -53,7 +53,7 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
                     entity.remove(action_class)
 
         # 确认一下！
-        cleared_entities = self._game.ecs.get_group(
+        cleared_entities = self._game.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities
         assert len(cleared_entities) == 0, f"entities with actions: {cleared_entities}"

@@ -26,8 +26,7 @@ def create_srpg_game(
         player_name=player_name,
         player_actor=player_actor,
         world=world,
+        events=events,
     )
-    if events is not None:
-        srpg_game.events = events
     srpg_game.pipeline = build_game_pipeline(srpg_game)
     return srpg_game

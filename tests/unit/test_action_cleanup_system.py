@@ -11,7 +11,7 @@ import pytest
 
 from ai_srpg.entitas import CleanupProcessor, ExecuteProcessor
 from ai_srpg.entitas.components import Component
-from ai_srpg.game.context import ECSContext
+from ai_srpg.game.ecs_context import ECSContext
 from ai_srpg.systems.action_cleanup_system import ActionCleanupSystem
 from ecs_testing import Position
 
@@ -60,7 +60,6 @@ def context() -> ECSContext:
 def mock_game(context: ECSContext) -> Any:
     """Mock SRPGGame，将 get_group() 代理到真实 Context，避免初始化重量级 SRPGGame。"""
     game = MagicMock()
-    game.ecs = context
     game.get_group.side_effect = context.get_group
     return game
 

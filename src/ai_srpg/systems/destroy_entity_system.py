@@ -6,9 +6,6 @@ from loguru import logger
 
 from ..entitas import ExecuteProcessor, Matcher
 from ..game.context import SRPGGame
-from ..game.entities import (
-    destroy_entity,
-)
 from ..models import DestroyComponent
 
 
@@ -28,14 +25,14 @@ class DestroyEntitySystem(ExecuteProcessor):
         """销毁所有持有 DestroyComponent 的实体。"""
 
         # 查找所有待销毁实体！
-        destroyable_entities = self._game.ecs.get_group(
+        destroyable_entities = self._game.get_group(
             Matcher(DestroyComponent)
         ).entities.copy()
 
         # 销毁所有待销毁实体！
         while len(destroyable_entities) > 0:
             destory_entity = destroyable_entities.pop()
-            destroy_entity(self._game, destory_entity)
+            self._game.destroy_entity(destory_entity)
             logger.debug(f"Destroy entity: {destory_entity.name}")
 
     ####################################################################################################################################

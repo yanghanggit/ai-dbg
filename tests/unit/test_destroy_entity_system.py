@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_srpg.game.context import ECSContext
+from ai_srpg.game.ecs_context import ECSContext
 from ai_srpg.models import DestroyComponent
 from ai_srpg.systems.destroy_entity_system import DestroyEntitySystem
 from ecs_testing import Position
@@ -26,7 +26,6 @@ def context() -> ECSContext:
 def mock_game(context: ECSContext) -> Any:
     """Mock SRPGGame：get_group() 代理到真实 Context，destroy_entity() 同时调用真实 Context 的销毁。"""
     game = MagicMock()
-    game.ecs = context
     game.get_group.side_effect = context.get_group
     game.destroy_entity.side_effect = context.destroy_entity
     return game

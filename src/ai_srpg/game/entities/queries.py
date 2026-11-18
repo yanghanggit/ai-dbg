@@ -29,7 +29,7 @@ def get_actors_in_stage(
     )
 
     ret: Set[Entity] = set()
-    candidate_entities = srpg_game.ecs.get_group(actor_matcher).entities
+    candidate_entities = srpg_game.get_group(actor_matcher).entities
     for candidate_entity in candidate_entities:
         candidate_stage_entity = resolve_stage_entity(srpg_game, candidate_entity)
         assert (
@@ -45,13 +45,13 @@ def get_actors_in_stage(
 def get_actors_by_stage(srpg_game: SRPGGame) -> Dict[Entity, List[Entity]]:
     """获取所有场景到 Actor 的分组映射。"""
     ret: Dict[Entity, List[Entity]] = {}
-    actor_entities = srpg_game.ecs.get_group(Matcher(all_of=[ActorComponent])).entities
+    actor_entities = srpg_game.get_group(Matcher(all_of=[ActorComponent])).entities
     for actor_entity in actor_entities:
         stage_entity = resolve_stage_entity(srpg_game, actor_entity)
         assert stage_entity is not None, f"actor_entity = {actor_entity}"
         ret.setdefault(stage_entity, []).append(actor_entity)
 
-    stage_entities = srpg_game.ecs.get_group(Matcher(all_of=[StageComponent])).entities
+    stage_entities = srpg_game.get_group(Matcher(all_of=[StageComponent])).entities
     for stage_entity in stage_entities:
         if stage_entity not in ret:
             ret.setdefault(stage_entity, [])

@@ -1,7 +1,3 @@
-from ai_srpg.game.entities import (
-    create_entity,
-)
-
 """
 Tests for SRPGGame memory message management methods:
   - add_human_message
@@ -18,6 +14,7 @@ from typing import Any, List
 import pytest
 
 from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
@@ -41,21 +38,21 @@ from ai_srpg.models import AIMessage, ChatMessage, HumanMessage, SystemMessage
 
 
 @pytest.fixture
-def game(sample_game: Any) -> Any:
+def game(sample_game: SRPGGame) -> SRPGGame:
     """Alias for sample_game — a fully-constructed SRPGGame with no blueprint entities."""
     return sample_game
 
 
 @pytest.fixture
-def actor(game: Any) -> Entity:
+def actor(game: SRPGGame) -> Entity:
     """Create a named entity inside the game."""
-    return create_entity(game, "TestActor")
+    return game.create_entity("TestActor")
 
 
 @pytest.fixture
-def second_actor(game: Any) -> Entity:
+def second_actor(game: SRPGGame) -> Entity:
     """Create a second named entity for multi-entity tests."""
-    return create_entity(game, "OtherActor")
+    return game.create_entity("OtherActor")
 
 
 # ---------------------------------------------------------------------------

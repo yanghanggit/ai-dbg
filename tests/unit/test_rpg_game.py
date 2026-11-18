@@ -16,11 +16,7 @@ from typing import Any
 import pytest
 
 from ai_srpg.entitas.entity import Entity
-from ai_srpg.game.entities import (
-    create_entity,
-    destroy_entity,
-    get_entity_by_name,
-)
+from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.lifecycle import (
     exit_game,
     initialize_game,
@@ -48,23 +44,23 @@ from ai_srpg.models import (
 # ---------------------------------------------------------------------------
 
 
-def _make_stage(game: Any, stage_name: str) -> Entity:
+def _make_stage(game: SRPGGame, stage_name: str) -> Entity:
     """创建带 StageComponent 的场景实体。"""
-    entity: Entity = create_entity(game, stage_name)
+    entity: Entity = game.create_entity(stage_name)
     entity.add(StageComponent, stage_name)
     return entity
 
 
-def _make_actor(game: Any, actor_name: str, current_stage_name: str) -> Entity:
+def _make_actor(game: SRPGGame, actor_name: str, current_stage_name: str) -> Entity:
     """创建带 ActorComponent 的角色实体。"""
-    entity: Entity = create_entity(game, actor_name)
+    entity: Entity = game.create_entity(actor_name)
     entity.add(ActorComponent, actor_name, current_stage_name)
     return entity
 
 
-def _make_entity_with_identity(game: Any, name: str, order: int) -> Entity:
+def _make_entity_with_identity(game: SRPGGame, name: str, order: int) -> Entity:
     """创建带 IdentityComponent 的实体（flush_entities 排序所需）。"""
-    entity: Entity = create_entity(game, name)
+    entity: Entity = game.create_entity(name)
     entity.add(IdentityComponent, name, order, str(uuid.uuid4()))
     return entity
 
@@ -79,18 +75,18 @@ def _agent_event(message: str = "hello") -> NoneEvent:
 
 
 @pytest.fixture
-def game(sample_game: Any) -> Any:
+def game(sample_game: SRPGGame) -> SRPGGame:
     return sample_game
 
 
 @pytest.fixture
-def actor(game: Any) -> Entity:
-    return create_entity(game, "Actor_A")
+def actor(game: SRPGGame) -> Entity:
+    return game.create_entity("Actor_A")
 
 
 @pytest.fixture
-def second_actor(game: Any) -> Entity:
-    return create_entity(game, "Actor_B")
+def second_actor(game: SRPGGame) -> Entity:
+    return game.create_entity("Actor_B")
 
 
 # ---------------------------------------------------------------------------
@@ -137,21 +133,21 @@ class TestGetAgentMemory:
 class TestDestroyEntity:
     def test_destroy_removes_from_name_index(self, game: Any, actor: Entity) -> None:
         """销毁后 get_entity_by_name 返回 None。"""
-        destroy_entity(game, actor)
-        assert get_entity_by_name(game, actor.name) is None
+        game.destroy_entity(actor)
+        assert game.get_entity_by_name(actor.name) is None
 
     def test_destroy_cleans_up_agent_memories(self, game: Any, actor: Entity) -> None:
         """销毁时，world.agent_memories 中对应 key 被移除。"""
         get_agent_memory(game, actor)  # ensure memory exists
         assert actor.name in game.world.agent_memories
-        destroy_entity(game, actor)
+        game.destroy_entity(actor)
         assert actor.name not in game.world.agent_memories
 
     def test_destroy_entity_without_memory_ok(self, game: Any, actor: Entity) -> None:
         """没有 agent_memories 的实体销毁时不抛异常。"""
         assert actor.name not in game.world.agent_memories
-        destroy_entity(game, actor)  # should not raise
-        assert get_entity_by_name(game, actor.name) is None
+        game.destroy_entity(actor)  # should not raise
+        assert game.get_entity_by_name(actor.name) is None
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +275,7 @@ class TestBroadcastToStage:
 
     def test_broadcast_asserts_on_entity_without_stage(self, game: Any) -> None:
         """传入没有 StageComponent 也没有 ActorComponent 的实体触发 AssertionError。"""
-        plain_entity = create_entity(game, "PlainEntity")
+        plain_entity = game.create_entity("PlainEntity")
         with pytest.raises(AssertionError):
             broadcast_to_stage(game, plain_entity, _agent_event("fail"))
 

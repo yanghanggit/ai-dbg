@@ -13,18 +13,12 @@ from typing import Any, Iterator
 import pytest
 
 from ai_srpg.entitas import Component, Entity
-from ai_srpg.game.context import ECSContext
-from ai_srpg.game.entities import (
-    create_entity,
-    destroy_entity,
-    get_entity_by_name,
-    restore_context,
-    serialize_context,
-)
+from ai_srpg.game.ecs_context import ECSContext
 from ai_srpg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
     create_component_type,
+    resolve_component_type,
 )
 
 
@@ -37,11 +31,11 @@ def _clean_dynamic_component_types() -> Iterator[None]:
             del COMPONENT_TYPES[key]
 
 
-class _GameImpl:
-    """最小 SRPGGame 替身：只提供函数所需的 ECS context。"""
+class _GameImpl(ECSContext):
+    """最小 SRPGGame 替身：直接复用 ECSContext 的实体与快照能力。"""
 
     def __init__(self) -> None:
-        self.ecs = ECSContext()
+        super().__init__()
         self.world = SimpleNamespace(agent_memories={})
 
 
@@ -56,12 +50,12 @@ def _new_id() -> str:
 class TestContextDataSerialization:
     def test_serialize_context_orders_by_slot_index(self) -> None:
         source = _new_game()
-        first = create_entity(source, "first")
+        first = source.create_entity("first")
         first.add(IdentityComponent, "first", 9, _new_id())
-        second = create_entity(source, "second")
+        second = source.create_entity("second")
         second.add(IdentityComponent, "second", 2, _new_id())
 
-        data = serialize_context(source)
+        data = source.serialize()
 
         # 按 slot index（即创建顺序）导出，与 creation_order 字段无关
         assert list(data) == ["first", "second"]
@@ -69,20 +63,20 @@ class TestContextDataSerialization:
     def test_destroyed_entity_is_not_serialized(self) -> None:
         manager = _new_game()
 
-        dead = create_entity(manager, "dead")
+        dead = manager.create_entity("dead")
         dead.add(IdentityComponent, "dead", 1, _new_id())
-        destroy_entity(manager, dead)
+        manager.destroy_entity(dead)
 
-        live = create_entity(manager, "live")
+        live = manager.create_entity("live")
         live.add(IdentityComponent, "live", 2, _new_id())
 
-        data = serialize_context(manager)
+        data = manager.serialize()
 
         assert list(data) == ["live"]
 
     def test_serialization_reads_components_via_public_api(self) -> None:
         manager = _new_game()
-        entity = create_entity(manager, "probe")
+        entity = manager.create_entity("probe")
         entity.add(IdentityComponent, "probe", 1, _new_id())
 
         items = entity.iter_component_items()
@@ -93,53 +87,53 @@ class TestContextDataSerialization:
 class TestNameIndexContract:
     def test_name_lookup_and_cleanup_on_destroy(self) -> None:
         manager = _new_game()
-        entity = create_entity(manager, "keeper")
+        entity = manager.create_entity("keeper")
         entity.add(IdentityComponent, "keeper", 1, _new_id())
 
-        assert get_entity_by_name(manager, "keeper") == entity
+        assert manager.get_entity_by_name("keeper") == entity
 
-        destroy_entity(manager, entity)
-        assert get_entity_by_name(manager, "keeper") is None
+        manager.destroy_entity(entity)
+        assert manager.get_entity_by_name("keeper") is None
 
     def test_recreated_name_points_to_new_handle(self) -> None:
         manager = _new_game()
-        first = create_entity(manager, "node")
+        first = manager.create_entity("node")
         first.add(IdentityComponent, "node", 1, _new_id())
-        destroy_entity(manager, first)
+        manager.destroy_entity(first)
 
-        second = create_entity(manager, "node")
+        second = manager.create_entity("node")
         second.add(IdentityComponent, "node", 2, _new_id())
 
-        assert get_entity_by_name(manager, "node") == second
-        assert get_entity_by_name(manager, "node") != first
+        assert manager.get_entity_by_name("node") == second
+        assert manager.get_entity_by_name("node") != first
 
 
 class TestIndexHandleContract:
     def test_context_entities_property_is_a_set_of_handles(self) -> None:
         manager = _new_game()
-        entity = create_entity(manager, "solo")
+        entity = manager.create_entity("solo")
         entity.add(IdentityComponent, "solo", 1, _new_id())
 
-        assert isinstance(manager.ecs.entities, set)
-        assert entity in manager.ecs.entities
+        assert isinstance(manager.entities, set)
+        assert entity in manager.entities
 
     def test_group_entities_support_copy_for_safe_iteration(self) -> None:
         from ai_srpg.entitas import Matcher
 
         manager = _new_game()
-        entity = create_entity(manager, "iter")
+        entity = manager.create_entity("iter")
         entity.add(IdentityComponent, "iter", 1, _new_id())
 
-        group = manager.ecs.get_group(Matcher(IdentityComponent))
+        group = manager.get_group(Matcher(IdentityComponent))
         snapshot = group.entities.copy()
         # 修改世界不应影响快照
-        destroy_entity(manager, entity)
+        manager.destroy_entity(entity)
         assert entity in snapshot
         assert entity not in group.entities
 
     def test_entity_handle_hashable_and_usable_in_sets(self) -> None:
         manager = _new_game()
-        entity = create_entity(manager, "hash")
+        entity = manager.create_entity("hash")
         entity.add(IdentityComponent, "hash", 1, _new_id())
 
         assert {entity} == {entity}
@@ -153,14 +147,14 @@ class TestContextSnapshotContract:
         tag_cls = create_component_type("SnapshotTag", value=(int, ...))
 
         source = _new_game()
-        hero = create_entity(source, "hero")
+        hero = source.create_entity("hero")
         hero.add(IdentityComponent, "hero", 1, _new_id())
 
-        goblin = create_entity(source, "goblin")
+        goblin = source.create_entity("goblin")
         goblin.add(IdentityComponent, "goblin", 2, _new_id())
         goblin.set(tag_cls, tag_cls.model_validate({"value": 7}))
 
-        data = serialize_context(source)
+        data = source.serialize()
         assert list(data) == ["hero", "goblin"]
         assert data["goblin"][tag_cls.__name__] == {"value": 7}
 
@@ -168,10 +162,10 @@ class TestContextSnapshotContract:
         reloaded = json.loads(json.dumps(data))
 
         target = _new_game()
-        restored = restore_context(target, reloaded)
+        restored = target.restore(reloaded, resolve_component_type)
 
         assert set(restored) == {"hero", "goblin"}
-        assert get_entity_by_name(target, "hero") is restored["hero"]
+        assert target.get_entity_by_name("hero") is restored["hero"]
         assert restored["hero"].get(IdentityComponent).creation_order == 1
         assert restored["goblin"].get(tag_cls).model_dump() == {"value": 7}
 
@@ -180,19 +174,19 @@ class TestContextSnapshotContract:
             value: int
 
         manager = _new_game()
-        entity = create_entity(manager, "probe")
+        entity = manager.create_entity("probe")
         entity.add(IdentityComponent, "probe", 1, _new_id())
         entity.set(Unregistered, Unregistered(value=1))
 
-        data = serialize_context(manager)
+        data = manager.serialize()
 
         assert "Unregistered" not in data["probe"]
         assert "IdentityComponent" in data["probe"]
 
     def test_restore_context_requires_empty_context(self) -> None:
         manager = _new_game()
-        existing = create_entity(manager, "existing")
+        existing = manager.create_entity("existing")
         existing.add(IdentityComponent, "existing", 1, _new_id())
 
         with pytest.raises(AssertionError, match="empty context"):
-            restore_context(manager, {})
+            manager.restore({}, resolve_component_type)
