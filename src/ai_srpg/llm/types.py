@@ -11,6 +11,7 @@
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, Literal, Optional, Sequence, Tuple
 
 from pydantic import BaseModel
@@ -126,6 +127,8 @@ class ChatCompletionResult:
     usage: Optional[Usage] = None
     error: Optional[ChatError] = None
     elapsed_seconds: float = 0.0
+    started_at: Optional[datetime] = None
+    record_id: Optional[str] = None
 
     @property
     def label(self) -> str:

@@ -20,6 +20,7 @@ from ..entitas.processor_interfaces import ProcessorObserver
 from ..game.lifecycle import rollback_game, snapshot_game
 from ..game.pipelines import process_pipeline
 from ..job_context import get_current_job
+from ..llm.call_context import llm_call_trace
 from ..pgsql import append_game_snapshot
 from ..session.room import PlayerRoom
 from .game_server_runtime import get_runtime_game_server
@@ -55,13 +56,23 @@ async def run_room_pass(
     snapshot_id = append_game_snapshot(room.username, snapshot)
     logger.debug(f"pass snapshot saved: user={room.username}, id={snapshot_id}")
 
-    try:
-        return await process_pipeline(game.pipeline, observer)
-    except BaseException:
+    current_job = get_current_job()
+    with llm_call_trace(
+        scope="room",
+        scope_id=room.username,
+        user=room.username,
+        game=game.name,
+        room=room.username,
+        snapshot_id=snapshot_id,
+        job_id=current_job.job_id if current_job is not None else None,
+    ):
         try:
-            await rollback_game(game, snapshot)
-        except Exception:
-            logger.exception(
-                f"回滚失败: user={room.username}, snapshot_id={snapshot_id}"
-            )
-        raise
+            return await process_pipeline(game.pipeline, observer)
+        except BaseException:
+            try:
+                await rollback_game(game, snapshot)
+            except Exception:
+                logger.exception(
+                    f"回滚失败: user={room.username}, snapshot_id={snapshot_id}"
+                )
+            raise

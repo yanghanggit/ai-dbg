@@ -27,6 +27,7 @@ from typing import (
 from loguru import logger
 
 from ..models import ChatMessage, HumanMessage, ToolMessage
+from .call_context import llm_call_trace
 from .protocol import ChatCompletionService
 from .types import (
     ChatCompletionRequest,
@@ -232,7 +233,8 @@ async def agent_loop(
 
             # 发起 LLM 请求。预期内的通讯失败不会抛异常，而是落在 completion.error 上；
             # 真正意外（bug / 取消）仍会抛出，由外层 BaseException 分支补打标记。
-            completion = await service.complete(request)
+            with llm_call_trace(loop_id=loop_id, round=round_num, agent=name):
+                completion = await service.complete(request)
 
             if completion.error is not None:
                 logger.error(

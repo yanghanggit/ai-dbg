@@ -311,9 +311,13 @@ class TestLlmCallRecordWiring:
         )
         assert request.record is True
 
-        await _service(_FakeResponse(200, payload=_success_payload())).complete(request)
+        result = await _service(
+            _FakeResponse(200, payload=_success_payload())
+        ).complete(request)
 
-        files = list(tmp_path.glob("*.jsonl"))
+        files = list(tmp_path.rglob("*.jsonl"))
+        assert result.record_id is not None
+        assert result.record_id in files[0].read_text(encoding="utf-8")
         assert len(files) == 1
         lines = files[0].read_text(encoding="utf-8").splitlines()
         assert len(lines) == 1
@@ -333,7 +337,7 @@ class TestLlmCallRecordWiring:
         ).complete(request)
 
         assert result.content == "hi"
-        assert list(tmp_path.glob("*.jsonl")) == []
+        assert list(tmp_path.rglob("*.jsonl")) == []
 
     @pytest.mark.asyncio
     async def test_failed_chat_is_recorded_with_error(
@@ -348,9 +352,10 @@ class TestLlmCallRecordWiring:
             input_message="ping",
             messages=[SystemMessage(content="sys")],
         )
-        await _service(_FakeResponse(500, text="boom")).complete(request)
+        result = await _service(_FakeResponse(500, text="boom")).complete(request)
 
-        files = list(tmp_path.glob("*.jsonl"))
+        files = list(tmp_path.rglob("*.jsonl"))
+        assert result.record_id is not None
         assert len(files) == 1
         content = files[0].read_text(encoding="utf-8")
         assert '"kind":"api"' in content

@@ -19,6 +19,8 @@ temperature 参数默认为 1.0。
 import os
 import time
 from contextlib import AbstractAsyncContextManager
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from typing import (
     Any,
     Callable,
@@ -308,7 +310,10 @@ class DeepSeekClient:
         if not choices:
             logger.warning(f"{request.label}: empty choices in response")
             return ChatCompletionResult(
-                request=request, elapsed_seconds=elapsed_seconds
+                request=request,
+                elapsed_seconds=elapsed_seconds,
+                started_at=datetime.now(timezone.utc)
+                - timedelta(seconds=elapsed_seconds),
             )
 
         choice = choices[0]
@@ -376,6 +381,7 @@ class DeepSeekClient:
             tool_calls=tuple(tool_calls),
             usage=usage,
             elapsed_seconds=elapsed_seconds,
+            started_at=datetime.now(timezone.utc) - timedelta(seconds=elapsed_seconds),
         )
 
     ################################################################################################################################################################################
@@ -424,10 +430,11 @@ class DeepSeekClient:
             request=request,
             error=ChatError(request.label, message, kind=kind, status_code=status_code),
             elapsed_seconds=elapsed_seconds,
+            started_at=datetime.now(timezone.utc) - timedelta(seconds=elapsed_seconds),
         )
         # 失败同样留痕：排查问题时「发了什么、错在哪」必须成对出现
-        call_records.record_llm_call(request, result)
-        return result
+        record_id = call_records.record_llm_call(request, result)
+        return replace(result, record_id=record_id)
 
     ################################################################################################################################################################################
     async def complete(self, request: ChatCompletionRequest) -> ChatCompletionResult:
@@ -521,9 +528,9 @@ class DeepSeekClient:
             logger.info("=" * 60)
 
         # 记录完整调用留痕（request.record=False / 进程级关闭时内部直接返回）
-        call_records.record_llm_call(request, completion)
+        record_id = call_records.record_llm_call(request, completion)
 
-        return completion
+        return replace(completion, record_id=record_id)
 
 
 ############################################################################################################

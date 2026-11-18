@@ -8,6 +8,7 @@ import pytest
 from ai_srpg.entitas import ExecuteProcessor, ProcessorPipeline
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
+from ai_srpg.llm.call_context import LlmCallTrace, current_llm_trace
 from ai_srpg.models import PlayerSession
 from ai_srpg.pgsql import pgsql_ensure_database_tables
 from ai_srpg.pgsql.client import SessionLocal
@@ -22,6 +23,14 @@ from ai_srpg.session.server import GameServer
 class _Noop(ExecuteProcessor):
     async def execute(self) -> None:
         return None
+
+
+class _CaptureTrace(ExecuteProcessor):
+    def __init__(self) -> None:
+        self.traces: list[LlmCallTrace] = []
+
+    async def execute(self) -> None:
+        self.traces.append(current_llm_trace())
 
 
 class _CreateThenFail(ExecuteProcessor):
@@ -99,3 +108,22 @@ async def test_run_game_pass_acquires_room(user_name: str) -> None:
 
     assert result.completed
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
+
+
+async def test_pass_sets_room_trace(user_name: str) -> None:
+    game = create_srpg_game(name="Game1")
+    game.pipeline = ProcessorPipeline()
+    capture = _CaptureTrace()
+    game.pipeline.add(capture)
+    room = _room_with(game, user_name)
+
+    await run_room_pass(room)
+
+    assert len(capture.traces) == 1
+    trace = capture.traces[0]
+    assert trace.scope == "room"
+    assert trace.scope_id == user_name
+    assert trace.user == user_name
+    assert trace.game == "Game1"
+    assert trace.room == user_name
+    assert trace.snapshot_id is not None

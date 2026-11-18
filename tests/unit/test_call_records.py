@@ -1,11 +1,13 @@
 """LLM 调用记录（.llm_calls JSONL）：结构、开关与读取。"""
 
 import importlib
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
 
 import pytest
 
+from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import (
     ENV_CALL_LOG_SWITCH,
     LlmCallRecord,
@@ -79,7 +81,7 @@ def _request(
 
 
 def _load_all(directory: Path) -> Iterator[LlmCallRecord]:
-    for path in sorted(directory.glob("*.jsonl")):
+    for path in sorted(directory.rglob("*.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 yield LlmCallRecord.model_validate_json(line)
@@ -308,3 +310,128 @@ def test_cli_lists_and_shows_record(calls_dir: Path) -> None:
     as_json = runner.invoke(main, ["llm-call", request_id, "--json"])
     assert as_json.exit_code == 0
     assert '"request_id"' in as_json.output
+
+
+###############################################################################################################
+# trace / 分析字段 / 文件切分
+###############################################################################################################
+def test_record_carries_trace_started_at_and_context_ratio(calls_dir: Path) -> None:
+    request = _request()
+    started_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    result = ChatCompletionResult(
+        request=request,
+        ai_message=AIMessage(content="x", context_usage_ratio=0.25),
+        started_at=started_at,
+    )
+
+    with llm_call_trace(
+        scope="cli",
+        scope_id="test-process",
+        user="alice",
+        game="Game1",
+        command="advance",
+        snapshot_id=7,
+        loop_id="L1",
+        round=2,
+        agent="角色.无名",
+        entity="角色.无名",
+    ):
+        record_llm_call(request, result)
+
+    record = next(_load_all(calls_dir))
+    assert record.started_at == started_at
+    assert record.context_usage_ratio == 0.25
+    assert record.trace.user == "alice"
+    assert record.trace.game == "Game1"
+    assert record.trace.command == "advance"
+    assert record.trace.snapshot_id == 7
+    assert record.trace.loop_id == "L1"
+    assert record.trace.round == 2
+    assert record.trace.agent == "角色.无名"
+    assert list((calls_dir / "cli-test-process").glob("*.jsonl"))
+
+
+def test_record_without_started_at_uses_elapsed(calls_dir: Path) -> None:
+    request = _request()
+    result = ChatCompletionResult(
+        request=request,
+        ai_message=AIMessage(content="x"),
+        elapsed_seconds=1.5,
+    )
+
+    record_llm_call(request, result)
+
+    record = next(_load_all(calls_dir))
+    assert record.started_at is not None
+    assert (record.created_at - record.started_at).total_seconds() == pytest.approx(
+        1.5, abs=0.1
+    )
+
+
+def test_iter_filters_trace_fields(calls_dir: Path) -> None:
+    for user, game, command in (
+        ("alice", "Game1", "advance"),
+        ("alice", "Game2", "advance"),
+        ("bob", "Game1", "stages"),
+    ):
+        request = _request(label=f"{user}-{game}-{command}")
+        result = ChatCompletionResult(
+            request=request, ai_message=AIMessage(content="x")
+        )
+        with llm_call_trace(user=user, game=game, command=command, scope="cli"):
+            record_llm_call(request, result)
+
+    assert [r.label for r in iter_llm_call_records(user="alice")] == [
+        "alice-Game2-advance",
+        "alice-Game1-advance",
+    ]
+    assert [r.label for r in iter_llm_call_records(game="Game1", command="stages")] == [
+        "bob-Game1-stages"
+    ]
+    assert list(iter_llm_call_records(user="nobody")) == []
+
+
+def test_cli_filters_and_json(calls_dir: Path) -> None:
+    from click.testing import CliRunner
+
+    from ai_srpg.cli.srpg_agent_game import main
+
+    request = _request()
+    result = ChatCompletionResult(request=request, ai_message=AIMessage(content="x"))
+    with llm_call_trace(user="alice", game="Game1", command="advance", scope="cli"):
+        request_id = record_llm_call(request, result)
+
+    runner = CliRunner()
+    listed = runner.invoke(
+        main,
+        ["llm-calls", "--user", "alice", "--game", "Game1", "--json"],
+    )
+    assert listed.exit_code == 0
+    assert request_id is not None
+    assert request_id in listed.output
+
+    empty = runner.invoke(main, ["llm-calls", "--user", "nobody"])
+    assert empty.exit_code == 0
+    assert "没有 llm call 记录" in empty.output
+
+
+def test_default_scope_is_cli_with_pid(calls_dir: Path) -> None:
+    request = _request()
+    result = ChatCompletionResult(request=request, ai_message=AIMessage(content="x"))
+
+    record_llm_call(request, result)
+
+    record = next(_load_all(calls_dir))
+    assert record.trace.scope == "cli"
+    assert record.trace.scope_id
+    assert (calls_dir / f"cli-{record.trace.scope_id}").is_dir()
+
+
+def test_iter_filters_by_time(calls_dir: Path) -> None:
+    request = _request()
+    result = ChatCompletionResult(request=request, ai_message=AIMessage(content="x"))
+    record_llm_call(request, result)
+
+    now = datetime.now(timezone.utc)
+    assert len(list(iter_llm_call_records(since=now - timedelta(days=1)))) == 1
+    assert list(iter_llm_call_records(until=now - timedelta(days=1))) == []

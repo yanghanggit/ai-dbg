@@ -25,13 +25,15 @@ import asyncio
 import datetime
 import itertools
 import json
+import os
 import sys
 from pathlib import Path
-from typing import Final
+from typing import Any, Coroutine, Final
 
 import click
 from loguru import logger
 
+from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
 from ai_srpg.srpg_game_agent.combat import (
@@ -72,6 +74,25 @@ def _setup_logger() -> Path:
 
 
 ###############################################################################
+def _run_game(
+    coro: Coroutine[Any, Any, Any],
+    *,
+    command: str,
+    user: str = "",
+    game: str = "",
+) -> Any:
+    """在 CLI 作用域的 trace 中执行游戏动作。"""
+    with llm_call_trace(
+        scope="cli",
+        scope_id=str(os.getpid()),
+        command=command,
+        user=user,
+        game=game,
+    ):
+        return asyncio.run(coro)
+
+
+###############################################################################
 @click.group()
 def main() -> None:
     """AI 操作工具：快照驱动的离线副本推进（当前为骨架，仅记录调用）。"""
@@ -81,11 +102,61 @@ def main() -> None:
 @main.command("llm-calls")
 @click.option("--limit", default=20, show_default=True, help="最多显示多少条")
 @click.option("--label", default=None, help="按 label 精确过滤")
-def llm_calls(limit: int, label: str | None) -> None:
+@click.option("--user", default=None, help="按用户过滤")
+@click.option("--game", default=None, help="按游戏过滤")
+@click.option("--command", default=None, help="按命令/动作过滤")
+@click.option("--loop-id", default=None, help="按 agent loop 过滤")
+@click.option("--round", "round_num", type=int, default=None, help="按 loop 轮次过滤")
+@click.option("--scope", default=None, help="按 cli / room 过滤")
+@click.option(
+    "--since",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d %H:%M:%S"]),
+    default=None,
+    help="起始时间（含）",
+)
+@click.option(
+    "--until",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d %H:%M:%S"]),
+    default=None,
+    help="结束时间（含）",
+)
+@click.option("--json", "as_json", is_flag=True, help="逐行输出完整 JSON")
+def llm_calls(
+    limit: int,
+    label: str | None,
+    user: str | None,
+    game: str | None,
+    command: str | None,
+    loop_id: str | None,
+    round_num: int | None,
+    scope: str | None,
+    since: datetime.datetime | None,
+    until: datetime.datetime | None,
+    as_json: bool,
+) -> None:
     """列出最近的 LLM 调用记录（查问题 / 调提示词）。"""
-    records = list(itertools.islice(iter_llm_call_records(label=label), limit))
+    records = list(
+        itertools.islice(
+            iter_llm_call_records(
+                label=label,
+                user=user,
+                game=game,
+                command=command,
+                scope=scope,
+                loop_id=loop_id,
+                round_num=round_num,
+                since=since,
+                until=until,
+            ),
+            limit,
+        )
+    )
     if not records:
         click.echo("（没有 llm call 记录）")
+        return
+    if as_json:
+        for record in records:
+            click.echo(record.model_dump_json())
         return
     for record in records:
         status = "ERR" if record.response.get("error") else "OK"
@@ -96,6 +167,7 @@ def llm_calls(limit: int, label: str | None) -> None:
             f"{status:<3}",
             f"{record.elapsed_ms:>6}ms",
             f"{str(tokens):>6}tok",
+            f"{record.trace.scope or '-':<4}",
             record.label,
         ]
         click.echo("  ".join(fields))
@@ -117,9 +189,16 @@ def llm_call(request_id: str, as_json: bool) -> None:
 
     click.echo(f"request_id: {record.request_id}")
     click.echo(f"time:       {record.created_at.astimezone():%Y-%m-%d %H:%M:%S}")
+    if record.started_at is not None:
+        click.echo(f"started:    {record.started_at.astimezone():%Y-%m-%d %H:%M:%S}")
     click.echo(f"label:      {record.label}")
     click.echo(f"model:      {record.model or '(provider default)'}")
     click.echo(f"elapsed:    {record.elapsed_ms}ms")
+    if record.context_usage_ratio is not None:
+        click.echo(f"context:    {record.context_usage_ratio:.2%}")
+    trace = record.trace.model_dump(exclude_defaults=True)
+    if trace:
+        click.echo(f"trace:      {json.dumps(trace, ensure_ascii=False)}")
     if record.usage:
         click.echo(f"usage:      {json.dumps(record.usage, ensure_ascii=False)}")
 
@@ -158,7 +237,12 @@ def llm_call(request_id: str, as_json: bool) -> None:
 def new_game(user: str | None, game: str, dungeon: str) -> None:
     """创建新游戏并进入副本首间（骨架）。"""
     _setup_logger()
-    asyncio.run(create_and_initialize_game(user or "skeleton", game, dungeon))
+    _run_game(
+        create_and_initialize_game(user or "skeleton", game, dungeon),
+        command="new",
+        user=user or "skeleton",
+        game=game,
+    )
 
 
 ###############################################################################
@@ -167,7 +251,7 @@ def new_game(user: str | None, game: str, dungeon: str) -> None:
 def stages(snapshot: str) -> None:
     """列出场景-角色映射（骨架）。"""
     _setup_logger()
-    mapping = asyncio.run(stages_game(Path(snapshot)))
+    mapping = _run_game(stages_game(Path(snapshot)), command="stages")
     for stage_name, actor_names in mapping.items():
         click.echo(f"{stage_name}: {', '.join(actor_names)}")
 
@@ -179,7 +263,7 @@ def stages(snapshot: str) -> None:
 def compact_context(snapshot: str, target: str) -> None:
     """手动压缩指定实体的 LLM 记忆（骨架）。"""
     _setup_logger()
-    asyncio.run(compact_context_game(Path(snapshot), target))
+    _run_game(compact_context_game(Path(snapshot), target), command="compact-context")
 
 
 ###############################################################################
@@ -189,7 +273,7 @@ def compact_context(snapshot: str, target: str) -> None:
 def enter_dungeon(snapshot: str, dungeon: str) -> None:
     """从大厅进入指定副本（骨架）。"""
     _setup_logger()
-    asyncio.run(enter_dungeon_game(Path(snapshot), dungeon))
+    _run_game(enter_dungeon_game(Path(snapshot), dungeon), command="enter-dungeon")
 
 
 ###############################################################################
@@ -198,7 +282,7 @@ def enter_dungeon(snapshot: str, dungeon: str) -> None:
 def combat_init(snapshot: str) -> None:
     """战斗房间初始化（骨架）。"""
     _setup_logger()
-    asyncio.run(init_combat_game(Path(snapshot)))
+    _run_game(init_combat_game(Path(snapshot)), command="combat-init")
 
 
 ###############################################################################
@@ -207,7 +291,7 @@ def combat_init(snapshot: str) -> None:
 def opening_init(snapshot: str) -> None:
     """开场房间初始化（骨架）。"""
     _setup_logger()
-    asyncio.run(init_opening_game(Path(snapshot)))
+    _run_game(init_opening_game(Path(snapshot)), command="opening-init")
 
 
 ###############################################################################
@@ -216,7 +300,7 @@ def opening_init(snapshot: str) -> None:
 def draw_cards(snapshot: str) -> None:
     """全员抽牌（骨架）。"""
     _setup_logger()
-    asyncio.run(draw_cards_game(Path(snapshot)))
+    _run_game(draw_cards_game(Path(snapshot)), command="draw-cards")
 
 
 ###############################################################################
@@ -238,7 +322,10 @@ def play_cards_specified(
 ) -> None:
     """指定角色出牌（骨架）。"""
     _setup_logger()
-    asyncio.run(play_cards_specified_game(Path(snapshot), actor, card, targets))
+    _run_game(
+        play_cards_specified_game(Path(snapshot), actor, card, targets),
+        command="play-cards-specified",
+    )
 
 
 ###############################################################################
@@ -248,7 +335,7 @@ def play_cards_specified(
 def pass_turn(snapshot: str, actor: str) -> None:
     """交出行动权（骨架）。"""
     _setup_logger()
-    asyncio.run(pass_turn_game(Path(snapshot), actor))
+    _run_game(pass_turn_game(Path(snapshot), actor), command="pass-turn")
 
 
 ###############################################################################
@@ -264,7 +351,9 @@ def pass_turn(snapshot: str, actor: str) -> None:
 def use_consumable(snapshot: str, item: str, targets: tuple[str, ...]) -> None:
     """使用消耗品（骨架）。"""
     _setup_logger()
-    asyncio.run(use_consumable_game(Path(snapshot), item, targets))
+    _run_game(
+        use_consumable_game(Path(snapshot), item, targets), command="use-consumable"
+    )
 
 
 ###############################################################################
@@ -274,7 +363,7 @@ def use_consumable(snapshot: str, item: str, targets: tuple[str, ...]) -> None:
 def equip_gear(snapshot: str, item: str) -> None:
     """装备装备物（骨架）。"""
     _setup_logger()
-    asyncio.run(equip_gear_game(Path(snapshot), item))
+    _run_game(equip_gear_game(Path(snapshot), item), command="equip-gear")
 
 
 ###############################################################################
@@ -283,7 +372,7 @@ def equip_gear(snapshot: str, item: str) -> None:
 def retreat(snapshot: str) -> None:
     """主动撤退（骨架）。"""
     _setup_logger()
-    asyncio.run(retreat_game(Path(snapshot)))
+    _run_game(retreat_game(Path(snapshot)), command="retreat")
 
 
 ###############################################################################
@@ -292,7 +381,7 @@ def retreat(snapshot: str) -> None:
 def next_dungeon(snapshot: str) -> None:
     """推进到下一个房间（骨架）。"""
     _setup_logger()
-    asyncio.run(next_dungeon_game(Path(snapshot)))
+    _run_game(next_dungeon_game(Path(snapshot)), command="next-dungeon")
 
 
 ###############################################################################
@@ -301,4 +390,4 @@ def next_dungeon(snapshot: str) -> None:
 def exit_dungeon(snapshot: str) -> None:
     """退出副本回到大厅（骨架）。"""
     _setup_logger()
-    asyncio.run(exit_dungeon_game(Path(snapshot)))
+    _run_game(exit_dungeon_game(Path(snapshot)), command="exit-dungeon")

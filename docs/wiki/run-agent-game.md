@@ -16,7 +16,9 @@ LLM 调用观测命令已经可用，不属于骨架：它们读取结构化调�
 
 顶层命令负责生命周期与观测：`new`、`stages`、`compact-context`、`enter-dungeon`、`next-dungeon`、`exit-dungeon`；房间动作按类型分组：`opening-init`；`combat-init`、`draw-cards`、`play-cards-specified`、`pass-turn`、`use-consumable`、`equip-gear`、`retreat`。
 
-调用观测命令：`llm-calls` 按时间倒序列出最近调用，可用标签过滤；`llm-call` 按完整 id 或唯一前缀展开一次调用，包含系统提示、历史消息、AI 回复、工具调用、推理过程与错误信息。记录默认写入 `.llm_calls/` 的按日追加文件，开发期用于查问题与调整提示词。
+调用观测命令：`llm-calls` 按时间倒序列出最近调用，可按标签、用户、游戏、命令、agent loop、轮次、`cli`/`room` 作用域与时间范围过滤，也可输出 JSON 供脚本分析；`llm-call` 按完整 id 或唯一前缀展开一次调用，包含系统提示、历史消息、AI 回复、工具调用、推理过程、错误信息与调用来源。
+
+记录随调用附带分析维度：用户、游戏、命令、快照标识、job 标识、agent loop 与轮次、agent/entity 名称，以及调用开始时间与上下文占比。文件按作用域切分：CLI 每次进程独立目录，服务端按房间独立目录；`make clean-llm-calls` 可整体清空，不做保留策略。
 
 ## 职责分层
 

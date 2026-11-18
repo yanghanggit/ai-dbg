@@ -1,4 +1,4 @@
-.PHONY: install test lint format clean clean-temp dev-install uv-install show-structure check help
+.PHONY: install test lint format clean clean-temp clean-llm-calls dev-install uv-install show-structure check help
 
 # 默认目标：显示帮助信息
 .DEFAULT_GOAL := help
@@ -49,6 +49,12 @@ clean-temp:
 	rm -rf $(GAME_TEMP_DIRS)
 	@echo "✅ 游戏临时文件清理完成！"
 
+# 单独清空 LLM 调用记录（不做保留策略，需要时直接全清）
+clean-llm-calls:
+	@echo "🧹 清空 LLM 调用记录: .llm_calls"
+	rm -rf .llm_calls
+	@echo "✅ LLM 调用记录已清空"
+
 # 清理构建文件（并调用 clean-temp 一并清理游戏临时文件）
 clean: clean-temp
 	rm -rf build/ dist/ *.egg-info/
@@ -90,6 +96,7 @@ help:
 	@echo "  show-structure - 📁 显示项目结构"
 	@echo "  check          - ✅ 检查项目和环境状态"
 	@echo "  clean-temp     - 🧹 清理游戏运行时临时文件（存档/缓存/日志）"
+	@echo "  clean-llm-calls - 🧹 单独清空 .llm_calls"
 	@echo "  clean          - 🧹 清理构建文件（含 clean-temp）"
 	@echo "  help           - ❓ 显示此帮助信息"
 	@echo ""

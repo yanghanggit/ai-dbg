@@ -10,6 +10,7 @@ from ai_srpg.deepseek import ToolDefinition, ToolFunction
 from ai_srpg.deepseek.agent_loop import agent_loop
 from ai_srpg.deepseek.client import ToolCall
 from ai_srpg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_srpg.llm.call_context import LlmCallTrace, current_llm_trace
 from ai_srpg.models import AIMessage, ChatMessage, SystemMessage
 
 
@@ -475,3 +476,40 @@ async def test_mutate_messages_false_isolates_input() -> None:
         "HumanMessage",
         "AIMessage",
     ]
+
+
+#######################################################################################################################################
+class _TraceCaptureService:
+    """记录每次 complete 时当前 trace 的替身 service。"""
+
+    def __init__(self) -> None:
+        self.traces: list[LlmCallTrace] = []
+
+    async def complete(self, request: ChatCompletionRequest) -> ChatCompletionResult:
+        self.traces.append(current_llm_trace())
+        return ChatCompletionResult(
+            request=request,
+            ai_message=AIMessage(content="done"),
+            finish_reason="stop",
+        )
+
+
+async def test_agent_loop_sets_round_trace() -> None:
+    service = _TraceCaptureService()
+
+    result = await agent_loop(
+        "角色.无名",
+        "hi",
+        [],
+        [],
+        {},
+        loop_id="L1",
+        max_rounds=1,
+        service=service,
+    )
+
+    assert result.success
+    assert len(service.traces) == 1
+    assert service.traces[0].loop_id == "L1"
+    assert service.traces[0].round == 1
+    assert service.traces[0].agent == "角色.无名"
