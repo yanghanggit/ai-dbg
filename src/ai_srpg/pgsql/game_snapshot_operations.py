@@ -69,12 +69,21 @@ def load_latest_game_snapshot(user_name: str, game_name: str) -> Optional[GameSn
 
 
 ###############################################################################
-def load_game_snapshot(snapshot_id: int) -> Optional[GameSnapshot]:
-    """按 id 读取指定快照（用于回滚到某个历史点）。"""
+def load_game_snapshot(
+    snapshot_id: int,
+    *,
+    user_name: Optional[str] = None,
+    game_name: Optional[str] = None,
+) -> Optional[GameSnapshot]:
+    """按 id 读取指定快照（可附带 user/game 归属过滤）。"""
     db = SessionLocal()
     try:
-        row = db.get(GameSnapshotDB, snapshot_id)
-        return _to_snapshot(row)
+        query = db.query(GameSnapshotDB).filter(GameSnapshotDB.id == snapshot_id)
+        if user_name is not None:
+            query = query.filter(GameSnapshotDB.user_name == user_name)
+        if game_name is not None:
+            query = query.filter(GameSnapshotDB.game_name == game_name)
+        return _to_snapshot(query.first())
     finally:
         db.close()
 

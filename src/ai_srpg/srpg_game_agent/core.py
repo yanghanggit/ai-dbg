@@ -4,8 +4,7 @@
 待数据层与 SRPG 规则落地后在此补充。
 """
 
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from loguru import logger
 
@@ -27,7 +26,9 @@ async def create_and_initialize_game(user: str, game: str) -> None:
 
 
 ###############################################################################
-async def stages_game(snapshot: Path) -> Dict[str, List[str]]:
+async def stages_game(
+    user: str, game: str, snapshot_id: Optional[int]
+) -> Dict[str, List[str]]:
     """返回各场景内角色名单（骨架：返回空映射）。"""
-    log_call("stages_game", snapshot=snapshot)
+    log_call("stages_game", user=user, game=game, snapshot_id=snapshot_id)
     return {}

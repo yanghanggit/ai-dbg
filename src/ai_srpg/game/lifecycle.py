@@ -17,8 +17,8 @@ async def initialize_pipeline(
 ) -> None:
     """初始化唯一 pipeline，并激活其中的反应式处理器。
 
-    ``observer`` 会收到每个 initialize processor 的边界事件；失败策略由
-    processor 自身的 ``error_policy`` 决定。
+    ``observer`` 会收到每个 initialize processor 的边界事件；任何失败都会
+    中断后续初始化并上抛。
     """
     srpg_game.pipeline.activate_reactive_processors()
     await srpg_game.pipeline.initialize(observer)

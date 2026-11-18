@@ -8,11 +8,6 @@
   new              创建新游戏
   stages           列出场景-角色映射
   compact-context  手动压缩指定实体的 LLM 记忆
-  opening-init     开场房间初始化
-  combat-init      战斗房间初始化
-  pass-turn        交出行动权
-  use-consumable   使用消耗品
-  retreat          主动撤退
 """
 
 import asyncio
@@ -30,15 +25,8 @@ from loguru import logger
 from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
-from ai_srpg.srpg_game_agent.combat import (
-    init_combat_game,
-    pass_turn_game,
-    retreat_game,
-    use_consumable_game,
-)
 from ai_srpg.srpg_game_agent.compact import compact_context_game
 from ai_srpg.srpg_game_agent.core import create_and_initialize_game, stages_game
-from ai_srpg.srpg_game_agent.opening import init_opening_game
 
 LOG_LEVEL: Final[str] = "DEBUG"
 
@@ -230,75 +218,34 @@ def new_game(user: str | None, game: str) -> None:
 
 ###############################################################################
 @main.command("stages")
-@click.option("--snapshot", required=True, help="存档目录路径")
-def stages(snapshot: str) -> None:
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+def stages(user: str, game: str, snapshot_id: int | None) -> None:
     """列出场景-角色映射（骨架）。"""
     _setup_logger()
-    mapping = _run_game(stages_game(Path(snapshot)), command="stages")
+    mapping = _run_game(
+        stages_game(user, game, snapshot_id),
+        command="stages",
+        user=user,
+        game=game,
+    )
     for stage_name, actor_names in mapping.items():
         click.echo(f"{stage_name}: {', '.join(actor_names)}")
 
 
 ###############################################################################
 @main.command("compact-context")
-@click.option("--snapshot", required=True, help="存档目录路径")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
 @click.option("--target", required=True, help="要压缩的目标实体名")
-def compact_context(snapshot: str, target: str) -> None:
+def compact_context(user: str, game: str, snapshot_id: int | None, target: str) -> None:
     """手动压缩指定实体的 LLM 记忆（骨架）。"""
     _setup_logger()
-    _run_game(compact_context_game(Path(snapshot), target), command="compact-context")
-
-
-###############################################################################
-@main.command("combat-init")
-@click.option("--snapshot", required=True, help="存档目录路径")
-def combat_init(snapshot: str) -> None:
-    """战斗房间初始化（骨架）。"""
-    _setup_logger()
-    _run_game(init_combat_game(Path(snapshot)), command="combat-init")
-
-
-###############################################################################
-@main.command("opening-init")
-@click.option("--snapshot", required=True, help="存档目录路径")
-def opening_init(snapshot: str) -> None:
-    """开场房间初始化（骨架）。"""
-    _setup_logger()
-    _run_game(init_opening_game(Path(snapshot)), command="opening-init")
-
-
-###############################################################################
-@main.command("pass-turn")
-@click.option("--snapshot", required=True, help="存档目录路径")
-@click.option("--actor", required=True, help="交出行动权的角色全名")
-def pass_turn(snapshot: str, actor: str) -> None:
-    """交出行动权（骨架）。"""
-    _setup_logger()
-    _run_game(pass_turn_game(Path(snapshot), actor), command="pass-turn")
-
-
-###############################################################################
-@main.command("use-consumable")
-@click.option("--snapshot", required=True, help="存档目录路径")
-@click.option("--item", required=True, help="消耗品名称")
-@click.option(
-    "--targets",
-    multiple=True,
-    default=(),
-    help="目标角色名，可重复使用",
-)
-def use_consumable(snapshot: str, item: str, targets: tuple[str, ...]) -> None:
-    """使用消耗品（骨架）。"""
-    _setup_logger()
     _run_game(
-        use_consumable_game(Path(snapshot), item, targets), command="use-consumable"
+        compact_context_game(user, game, target, snapshot_id),
+        command="compact-context",
+        user=user,
+        game=game,
     )
-
-
-###############################################################################
-@main.command("retreat")
-@click.option("--snapshot", required=True, help="存档目录路径")
-def retreat(snapshot: str) -> None:
-    """主动撤退（骨架）。"""
-    _setup_logger()
-    _run_game(retreat_game(Path(snapshot)), command="retreat")

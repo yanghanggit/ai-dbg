@@ -14,7 +14,7 @@ LLM 调用观测命令已经可用，不属于骨架：它们读取结构化调�
 
 ## 命令面
 
-顶层命令负责生命周期与观测：`new`、`stages`、`compact-context`；房间动作按类型分组：`opening-init`、`combat-init`、`pass-turn`、`use-consumable`、`retreat`。
+顶层命令负责生命周期与观测：`new`、`stages`、`compact-context`。读取状态的命令用 `--user` / `--game` 定位对局，`--snapshot-id` 可指定历史快照，缺省使用最新。
 
 调用观测命令：`llm-calls` 按时间倒序列出最近调用，可按标签、用户、游戏、命令、agent loop、轮次、`cli`/`room` 作用域与时间范围过滤，也可输出 JSON 供脚本分析；`llm-call` 按完整 id 或唯一前缀展开一次调用，包含系统提示、历史消息、AI 回复、工具调用、推理过程、错误信息与调用来源。
 
@@ -22,6 +22,6 @@ LLM 调用观测命令已经可用，不属于骨架：它们读取结构化调�
 
 ## 职责分层
 
-Click 层只做参数解析、日志初始化与输出。动作编排在 `ai_srpg/srpg_game_agent/` 的 `core`、`opening`、`combat`、`compact` 中；领域实现落地后，规则校验与 ECS 动作应放在可被服务端与测试复用的 services 层，CLI 只是薄壳。
+Click 层只做参数解析、日志初始化与输出。动作编排在 `ai_srpg/srpg_game_agent/` 的 `core` 与 `compact` 中；领域实现落地后，规则校验与 ECS 动作应放在可被服务端与测试复用的 services 层，CLI 只是薄壳。
 
 → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
