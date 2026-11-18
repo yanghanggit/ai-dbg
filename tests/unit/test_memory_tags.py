@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Set
 
-from ai_dbg.models.memory_tags import MEMORY_TAGS
+from ai_srpg.models.memory_tags import MEMORY_TAGS
 from dungeon_support import install_combat
 
 _SRC_ROOT = Path(__file__).resolve().parents[2] / "src"
@@ -100,7 +100,7 @@ def test_message_kwargs_are_registered_tags() -> None:
 
 def test_every_registered_tag_is_accepted_by_runtime_gate() -> None:
     """反向：词表里的标记不会触发运行时校验（拼错/漏登记之外的另一半）。"""
-    from ai_dbg.models import HumanMessage, assert_known_memory_tags
+    from ai_srpg.models import HumanMessage, assert_known_memory_tags
 
     for tag in MEMORY_TAGS:
         message = HumanMessage(content="", **{tag: "value"})
@@ -111,13 +111,13 @@ def test_structured_tag_values_have_expected_shape() -> None:
     """结构化标记的值有约定形态：调用方与消费者都依赖它，不能被随手改坏。"""
     import json
 
-    from ai_dbg.models import Card, TargetType
-    from ai_dbg.systems.combat_decision_common import (
+    from ai_srpg.models import Card, TargetType
+    from ai_srpg.systems.combat_decision_common import (
         ACTION_PLAY,
         build_combat_decision_record,
         build_combat_decision_tag,
     )
-    from ai_dbg.systems.transfer_cards_action_system import _build_received_card_tag
+    from ai_srpg.systems.transfer_cards_action_system import _build_received_card_tag
 
     card = Card(
         name="攻击",
@@ -174,15 +174,15 @@ def test_stats_update_tag_records_hp_transition() -> None:
     """`stats_update` 的值是「旧 HP->新 HP」，审计时不必再读正文。"""
     from unittest.mock import MagicMock
 
-    from ai_dbg.game.context import ECSContext
-    from ai_dbg.models import (
+    from ai_srpg.game.context import ECSContext
+    from ai_srpg.models import (
         ActorComponent,
         CharacterStats,
         CharacterStatsComponent,
         CombatArbitrationEvent,
         StageComponent,
     )
-    from ai_dbg.systems.combat_resolution import apply_combat_resolution
+    from ai_srpg.systems.combat_resolution import apply_combat_resolution
 
     context = ECSContext()
     entity = context.create_entity()

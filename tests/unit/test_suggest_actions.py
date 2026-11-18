@@ -6,7 +6,7 @@
 
 from typing import Any, Dict
 
-from ai_dbg.dbg_api_agent.flow import suggest_actions
+from ai_srpg.srpg_api_agent.flow import suggest_actions
 
 
 def _post_combat_status(

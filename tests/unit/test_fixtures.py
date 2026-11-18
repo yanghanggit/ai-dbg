@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ai_dbg.models import ActorType
+from ai_srpg.models import ActorType
 
 
 def test_sample_game_fixture(sample_game: Any) -> None:

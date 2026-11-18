@@ -6,9 +6,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CombatResult,
@@ -19,7 +19,7 @@ from ai_dbg.models import (
     ExhaustPileComponent,
     TargetType,
 )
-from ai_dbg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
+from ai_srpg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
 from dungeon_support import install_combat, set_combat_state
 
 # ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ def context() -> ECSContext:
 
 @pytest.fixture()
 def mock_game(context: ECSContext) -> Any:
-    """Mock DBGGame，将 get_group() 代理到真实 Context。"""
+    """Mock SRPGGame，将 get_group() 代理到真实 Context。"""
     game = MagicMock()
     game.ecs = context
     game.world.agent_memories = {}

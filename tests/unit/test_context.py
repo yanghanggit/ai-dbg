@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from ai_dbg.entitas import Context, Group, Matcher
-from ai_dbg.entitas.exceptions import MissingEntity
+from ai_srpg.entitas import Context, Group, Matcher
+from ai_srpg.entitas.exceptions import MissingEntity
 from ecs_testing import Age, Health, Name, Position, Velocity
 
 

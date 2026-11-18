@@ -4,8 +4,8 @@ import asyncio
 import time
 from typing import cast
 
-from ai_dbg.game.context import DBGGame
-from ai_dbg.session.server import GameServer
+from ai_srpg.game.context import SRPGGame
+from ai_srpg.session.server import GameServer
 
 
 class _FakePipeline:
@@ -29,7 +29,7 @@ async def test_reap_expired_removes_idle_room() -> None:
     server = GameServer()
     room = await server.create_room("alice")
     game = _FakeGame()
-    room._dbg_game = cast(DBGGame, game)
+    room._srpg_game = cast(SRPGGame, game)
     room._last_active_at = 0.0
 
     reaped = await server.reap_expired(ttl=10, now=time.monotonic())

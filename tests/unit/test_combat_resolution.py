@@ -1,6 +1,6 @@
 """确定性战斗结算的纯计算测试。"""
 
-from ai_dbg.systems.combat_resolution import compute_damage
+from ai_srpg.systems.combat_resolution import compute_damage
 
 
 def test_single_hit_subtracts_block() -> None:

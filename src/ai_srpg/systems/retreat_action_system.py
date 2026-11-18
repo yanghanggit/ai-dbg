@@ -1,0 +1,125 @@
+"""撤退系统：结算为失败（成员标记死亡），随后由战斗结果流程收尾。"""
+
+from typing import Dict, List, final, override
+
+from loguru import logger
+
+from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ..game.combat import mark_dead
+from ..game.context import SRPGGame
+from ..game.dungeon import (
+    current_combat_entity,
+    current_dungeon_combat,
+    current_dungeon_name,
+    is_current_room_dungeon_combat,
+)
+from ..game.entities import (
+    resolve_stage_entity,
+)
+from ..game.memory import (
+    add_human_message,
+)
+from ..models import (
+    CombatStateComponent,
+    HumanMessage,
+    PlayerComponent,
+    RetreatAction,
+)
+from ..utils import prompt_builder
+
+
+###################################################################################################################################################################
+@prompt_builder
+def _build_retreat_message(dungeon_name: str, stage_name: str) -> str:
+    """生成撤退提示消息"""
+    return f"""# 提示！战斗撤退：从副本 {dungeon_name} 的关卡 {stage_name} 撤退
+
+你选择了战斗中撤退。所有同伴视为战斗失败。战斗结束后，需退出副本方能返回大厅。
+（关于「副本」及进出副本的具体设定，见你的「游戏设定」与「全局规则」。）"""
+
+
+###################################################################################################################################################################
+@final
+class RetreatActionSystem(ReactiveProcessor):
+    """撤退动作系统"""
+
+    def __init__(self, game: SRPGGame) -> None:
+        super().__init__(game.ecs)
+        self._game: SRPGGame = game
+
+    ####################################################################################################################################
+    @override
+    def get_trigger(self) -> Dict[Matcher, GroupEvent]:
+        return {Matcher(RetreatAction): GroupEvent.ADDED}
+
+    ####################################################################################################################################
+    @override
+    def filter(self, entity: Entity) -> bool:
+        """过滤条件：必须有 RetreatAction 和 PlayerComponent"""
+        return entity.has(RetreatAction) and entity.has(PlayerComponent)
+
+    ####################################################################################################################################
+    @override
+    async def react(self, entities: List[Entity]) -> None:
+        """处理撤退动作"""
+
+        # 状态守卫：仅在战斗进行中执行撤退处理
+        if not is_current_room_dungeon_combat(self._game):
+            return
+        if not current_dungeon_combat(self._game).is_ongoing:
+            logger.debug("RetreatActionSystem: 战斗未进行中，跳过撤退处理")
+            return
+
+        # 获取当前副本名，生成撤退消息需要使用
+        dungeon_name = current_dungeon_name(self._game)
+
+        # 处理每个撤退实体，执行撤退逻辑
+        for entity in entities:
+            self._process_retreat_action(entity, dungeon_name)
+
+        # 标记当前战斗为撤退状态
+        self._mark_combat_retreated(current_combat_entity(self._game))
+
+    ####################################################################################################################################
+    def _mark_combat_retreated(self, combat_entity: Entity) -> None:
+        """标记本次战斗通过撤退结束。"""
+        state_comp = combat_entity.get(CombatStateComponent)
+        combat_entity.replace(
+            CombatStateComponent,
+            state_comp.name,
+            state_comp.room_name,
+            state_comp.state,
+            state_comp.result,
+            True,
+        )
+
+    ####################################################################################################################################
+    def _process_retreat_action(self, entity: Entity, dungeon_name: str) -> None:
+        """处理单个实体的撤退动作"""
+        assert entity.has(
+            PlayerComponent
+        ), f"Entity {entity.name} must have PlayerComponent"
+
+        # 标记为死亡，后续 CombatOutcomeSystem 会检测并触发战斗失败流程
+        mark_dead(entity)
+        logger.info(f"撤退: 角色 {entity.name} 标记为死亡")
+
+        # 解析所在场景，生成撤退叙事消息并写入对话历史
+        stage_entity = resolve_stage_entity(self._game, entity)
+        assert stage_entity is not None, f"Entity {entity.name} must be in a stage"
+
+        # 生成撤退消息并写入对话历史
+        retreat_message = _build_retreat_message(dungeon_name, stage_entity.name)
+        add_human_message(
+            self._game,
+            entity,
+            HumanMessage(
+                content=retreat_message,
+                dungeon_lifecycle_retreat=f"{dungeon_name}:{stage_entity.name}",
+            ),
+        )
+        logger.info(
+            f"战斗撤退处理完成: 角色={entity.name}, 副本={dungeon_name}, 关卡={stage_entity.name}"
+        )
+
+    ####################################################################################################################################

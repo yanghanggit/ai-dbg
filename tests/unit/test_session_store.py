@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from ai_dbg.models import NoneEvent, PlayerSession
-from ai_dbg.session import PlayerSessionEventSink, SessionStore
+from ai_srpg.models import NoneEvent, PlayerSession
+from ai_srpg.session import PlayerSessionEventSink, SessionStore
 
 
 def _event(message: str) -> NoneEvent:

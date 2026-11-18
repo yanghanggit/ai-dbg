@@ -13,7 +13,7 @@
 
 - 由唯一全局 pipeline 驱动：每次动作完成一个阶段后，产出一份新快照。
 - 被 AI 操作 CLI 消费：读取某份快照还原世界后继续执行下一动作，形成「读快照 → 动作 → 写快照」的无状态循环。
-  → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
+  → 参见：[SRPG AI 操作 CLI（ai-srpg-agent-game）](run-agent-game.md)
 - 最近一次成功写盘会更新同目录下的指针，供 job 失败时恢复到进入执行前的世界。
   → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 - 快照承载的世界模型属于核心模型层，其语义不在本系统定义；用户会话历史的语义见独立文档。

@@ -1,10 +1,10 @@
 """
-Unit tests for src/ai_dbg/game/stage_transition.py
+Unit tests for src/ai_srpg/game/stage_transition.py
 
 覆盖范围：
   - 3 个格式化纯函数
   - _validate_stage_transition_prerequisites（用 Mock game）
-  - stage_transition 完整流程（用真实 DBGGame fixture）
+  - stage_transition 完整流程（用真实 SRPGGame fixture）
 """
 
 from typing import Any, Dict
@@ -12,22 +12,22 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.entities import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.entities import (
     create_entity,
     resolve_stage_entity,
 )
-from ai_dbg.game.memory import (
+from ai_srpg.game.memory import (
     get_agent_memory,
 )
-from ai_dbg.game.stage.transition import (
+from ai_srpg.game.stage.transition import (
     _build_stage_arrival_message,
     _build_stage_departure_message,
     _build_stage_transition_message,
     _validate_stage_transition_prerequisites,
     stage_transition,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     PlayerComponent,
     StageComponent,
@@ -129,7 +129,7 @@ class TestValidateStageTransitionPrerequisites:
         game = self._mock_game({actor: dest})
 
         with patch(
-            "ai_dbg.game.stage.transition.resolve_stage_entity",
+            "ai_srpg.game.stage.transition.resolve_stage_entity",
             return_value=dest,
         ):
             result = _validate_stage_transition_prerequisites(game, {actor}, dest)
@@ -158,7 +158,7 @@ class TestValidateStageTransitionPrerequisites:
         game = self._mock_game({actor_at_dest: dest, actor_at_source: source})
 
         with patch(
-            "ai_dbg.game.stage.transition.resolve_stage_entity",
+            "ai_srpg.game.stage.transition.resolve_stage_entity",
             side_effect=lambda _game, actor: (
                 dest if actor is actor_at_dest else source
             ),
@@ -171,12 +171,12 @@ class TestValidateStageTransitionPrerequisites:
 
 
 # ---------------------------------------------------------------------------
-# stage_transition 完整流程（真实 DBGGame）
+# stage_transition 完整流程（真实 SRPGGame）
 # ---------------------------------------------------------------------------
 
 
 class TestStageTransition:
-    """使用真实 DBGGame（sample_game fixture）测试完整场景转换流程。"""
+    """使用真实 SRPGGame（sample_game fixture）测试完整场景转换流程。"""
 
     @pytest.fixture
     def game(self, sample_game: Any) -> Any:

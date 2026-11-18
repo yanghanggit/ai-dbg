@@ -1,6 +1,6 @@
-# AI-DBG
+# AI-SRPG
 
-一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 DBG（Deck Building Game）框架：
+一个基于**多智能体架构**与 **ECS (Entity Component System)** 的 AI 驱动型 SRPG（Strategy RPG）框架：
 以 ECS 承载副本、卡牌与战斗规则，以 LLM（DeepSeek）驱动战斗决策与叙事生成。
 
 > 本仓库是**引擎 + 常驻服务端 + 服务端真相**，同时自带两个面向 AI 代理的命令行工具。
@@ -25,7 +25,7 @@
 
 ```bash
 git clone <repository-url>
-cd ai-dbg
+cd ai-srpg
 
 make install        # 等价 uv sync（含 dev 依赖组）
 # 或
@@ -52,8 +52,8 @@ python -m scripts.setup_demo     # 把 demo/ 的硬编码设定刷入 .blueprint
 ### 启动游戏服务器
 
 ```bash
-uv run ai-dbg-server                  # --port 缺省读 .env 的 GAME_SERVER_PORT
-uv run ai-dbg-server --host 0.0.0.0 --port 8000
+uv run ai-srpg-server                  # --port 缺省读 .env 的 GAME_SERVER_PORT
+uv run ai-srpg-server --host 0.0.0.0 --port 8000
 
 # 验证
 curl http://127.0.0.1:8000/
@@ -84,8 +84,8 @@ pm2 start ecosystem.config.js
 
 | 命令 | 用途 | 文档 |
 | --- | --- | --- |
-| `ai-dbg-agent-game` | 离线、快照驱动推进（可回溯、可复现） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
-| `ai-dbg-agent-api` | 通过 HTTP 走查服务器 API | [docs/wiki/run-agent-api.md](docs/wiki/run-agent-api.md) |
+| `ai-srpg-agent-game` | 离线、快照驱动推进（可回溯、可复现） | [docs/wiki/run-agent-game.md](docs/wiki/run-agent-game.md) |
+| `ai-srpg-agent-api` | 通过 HTTP 走查服务器 API | [docs/wiki/run-agent-api.md](docs/wiki/run-agent-api.md) |
 
 `uv run <命令> --help` 可列出全部子命令。
 
@@ -100,9 +100,9 @@ make format         # black 格式化
 
 ### 测试约定
 
-- 测试一律 `from ai_dbg... import ...`（**不要** `from src.ai_dbg...`）——测试、脚本、生产共用同一导入身份。
+- 测试一律 `from ai_srpg... import ...`（**不要** `from src.ai_srpg...`）——测试、脚本、生产共用同一导入身份。
 - `tests/` 不是包（无 `__init__.py`）；pytest 走 `--import-mode=importlib` + `pythonpath=["src"]`。
-- 共享测试代码放包里（如 `src/ai_dbg/entitas/testing.py`）或 `tests/conftest.py` 的 fixture，不要 `from tests... import`。
+- 共享测试代码放包里（如 `src/ai_srpg/entitas/testing.py`）或 `tests/conftest.py` 的 fixture，不要 `from tests... import`。
 
 > **Windows 用户**：需装 [Git Bash](https://git-scm.com/) 与 Make（`winget install ezwinports.make`）。
 

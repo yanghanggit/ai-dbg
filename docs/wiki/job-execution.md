@@ -22,7 +22,7 @@
 5. 成功后保存世界并记录 job 成功；
 6. 失败时记录 system 失败、执行回滚并记录 job 失败。
 
-失败回滚只替换 `DBGGame`，复用同一个用户会话对象；旧 pipeline 关闭后再绑定新实例。
+失败回滚只替换 `SRPGGame`，复用同一个用户会话对象；旧 pipeline 关闭后再绑定新实例。
 
 ## 与客户端
 
@@ -34,4 +34,4 @@
 
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
 → 参见：[世界快照持久化（World Persistence）](world-persistence.md)
-→ 参见：[DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](run-agent-api.md)
+→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)

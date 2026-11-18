@@ -11,10 +11,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas import GroupEvent
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas import GroupEvent
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CombatState,
@@ -27,13 +27,13 @@ from ai_dbg.models import (
     PlayerComponent,
     TargetType,
 )
-from ai_dbg.systems.combat_decision_common import (
+from ai_srpg.systems.combat_decision_common import (
     ACTION_PLAY,
     REASON_PLACEHOLDER,
     UNPLAYABLE_CAUSE,
     build_combat_decision_tag,
 )
-from ai_dbg.systems.player_combat_decision_system import PlayerCombatDecisionSystem
+from ai_srpg.systems.player_combat_decision_system import PlayerCombatDecisionSystem
 from dungeon_support import (
     append_combat_round,
     install_combat,

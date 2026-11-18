@@ -1,11 +1,11 @@
 """供测试复用的通用 ECS 组件（Position/Velocity/Health …）。
 
 这些组件不属于游戏玩法，而是 entitas 单测/集成测试的公共夹具，因此放在测试树
-（``tests/ecs_testing.py``）而非发布包 ``ai_dbg.entitas`` 内。所有组件基于 Pydantic
+（``tests/ecs_testing.py``）而非发布包 ``ai_srpg.entitas`` 内。所有组件基于 Pydantic
 BaseModel。
 """
 
-from ai_dbg.entitas.components import Component
+from ai_srpg.entitas.components import Component
 
 
 # Basic components for testing

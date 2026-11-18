@@ -7,9 +7,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CombatState,
@@ -18,7 +18,7 @@ from ai_dbg.models import (
     PlayCardsAction,
     TargetType,
 )
-from ai_dbg.systems.discard_cards_action_system import DiscardCardsActionSystem
+from ai_srpg.systems.discard_cards_action_system import DiscardCardsActionSystem
 from dungeon_support import install_combat, set_combat_state
 
 # ---------------------------------------------------------------------------

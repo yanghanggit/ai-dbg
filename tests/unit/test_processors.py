@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from ai_dbg.entitas import (
+from ai_srpg.entitas import (
     CleanupProcessor,
     ExecuteProcessor,
     InitializeProcessor,
@@ -15,10 +15,10 @@ from ai_dbg.entitas import (
     ReactiveProcessor,
     TearDownProcessor,
 )
-from ai_dbg.entitas.context import Context
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.entitas.group import GroupEvent
-from ai_dbg.entitas.matcher import Matcher
+from ai_srpg.entitas.context import Context
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.entitas.group import GroupEvent
+from ai_srpg.entitas.matcher import Matcher
 from ecs_testing import Position, Velocity
 
 

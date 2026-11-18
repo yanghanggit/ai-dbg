@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-dbg"
+name = "ai-srpg"
 version = "0.1.0"
-description = "A multi-agent game framework based on ECS architecture for DBG games"
+description = "A multi-agent game framework based on ECS architecture for SRPG games"
 authors = [{name = "Yang Hang", email = "yanghang@example.com"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.12"
-keywords = ["multi-agent", "game", "framework", "ECS", "DBG", "AI"]
+keywords = ["multi-agent", "game", "framework", "ECS", "SRPG", "AI"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-urls = {homepage = "https://github.com/yanghanggit/ai-dbg", repository = "https://github.com/yanghanggit/ai-dbg.git"}
+urls = {homepage = "https://github.com/yanghanggit/ai-srpg", repository = "https://github.com/yanghanggit/ai-srpg.git"}
 dependencies = [
     # Core web framework
     "fastapi>=0.116.1",
@@ -86,9 +86,9 @@ dev = [
 ]
 
 [project.scripts]
-ai-dbg-server = "ai_dbg.cli.dbg_server:main"
-ai-dbg-agent-game = "ai_dbg.cli.dbg_agent_game:main"
-ai-dbg-agent-api = "ai_dbg.cli.dbg_agent_api:main"
+ai-srpg-server = "ai_srpg.cli.srpg_server:main"
+ai-srpg-agent-game = "ai_srpg.cli.srpg_agent_game:main"
+ai-srpg-agent-api = "ai_srpg.cli.srpg_agent_api:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -182,6 +182,6 @@ preview = true
 
 [tool.ruff.lint.isort]
 # import排序配置
-known-first-party = ["ai_dbg"]
+known-first-party = ["ai_srpg"]
 
 

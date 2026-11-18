@@ -11,7 +11,7 @@ from typing import Optional
 
 import pytest
 
-from ai_dbg.replicate.assets import TextToImageSpec, _text_to_image_input
+from ai_srpg.replicate.assets import TextToImageSpec, _text_to_image_input
 
 
 def test_aspect_ratio_derived_landscape() -> None:

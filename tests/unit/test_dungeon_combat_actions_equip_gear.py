@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock
 
-from ai_dbg.entitas import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import EquipGearItemAction, InventoryComponent, PlayerComponent
-from ai_dbg.services.dungeon_combat_actions import activate_equip_gear
+from ai_srpg.entitas import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import EquipGearItemAction, InventoryComponent, PlayerComponent
+from ai_srpg.services.dungeon_combat_actions import activate_equip_gear
 
 
 def _make_game() -> tuple[MagicMock, ECSContext, Entity]:

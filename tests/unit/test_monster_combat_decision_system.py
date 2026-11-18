@@ -1,6 +1,6 @@
 """`MonsterCombatDecisionSystem` 单测：工具化决策 + 决策过程被替换成「做了什么 + 原因」。
 
-用真实 `DBGGame`（记忆写入与 `replace_span` 都是真的），只把 LLM 与场景查询打桩：
+用真实 `SRPGGame`（记忆写入与 `replace_span` 都是真的），只把 LLM 与场景查询打桩：
 - `agent_loop` 被替换成「把脚本化的工具调用依次交给真实 handler」的假循环，
   仍按「提示词 → 模型回合 → 工具回显」写入记忆，随后被整段替换；
 - 记忆里最终只剩一条决策记录，原文留在 `replaced_messages`。
@@ -11,14 +11,14 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.entities import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.entities import (
     create_entity,
 )
-from ai_dbg.game.memory import (
+from ai_srpg.game.memory import (
     get_agent_memory,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     AIMessage,
     Card,
@@ -38,15 +38,15 @@ from ai_dbg.models import (
     TargetType,
     ToolMessage,
 )
-from ai_dbg.systems.card_pile_common import PILE_EXHAUST
-from ai_dbg.systems.combat_decision_common import REASON_MISSING
-from ai_dbg.systems.monster_combat_decision_system import (
+from ai_srpg.systems.card_pile_common import PILE_EXHAUST
+from ai_srpg.systems.combat_decision_common import REASON_MISSING
+from ai_srpg.systems.monster_combat_decision_system import (
     MonsterCombatDecisionSystem,
     _make_loop_id,
 )
 from dungeon_support import install_combat
 
-_MODULE = "ai_dbg.systems.monster_combat_decision_system"
+_MODULE = "ai_srpg.systems.monster_combat_decision_system"
 _STAGE_NAME = "场景.河湾芦苇丛"
 
 

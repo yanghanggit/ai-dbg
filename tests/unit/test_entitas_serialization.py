@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Type
 
 import pytest
 
-from ai_dbg.entitas import (
+from ai_srpg.entitas import (
     Component,
     ComponentData,
     Context,

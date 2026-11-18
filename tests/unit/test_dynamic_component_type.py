@@ -3,7 +3,7 @@
 覆盖范围：
 - registry.create_component_type 动态创建组件类（含幂等与字段定义）
 - registry.resolve_component_type 惰性重建动态组件（含按 data 推断字段）
-- DBGGame.create_stage_entities 挂载 Stage.components
+- SRPGGame.create_stage_entities 挂载 Stage.components
 - RPGEntityManager.restore_context 跨进程重建动态组件
 """
 
@@ -14,16 +14,16 @@ from typing import Any, Iterator, cast
 import pytest
 from pydantic import ValidationError
 
-from ai_dbg.entitas import Context
-from ai_dbg.entitas.components import Component
-from ai_dbg.game.context import ECSContext
-from ai_dbg.game.entities import (
+from ai_srpg.entitas import Context
+from ai_srpg.entitas.components import Component
+from ai_srpg.game.context import ECSContext
+from ai_srpg.game.entities import (
     create_entity,
     create_stage_entities,
     restore_context,
     serialize_context,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
     LobbyComponent,
@@ -63,7 +63,7 @@ def _make_stage_model(name: str, component_name: str) -> Stage:
 # create_component_type
 ############################################################################################################
 class _GameImpl:
-    """最小 DBGGame 替身：只提供函数所需的 ECS context。"""
+    """最小 SRPGGame 替身：只提供函数所需的 ECS context。"""
 
     def __init__(self) -> None:
         self.ecs = ECSContext()
@@ -138,7 +138,7 @@ class TestResolveComponentType:
 
 
 ############################################################################################################
-# DBGGame.create_stage_entities 集成
+# SRPGGame.create_stage_entities 集成
 ############################################################################################################
 class TestCreateStageEntitiesDynamicComponent:
     def test_attaches_dynamic_component(self, sample_game: Any) -> None:

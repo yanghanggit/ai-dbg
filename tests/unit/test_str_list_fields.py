@@ -8,7 +8,7 @@
 - 消耗品堆叠身份纳入内置卡牌规格。
 """
 
-from ai_dbg.models import (
+from ai_srpg.models import (
     Artifact,
     Card,
     ConsumableItem,
@@ -17,7 +17,7 @@ from ai_dbg.models import (
     render_labeled_str_list,
     render_str_list,
 )
-from ai_dbg.systems.monster_combat_decision_system import _format_card
+from ai_srpg.systems.monster_combat_decision_system import _format_card
 
 AFFIX_A = "[穿甲]:本卡 damage 结算时无视目标 block"
 AFFIX_B = "[自损]:打出时对自身结算本卡 damage×1 的伤害"

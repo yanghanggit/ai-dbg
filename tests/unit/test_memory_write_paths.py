@@ -1,4 +1,4 @@
-"""真实 `DBGGame` 上的记忆写入链路测试（不 mock `add_human_message`）。
+"""真实 `SRPGGame` 上的记忆写入链路测试（不 mock `add_human_message`）。
 
 补的两个洞：
 1. `TransferCardsActionSystem` 写 `received_card` 走的是真实写入 + 真实标记校验
@@ -12,15 +12,15 @@ from typing import Any
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game import persistence
-from ai_dbg.game.entities import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game import persistence
+from ai_srpg.game.entities import (
     create_entity,
 )
-from ai_dbg.game.memory import (
+from ai_srpg.game.memory import (
     get_agent_memory,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     AgentMemory,
     AppearanceComponent,
@@ -37,8 +37,8 @@ from ai_dbg.models import (
     PlayerComponent,
     TargetType,
 )
-from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
-from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from ai_srpg.systems.draw_cards_action_system import DrawCardsActionSystem
+from ai_srpg.systems.transfer_cards_action_system import TransferCardsActionSystem
 from dungeon_support import install_combat
 
 
@@ -170,7 +170,7 @@ def test_agent_memory_direct_write_is_checked_at_save(
 
 #######################################################################################################
 class TestPileChangeWritesRealMemory:
-    """牌堆变更只写给容器主人：真实 DBGGame 上跑抽牌，检查正文与标记。"""
+    """牌堆变更只写给容器主人：真实 SRPGGame 上跑抽牌，检查正文与标记。"""
 
     async def test_draw_writes_self_only_pile_change(
         self, sample_game: Any, tmp_path: Path

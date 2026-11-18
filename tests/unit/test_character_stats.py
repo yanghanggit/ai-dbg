@@ -1,6 +1,6 @@
 """`CharacterStats` 与 `compute_effective_stats` 的单元测试。"""
 
-from ai_dbg.models import (
+from ai_srpg.models import (
     CharacterStats,
     EquippedGearComponent,
     GearItem,

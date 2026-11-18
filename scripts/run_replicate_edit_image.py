@@ -18,9 +18,9 @@ from typing import List, Optional, Tuple
 
 import click
 
-from ai_dbg.models import ImageMeta
-from ai_dbg.paths import ASSETS_DIR
-from ai_dbg.replicate import (
+from ai_srpg.models import ImageMeta
+from ai_srpg.paths import ASSETS_DIR
+from ai_srpg.replicate import (
     EditImageSpec,
     check_replicate_connection,
     edit_image,

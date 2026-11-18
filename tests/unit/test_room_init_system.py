@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     AppearanceComponent,
     CharacterStats,
@@ -22,7 +22,7 @@ from ai_dbg.models import (
     MonsterComponent,
     PlayerComponent,
 )
-from ai_dbg.systems.room_init_system import (
+from ai_srpg.systems.room_init_system import (
     OtherActorInfo,
     RoomInitSystem,
     _build_other_actors_info,

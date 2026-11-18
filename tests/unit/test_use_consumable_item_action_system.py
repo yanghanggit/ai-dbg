@@ -10,11 +10,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import combat_rounds
-from ai_dbg.game.context import ECSContext
-from ai_dbg.game.dungeon import current_combat_entity
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.combat.state import combat_rounds
+from ai_srpg.game.context import ECSContext
+from ai_srpg.game.dungeon import current_combat_entity
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CombatState,
@@ -25,7 +25,7 @@ from ai_dbg.models import (
     StageComponent,
     UseConsumableItemAction,
 )
-from ai_dbg.systems.use_consumable_item_action_system import (
+from ai_srpg.systems.use_consumable_item_action_system import (
     UseConsumableItemActionSystem,
 )
 from dungeon_support import (

@@ -9,15 +9,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas import Entity
-from ai_dbg.entitas.context import Context
-from ai_dbg.models import (
+from ai_srpg.entitas import Entity
+from ai_srpg.entitas.context import Context
+from ai_srpg.models import (
     Card,
     DiscardPileComponent,
     DrawPileComponent,
     TargetType,
 )
-from ai_dbg.systems.card_pile_common import (
+from ai_srpg.systems.card_pile_common import (
     PILE_DISCARD,
     PILE_DRAW,
     PILE_HAND,

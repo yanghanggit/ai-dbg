@@ -12,14 +12,14 @@ from typing import Final, List, Optional, final
 from loguru import logger
 from pydantic import BaseModel
 
-from ai_dbg.models import (
+from ai_srpg.models import (
     Blueprint,
     Dungeon,
     Stage,
     World,
 )
-from ai_dbg.paths import BLUEPRINTS_DIR, DUNGEONS_DIR
-from ai_dbg.pgsql import (
+from ai_srpg.paths import BLUEPRINTS_DIR, DUNGEONS_DIR
+from ai_srpg.pgsql import (
     pgsql_create_database,
     pgsql_drop_database,
     pgsql_ensure_database_tables,
@@ -27,7 +27,7 @@ from ai_dbg.pgsql import (
     procrastinate_app,
     save_card_prototype,
 )
-from ai_dbg.pgsql.user_operations import has_user, save_user
+from ai_srpg.pgsql.user_operations import has_user, save_user
 from demo import (
     CARD_PROTOTYPES,
     create_beast_lair_dungeon,

@@ -3,20 +3,20 @@
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
-from ai_dbg.entitas import Entity
-from ai_dbg.game.combat.state import (
+from ai_srpg.entitas import Entity
+from ai_srpg.game.combat.state import (
     combat_rounds,
     combat_turns,
     create_combat,
     current_combat_turn,
 )
-from ai_dbg.game.dungeon import (
+from ai_srpg.game.dungeon import (
     current_combat_entity,
     current_combat_round_entity,
     current_dungeon_combat,
 )
-from ai_dbg.game.entities import create_entity, get_entity_by_name
-from ai_dbg.models import (
+from ai_srpg.game.entities import create_entity, get_entity_by_name
+from ai_srpg.models import (
     CombatPassSnapshotComponent,
     CombatResult,
     CombatState,
@@ -29,10 +29,10 @@ from ai_dbg.models import (
     DungeonRunComponent,
     StageComponent,
 )
-from ai_dbg.systems.combat_round_completion_system import CombatRoundCompletionSystem
-from ai_dbg.systems.combat_round_start_system import CombatRoundStartSystem
-from ai_dbg.systems.combat_turn_state import CombatTurnStateMixin
-from ai_dbg.systems.draw_cards_action_system import DrawCardsActionSystem
+from ai_srpg.systems.combat_round_completion_system import CombatRoundCompletionSystem
+from ai_srpg.systems.combat_round_start_system import CombatRoundStartSystem
+from ai_srpg.systems.combat_turn_state import CombatTurnStateMixin
+from ai_srpg.systems.draw_cards_action_system import DrawCardsActionSystem
 
 
 def make_dungeon_entity(

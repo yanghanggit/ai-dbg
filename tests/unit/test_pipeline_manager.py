@@ -4,8 +4,8 @@ from typing import List
 
 import pytest
 
-from ai_dbg.entitas import CleanupProcessor, ExecuteProcessor
-from ai_dbg.game.pipelines.manager import RPGGameProcessPipeline
+from ai_srpg.entitas import CleanupProcessor, ExecuteProcessor
+from ai_srpg.game.pipelines.manager import RPGGameProcessPipeline
 
 
 class _RecordingExecute(ExecuteProcessor):

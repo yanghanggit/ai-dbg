@@ -1,0 +1,259 @@
+"""抽牌系统：回合的唯一入口——先开新回合，再全员从抽牌堆补满手牌。"""
+
+import random
+from typing import Dict, Final, List, Tuple, final, override
+
+from loguru import logger
+
+from ..entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ..game.context import SRPGGame
+from ..game.dungeon import (
+    current_combat_round_entity,
+    current_dungeon_combat,
+    is_current_room_dungeon_combat,
+)
+from ..models import (
+    ActorComponent,
+    Card,
+    CharacterStatsComponent,
+    CombatRoundComponent,
+    DeathComponent,
+    DiscardPileComponent,
+    DrawCardsAction,
+    DrawPileComponent,
+    HandComponent,
+)
+from .card_pile_common import (
+    PILE_DISCARD,
+    PILE_DRAW,
+    PILE_HAND,
+    PILE_RETAINED,
+    format_card_names,
+    record_pile_change,
+)
+
+
+#######################################################################################################################################
+@final
+class DrawCardsActionSystem(ReactiveProcessor):
+    """
+    响应 DrawCardsAction，为每个存活角色填充 HandComponent。
+    先取回 retain 牌（原样保留在手牌），再额外从牌堆尝试抓取目标张数的新牌：
+    retain 牌不占用抓牌名额，新抽牌与 retain 牌叠加，手牌总数可超过目标张数。
+    """
+
+    def __init__(self, game: SRPGGame) -> None:
+        super().__init__(game.ecs)
+        self._game: Final[SRPGGame] = game
+
+    ####################################################################################################################################
+    @override
+    def get_trigger(self) -> Dict[Matcher, GroupEvent]:
+        return {Matcher(DrawCardsAction): GroupEvent.ADDED}
+
+    ####################################################################################################################################
+    @override
+    def filter(self, entity: Entity) -> bool:
+        return (
+            entity.has(DrawCardsAction)
+            and entity.has(ActorComponent)
+            and entity.has(DrawPileComponent)
+            and entity.has(DiscardPileComponent)
+            and entity.has(CharacterStatsComponent)
+            and not entity.has(DeathComponent)
+            and not entity.has(HandComponent)
+        )
+
+    ####################################################################################################################################
+    def _draw_from_pile(self, entity: Entity, n: int) -> Tuple[List[Card], int]:
+        """从 DrawPile 抽取 n 张牌（FIFO）；返回抽到的牌与途中洗回的弃牌张数。"""
+
+        draw_pile = entity.get(DrawPileComponent)
+        discard_pile = entity.get(DiscardPileComponent)
+        assert (
+            draw_pile is not None and discard_pile is not None
+        ), "DrawPileComponent 或 DiscardPileComponent 不存在"
+
+        drawn: List[Card] = []
+        reshuffled = 0
+        draw_cards = list(draw_pile.cards)
+        discard_cards = list(discard_pile.cards)
+        while len(drawn) < n:
+
+            if draw_cards:
+
+                # DrawPile 非空，直接抽取一张牌
+                drawn.append(draw_cards.pop(0))  # FIFO
+
+            elif discard_cards:
+
+                # DrawPile 耗尽：将 DiscardPile 洗牌补入
+                random.shuffle(discard_cards)
+                reshuffled += len(discard_cards)
+                draw_cards.extend(discard_cards)
+                discard_cards = []
+                logger.debug(
+                    f"[{entity.name}] DrawPile 耗尽，DiscardPile {len(draw_cards)} 张洗牌补入 DrawPile"
+                )
+            else:
+                logger.warning(f"[{entity.name}] DrawPile 与 DiscardPile 均空")
+                break
+
+        entity.replace(
+            DrawPileComponent,
+            draw_pile.name,
+            draw_cards,
+            draw_pile.retained_cards,
+        )
+        entity.replace(DiscardPileComponent, discard_pile.name, discard_cards)
+
+        return drawn, reshuffled
+
+    ####################################################################################################################################
+    def _take_retained_cards(self, entity: Entity) -> List[Card]:
+        """取出 DrawPile.retained_cards 中的 retain 牌（FIFO 归还手牌）。"""
+        draw_pile = entity.get(DrawPileComponent)
+        assert draw_pile is not None
+
+        retained = list(draw_pile.retained_cards)
+        entity.replace(
+            DrawPileComponent,
+            draw_pile.name,
+            draw_pile.cards,
+            [],
+        )
+        return retained
+
+    ####################################################################################################################################
+    def _record_draw(
+        self,
+        entity: Entity,
+        *,
+        round_number: int,
+        retained: List[Card],
+        drawn: List[Card],
+        reshuffled: int,
+        deltas: Dict[str, int],
+        hand_size: int,
+        draw_size: int,
+        discard_size: int,
+    ) -> None:
+        """抽牌是私有动作：只把这次容器变化告诉主人。"""
+        lines: List[str] = []
+        if reshuffled:
+            lines.append(f"抽牌堆耗尽，弃牌堆 {reshuffled} 张洗回抽牌堆后继续抽。")
+        if retained:
+            lines.append(
+                f"保留牌 {len(retained)} 张回到手牌：{format_card_names(retained)}"
+            )
+        if drawn:
+            lines.append(f"新抽 {len(drawn)} 张：{format_card_names(drawn)}")
+        else:
+            lines.append("牌堆已空，这次没有抽到牌。")
+        lines.append(
+            f"手牌 {hand_size} 张（抽牌堆 {draw_size} / 弃牌堆 {discard_size}）。"
+        )
+        record_pile_change(
+            self._game,
+            entity,
+            change="draw_cards",
+            title=f"第 {round_number} 回合 · 抽牌",
+            lines=lines,
+            deltas=deltas,
+        )
+
+    ####################################################################################################################################
+    def _draw_target_count(self, entity: Entity) -> int:
+        """每次尝试从牌堆抓取的目标张数。"""
+        return 3
+
+    ####################################################################################################################################
+    def _mark_round_draw_completed(self, round_entity: Entity) -> None:
+        """标记回合抽牌阶段完成。"""
+        round_comp = round_entity.get(CombatRoundComponent)
+        round_entity.replace(
+            CombatRoundComponent,
+            round_comp.name,
+            round_comp.combat_name,
+            round_comp.index,
+            round_comp.is_completed,
+            True,
+        )
+
+    ######################################################################################################################################
+    @override
+    async def react(self, entities: List[Entity]) -> None:
+
+        if not is_current_room_dungeon_combat(self._game):
+            return
+        if not current_dungeon_combat(self._game).is_ongoing:
+            logger.debug("当前战斗状态非 ONGOING，DrawCardsActionSystem 不执行")
+            return
+
+        # 状态守卫：本回合已抽牌 → 拒绝重复抽牌（一个回合每个存活参与者只能抓一次）
+        last_round_entity = current_combat_round_entity(self._game)
+        assert (
+            last_round_entity is not None
+        ), "DrawCardsActionSystem: 无法获取当前回合实体！"
+        last_round = last_round_entity.get(CombatRoundComponent)
+        if last_round.draw_completed:
+            logger.debug(
+                f"DrawCardsActionSystem: 第 {len(current_dungeon_combat(self._game).rounds)} 回合已抽牌，跳过重复抽牌"
+            )
+            return
+
+        logger.debug(
+            f"DrawCardsActionSystem: 处理 {len(entities)} 个实体的 DrawCardsAction"
+        )
+
+        # 先取回 retain 牌，再额外尝试抓取目标张数的新牌：
+        # retain 牌不占用名额，只是原样留在手牌，新抽牌照常尽量抓满目标张数。
+        for entity in entities:
+
+            draw_pile = entity.get(DrawPileComponent)
+            discard_pile = entity.get(DiscardPileComponent)
+            draw_before = len(draw_pile.cards)
+            discard_before = len(discard_pile.cards)
+
+            # 本次尝试抓取的目标张数
+            draw_target_count = self._draw_target_count(entity)
+
+            # 先取回 retain 牌（不占用抓牌名额，留在手牌）
+            retained = self._take_retained_cards(entity)
+
+            # 在 retain 牌之外，尽量抓满目标张数（牌堆不足则有多少抓多少）
+            drawn, reshuffled = self._draw_from_pile(entity, draw_target_count)
+
+            # 合并 retain 牌与新抽牌为新的手牌（总数可超过目标张数）
+            new_hand = retained + drawn
+
+            logger.debug(
+                f"[{entity.name}] retain 牌 {len(retained)} 张 + 新抽 {len(drawn)} 张（目标 {draw_target_count} 张）：{[c.name for c in drawn]} → 手牌共 {len(new_hand)} 张"
+            )
+            entity.replace(HandComponent, entity.name, new_hand)
+
+            # replace 后必须重新 get：旧变量指向的是被替换前的组件快照
+            draw_after = len(entity.get(DrawPileComponent).cards)
+            discard_after = len(entity.get(DiscardPileComponent).cards)
+
+            self._record_draw(
+                entity,
+                round_number=len(current_dungeon_combat(self._game).rounds),
+                retained=retained,
+                drawn=drawn,
+                reshuffled=reshuffled,
+                deltas={
+                    PILE_DRAW: draw_after - draw_before,
+                    PILE_DISCARD: discard_after - discard_before,
+                    PILE_RETAINED: -len(retained),
+                    PILE_HAND: len(new_hand),
+                },
+                hand_size=len(new_hand),
+                draw_size=draw_after,
+                discard_size=discard_after,
+            )
+
+        # 标记本回合 DRAW 阶段已完成
+        self._mark_round_draw_completed(last_round_entity)
+
+    #######################################################################################################################################

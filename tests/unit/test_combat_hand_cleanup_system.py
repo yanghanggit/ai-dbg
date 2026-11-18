@@ -5,17 +5,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     Card,
     CombatState,
     DiscardPileComponent,
     DrawPileComponent,
     HandComponent,
 )
-from ai_dbg.systems.card_pile_common import HandSettlement
-from ai_dbg.systems.combat_hand_cleanup_system import CombatHandCleanupSystem
+from ai_srpg.systems.card_pile_common import HandSettlement
+from ai_srpg.systems.combat_hand_cleanup_system import CombatHandCleanupSystem
 from dungeon_support import install_combat
 
 

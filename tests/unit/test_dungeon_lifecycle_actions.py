@@ -12,11 +12,11 @@ from typing import Any
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.dungeon import get_dungeon_entity
-from ai_dbg.game.entities import create_entity
-from ai_dbg.game.pipelines.manager import RPGGameProcessPipeline
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.dungeon import get_dungeon_entity
+from ai_srpg.game.entities import create_entity
+from ai_srpg.game.pipelines.manager import RPGGameProcessPipeline
+from ai_srpg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
@@ -28,11 +28,11 @@ from ai_dbg.models import (
     StageComponent,
     TeardownDungeonAction,
 )
-from ai_dbg.services.dungeon_advance_action import advance_dungeon
-from ai_dbg.services.dungeon_exit_action import activate_exit_dungeon
-from ai_dbg.systems.action_cleanup_system import ActionCleanupSystem
-from ai_dbg.systems.exit_dungeon_action_system import ExitDungeonActionSystem
-from ai_dbg.systems.teardown_dungeon_action_system import (
+from ai_srpg.services.dungeon_advance_action import advance_dungeon
+from ai_srpg.services.dungeon_exit_action import activate_exit_dungeon
+from ai_srpg.systems.action_cleanup_system import ActionCleanupSystem
+from ai_srpg.systems.exit_dungeon_action_system import ExitDungeonActionSystem
+from ai_srpg.systems.teardown_dungeon_action_system import (
     TeardownDungeonActionSystem,
 )
 from dungeon_support import (

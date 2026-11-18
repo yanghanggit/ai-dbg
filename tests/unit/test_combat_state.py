@@ -2,9 +2,9 @@
 
 from typing import Any
 
-from ai_dbg.entitas import Matcher
-from ai_dbg.game.combat import consume_turn_energy, get_turn_energy
-from ai_dbg.game.combat.state import (
+from ai_srpg.entitas import Matcher
+from ai_srpg.game.combat import consume_turn_energy, get_turn_energy
+from ai_srpg.game.combat.state import (
     combat_rounds,
     combat_turns,
     combat_view,
@@ -12,8 +12,8 @@ from ai_dbg.game.combat.state import (
     current_combat_round,
     current_combat_turn,
 )
-from ai_dbg.game.entities import create_entity
-from ai_dbg.models import (
+from ai_srpg.game.entities import create_entity
+from ai_srpg.models import (
     ActorComponent,
     CombatComponent,
     CombatResult,
@@ -26,14 +26,14 @@ from ai_dbg.models import (
     CurrentCombatTurnComponent,
     DeathComponent,
 )
-from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
-from ai_dbg.systems.combat_post_combat_transition_system import (
+from ai_srpg.systems.combat_outcome_system import CombatOutcomeSystem
+from ai_srpg.systems.combat_post_combat_transition_system import (
     CombatPostCombatTransitionSystem,
 )
-from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
-from ai_dbg.systems.retreat_action_system import RetreatActionSystem
-from ai_dbg.systems.room_init_system import RoomInitSystem
-from ai_dbg.systems.teardown_dungeon_action_system import (
+from ai_srpg.systems.pass_turn_action_system import PassTurnActionSystem
+from ai_srpg.systems.retreat_action_system import RetreatActionSystem
+from ai_srpg.systems.room_init_system import RoomInitSystem
+from ai_srpg.systems.teardown_dungeon_action_system import (
     TeardownDungeonActionSystem,
 )
 from dungeon_support import (

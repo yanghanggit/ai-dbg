@@ -6,12 +6,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.game.dungeon import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.game.dungeon import (
     current_combat_entity,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CombatResult,
@@ -26,8 +26,8 @@ from ai_dbg.models import (
     PlayerComponent,
     StageComponent,
 )
-from ai_dbg.systems.combat_outcome_system import CombatOutcomeSystem
-from ai_dbg.systems.combat_result_notice_system import (
+from ai_srpg.systems.combat_outcome_system import CombatOutcomeSystem
+from ai_srpg.systems.combat_result_notice_system import (
     CombatResultNoticeSystem,
     _build_combat_result_notification,
 )
@@ -112,7 +112,7 @@ def context() -> ECSContext:
 
 @pytest.fixture()
 def mock_game(context: ECSContext) -> Any:
-    """MagicMock DBGGame，预设战斗 ONGOING。"""
+    """MagicMock SRPGGame，预设战斗 ONGOING。"""
     game = MagicMock()
     game.ecs = context
     game.world.agent_memories = {}

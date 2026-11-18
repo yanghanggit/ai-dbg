@@ -2,7 +2,7 @@
 Tests for the Collector class in the entitas framework.
 """
 
-from ai_dbg.entitas import Collector, Context, GroupEvent, Matcher
+from ai_srpg.entitas import Collector, Context, GroupEvent, Matcher
 from ecs_testing import Position, Velocity
 
 

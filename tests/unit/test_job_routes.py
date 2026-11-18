@@ -14,7 +14,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from ai_dbg.services.jobs_api import jobs_api_router
+from ai_srpg.services.jobs_api import jobs_api_router
 
 STATUS_PATH = "/api/jobs/v1/status"
 DETAIL_PATH = "/api/jobs/v1/{job_id}"

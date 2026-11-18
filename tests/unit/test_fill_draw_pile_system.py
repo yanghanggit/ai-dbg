@@ -9,9 +9,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CharacterStats,
@@ -21,7 +21,7 @@ from ai_dbg.models import (
     FillDrawPileAction,
     TargetType,
 )
-from ai_dbg.systems.fill_draw_pile_system import FillDrawPileSystem
+from ai_srpg.systems.fill_draw_pile_system import FillDrawPileSystem
 from dungeon_support import install_combat
 
 

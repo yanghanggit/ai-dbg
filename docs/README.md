@@ -1,4 +1,4 @@
-# AI-DBG 知识库根节点
+# AI-SRPG 知识库根节点
 
 > 这是 `docs/` 目录的唯一入口。每次新增文档领域时，请在此处更新索引。
 > Agent 从此处出发，可定位到任何知识。
@@ -36,8 +36,8 @@
 | [消耗品系统（ConsumableItem）](wiki/consumable-item.md) | 消耗品的数据模型、内置卡牌与战斗使用管道 |
 | [装备系统（GearItem）](wiki/gear-item.md) | 装备的数据模型、装备物化为手牌的管道、战斗结束归还 |
 | [材料系统（MaterialItem）](wiki/material-item.md) | 原料类道具的数据模型、堆叠规则与当前无获取/消费入口的定位 |
-| [DBG AI 操作 CLI（ai-dbg-agent-game）](wiki/run-agent-game.md) | 离线快照驱动的副本推进：新局直达副本、开场/战斗流程、全局 system 骨架与开发调测命令 |
-| [DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
+| [SRPG AI 操作 CLI（ai-srpg-agent-game）](wiki/run-agent-game.md) | 离线快照驱动的副本推进：新局直达副本、开场/战斗流程、全局 system 骨架与开发调测命令 |
+| [SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
 | [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |
 | [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件，不随世界快照回滚；与 job 日志的分工 |
 | [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与回滚 |
@@ -47,6 +47,6 @@
 | [三端化思维（攻击端 / 防御端 / 运转端）](wiki/combat-ports.md) | 端口化思维方法论：攻击端（前端/成长性/铺垫）、防御端（前端/成长性/特殊）、运转端（过牌/加费/启动）及其与 Card 字段的映射 |
 | [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
 | [手牌（HandComponent）](wiki/hand.md) | 手牌的双重身份：作为出牌者的行动选择集、作为被命中者的当前状态，及其与牌堆/静态结算/装备的关联 |
-| [DBG 核心概念定义与逻辑关系总结](<wiki/DBG 核心概念定义与逻辑关系总结.md>) | Modifiers（对局级规则）与 Affixes（一次性效果词缀）二者的定义、归属与逻辑关系：宏观-微观模型 |
+| [SRPG 核心概念定义与逻辑关系总结](<wiki/SRPG 核心概念定义与逻辑关系总结.md>) | Modifiers（对局级规则）与 Affixes（一次性效果词缀）二者的定义、归属与逻辑关系：宏观-微观模型 |
 | [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段：怪物决策的逐次去痕与按上下文占比触发的全局压缩 |
 | [战役设定与全局规则（CAMPAIGN_SETTING / SYSTEM_RULES）](wiki/campaign-setting-rules-bridge.md) | 故事层两字段的分层（均封存在 demo/）、抽象设定的惰性知识与内容无关边界 |

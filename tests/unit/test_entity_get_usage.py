@@ -414,7 +414,7 @@ def react(self, entity):
     comp = entity.get(HandComponent)
     comp.cards = []
 """
-    violations = _check_source(source, "src/ai_dbg/systems/fake.py")
+    violations = _check_source(source, "src/ai_srpg/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 4)]
 
 
@@ -423,7 +423,7 @@ def test_checker_flags_direct_chain_mutation() -> None:
 def react(self, entity):
     entity.get(EquippedGearComponent).items.append(item)
 """
-    violations = _check_source(source, "src/ai_dbg/systems/fake.py")
+    violations = _check_source(source, "src/ai_srpg/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 3)]
 
 
@@ -434,7 +434,7 @@ def react(self, entity):
     cards = hand.cards
     cards.pop(0)
 """
-    violations = _check_source(source, "src/ai_dbg/systems/fake.py")
+    violations = _check_source(source, "src/ai_srpg/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 5)]
 
 
@@ -444,7 +444,7 @@ def react(self, entity):
     stats = entity.get(CharacterStatsComponent)
     stats.stats.hp = 1
 """
-    violations = _check_source(source, "src/ai_dbg/systems/fake.py")
+    violations = _check_source(source, "src/ai_srpg/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 4)]
 
 
@@ -458,7 +458,7 @@ def react(self, entity):
     target = _pile_cards(entity, "hand")
     target.clear()
 """
-    violations = _check_source(source, "src/ai_dbg/systems/fake.py")
+    violations = _check_source(source, "src/ai_srpg/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [
         ("react", 6),
         ("react", 8),
@@ -473,7 +473,7 @@ def react(self, entity):
     entity.replace(HandComponent, comp.name, list(comp.cards))
     entity.get(PlayerComponent)
 """
-    assert _check_source(source, "src/ai_dbg/systems/fake.py") == []
+    assert _check_source(source, "src/ai_srpg/systems/fake.py") == []
 
 
 def test_checker_ignores_container_mutation() -> None:
@@ -483,7 +483,7 @@ def build(processors, seen, db):
     seen.add("name")
     db.add(document)
 """
-    assert _check_source(source, "src/ai_dbg/systems/fake.py") == []
+    assert _check_source(source, "src/ai_srpg/systems/fake.py") == []
 
 
 def test_checker_exempts_tests_directory() -> None:

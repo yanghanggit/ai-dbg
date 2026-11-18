@@ -7,8 +7,8 @@ import re
 from typing import Final, Iterator, List, Optional, Tuple
 from uuid import uuid4
 
-from ai_dbg.entitas import dump_components
-from ai_dbg.models import (
+from ai_srpg.entitas import dump_components
+from ai_srpg.models import (
     Actor,
     ActorType,
     Blueprint,

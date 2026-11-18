@@ -3,15 +3,15 @@
 from typing import Any, List
 from unittest.mock import MagicMock
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     EquippedGearComponent,
     GearItem,
     InventoryComponent,
     PlayerComponent,
 )
-from ai_dbg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
+from ai_srpg.systems.combat_pile_teardown_system import CombatPileTeardownSystem
 
 
 def _make_gear(name: str) -> GearItem:

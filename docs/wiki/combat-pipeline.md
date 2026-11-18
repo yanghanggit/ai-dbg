@@ -79,7 +79,7 @@
 
 出牌结算只广播事实与 HP 变化，不再为场景实体写 LLM 总结。角色侧记忆仍区分「决策」与「容器事实」：决策记录做了什么与原因，牌堆变更记录只写给容器主人。事实的权威载体始终是组件，记忆负责让人知道发生过什么。
 
-任何系统内部错误都会中止当前 job 并记录 `job_failed`，随后从最近快照恢复 `DBGGame`；结算本身不再有「未提交 / 未落库」的软失败分支。
+任何系统内部错误都会中止当前 job 并记录 `job_failed`，随后从最近快照恢复 `SRPGGame`；结算本身不再有「未提交 / 未落库」的软失败分支。
 
 → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)、[世界快照持久化（World Persistence）](world-persistence.md)
 
@@ -87,6 +87,6 @@
 
 ## 跨系统关系
 
-- 预置副本文件提供房间定义（stage + actors + 预置卡牌）；运行时房间落到对应场景实体上 → 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
+- 预置副本文件提供房间定义（stage + actors + 预置卡牌）；运行时房间落到对应场景实体上 → 参见：[SRPG AI 操作 CLI（ai-srpg-agent-game）](run-agent-game.md)
 - 装备系统将装备物化为临时手牌参与出牌，与普通卡牌共用静态结算 → 参见：[装备系统（GearItem）](gear-item.md)
 - 消耗品系统将内置卡牌物化为手牌，与普通卡牌共用静态结算 → 参见：[消耗品系统（ConsumableItem）](consumable-item.md)

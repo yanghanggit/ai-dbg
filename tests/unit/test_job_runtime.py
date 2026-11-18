@@ -4,10 +4,10 @@ from typing import List
 
 import pytest
 
-from ai_dbg.entitas import ProcessorPipeline
-from ai_dbg.entitas.processor_interfaces import ExecuteProcessor
-from ai_dbg.models import JobEvent
-from ai_dbg.services.job_runtime import JobRecorder, JobRun
+from ai_srpg.entitas import ProcessorPipeline
+from ai_srpg.entitas.processor_interfaces import ExecuteProcessor
+from ai_srpg.models import JobEvent
+from ai_srpg.services.job_runtime import JobRecorder, JobRun
 
 
 class MemoryStore:

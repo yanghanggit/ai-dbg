@@ -9,16 +9,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.combat.state import combat_round_view
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.combat.state import combat_round_view
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     CharacterStats,
     CharacterStatsComponent,
     DeathComponent,
 )
-from ai_dbg.systems.death_system import DeathSystem
+from ai_srpg.systems.death_system import DeathSystem
 from dungeon_support import current_round_entity, install_combat
 
 

@@ -1,10 +1,10 @@
 # 用户会话历史（PlayerSession）
 
-用户会话历史是脱离单局游戏的「上帝视角」：它按用户持续累积领域事件，不随某一局 `DBGGame` 创建、重置或回滚。世界是可回滚的当前状态，会话是不可回滚的已发生历史。
+用户会话历史是脱离单局游戏的「上帝视角」：它按用户持续累积领域事件，不随某一局 `SRPGGame` 创建、重置或回滚。世界是可回滚的当前状态，会话是不可回滚的已发生历史。
 
 ## 设计意图
 
-- **用户级归属**：会话属于玩家而非游戏；`PlayerRoom` 与 `DBGGame` 平级持有各自对象，游戏不反向依赖会话。
+- **用户级归属**：会话属于玩家而非游戏；`PlayerRoom` 与 `SRPGGame` 平级持有各自对象，游戏不反向依赖会话。
 - **append-only**：每条事件只追加、不重写；跨游戏继续递增全局事件序号。
 - **当前上下文与历史分离**：会话上的当前游戏与角色只是上下文指针；每条消息自行记录产生时的游戏、角色与 job，避免跨局后无法解释历史。
 - **失败尝试也进入历史**：游戏状态可以回滚，但已发生的尝试仍是上帝视角的一部分；客户端通过 job 标识与结果区分成功历史与失败尝试。
@@ -19,5 +19,5 @@
 - job 执行日志与会话历史是两种日志：前者记录一次执行的技术过程，后者记录玩家可见的领域历史；两者通过 job 标识关联，不合并。
   → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 
-→ 参见：[DBG AI 操作 CLI（ai-dbg-agent-game）](run-agent-game.md)
-→ 参见：[DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](run-agent-api.md)
+→ 参见：[SRPG AI 操作 CLI（ai-srpg-agent-game）](run-agent-game.md)
+→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)

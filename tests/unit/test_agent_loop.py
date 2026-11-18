@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 import pytest
 
-from ai_dbg.deepseek import ToolDefinition, ToolFunction
-from ai_dbg.deepseek.agent_loop import agent_loop
-from ai_dbg.deepseek.client import ToolCall
-from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_dbg.models import AIMessage, ChatMessage, SystemMessage
+from ai_srpg.deepseek import ToolDefinition, ToolFunction
+from ai_srpg.deepseek.agent_loop import agent_loop
+from ai_srpg.deepseek.client import ToolCall
+from ai_srpg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_srpg.models import AIMessage, ChatMessage, SystemMessage
 
 
 #######################################################################################################################################
@@ -95,7 +95,7 @@ async def test_async_handler_is_awaited_and_appended() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeService(ai_message, "tool_calls", [tool_call]),
     ):
         ok = await agent_loop(
@@ -134,7 +134,7 @@ async def test_sync_handler_result_appended() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeService(ai_message, "tool_calls", [tool_call]),
     ):
         ok = await agent_loop(
@@ -184,7 +184,7 @@ async def test_failed_terminal_tool_retries_next_round() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeSequenceService([fake_bad, fake_good]),
     ):
         ok = await agent_loop(
@@ -231,7 +231,7 @@ async def test_stop_without_terminal_tool_is_retried_then_succeeds() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeSequenceService([fake_stop, fake_good]),
     ):
         ok = await agent_loop(
@@ -292,7 +292,7 @@ async def test_max_terminal_nudges_param_is_honored() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeSequenceService([fake_stop, fake_stop]),
     ):
         ok = await agent_loop(
@@ -314,7 +314,7 @@ async def test_stop_without_terminal_tools_returns_true() -> None:
     """未声明终止工具时，stop 仍应视为正常结束（保持原有语义）。"""
     messages: list[ChatMessage] = []
     fake_stop = _FakeService(AIMessage(content="done"), "stop", [])
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
         ok = await agent_loop(
             name="test",
             input_message="go",
@@ -333,7 +333,7 @@ async def test_result_reports_span_rounds_and_start_message() -> None:
     """返回值应能定位本次 loop 对 memory 的改动范围、起点消息与每轮过程。"""
     messages: list[ChatMessage] = []
     fake_stop = _FakeService(AIMessage(content="done"), "stop", [])
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
         result = await agent_loop(
             name="test",
             input_message="go",
@@ -362,7 +362,7 @@ async def test_input_metadata_and_loop_id_are_attached_to_start_message() -> Non
     """input_metadata 作为纯附加属性、loop_id 作为边界标记，分别外挂在起点 HumanMessage 上。"""
     messages: list[ChatMessage] = []
     fake_stop = _FakeService(AIMessage(content="done"), "stop", [])
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
         result = await agent_loop(
             name="test",
             input_message="go",
@@ -396,7 +396,7 @@ async def test_result_rounds_track_each_round_appends() -> None:
 
     messages: list[ChatMessage] = []
     with patch(
-        "ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE",
+        "ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE",
         _FakeSequenceService([fake_stop, fake_good]),
     ):
         result = await agent_loop(
@@ -433,7 +433,7 @@ async def test_default_mutates_messages_in_place() -> None:
     """默认 mutate_messages=True：原地追加，result.messages 就是入参本身。"""
     messages: list[ChatMessage] = [SystemMessage(content="sys")]
     fake_stop = _FakeService(AIMessage(content="done"), "stop", [])
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
         result = await agent_loop(
             name="test",
             input_message="go",
@@ -454,7 +454,7 @@ async def test_mutate_messages_false_isolates_input() -> None:
     """mutate_messages=False：在副本上工作，入参不被改动，改动范围看 result.messages。"""
     original: list[ChatMessage] = [SystemMessage(content="sys")]
     fake_stop = _FakeService(AIMessage(content="done"), "stop", [])
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", fake_stop):
         result = await agent_loop(
             name="test",
             input_message="go",

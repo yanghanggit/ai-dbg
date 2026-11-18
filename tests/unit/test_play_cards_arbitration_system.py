@@ -4,9 +4,9 @@ from typing import Any, List
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.entities import create_entity
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.entities import create_entity
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CharacterStats,
@@ -15,7 +15,7 @@ from ai_dbg.models import (
     PlayCardsAction,
     TargetType,
 )
-from ai_dbg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
+from ai_srpg.systems.play_cards_arbitration_system import PlayCardsArbitrationSystem
 from dungeon_support import install_combat
 
 _STAGE_NAME = "场景.测试"

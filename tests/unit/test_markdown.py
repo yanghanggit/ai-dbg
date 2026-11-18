@@ -2,7 +2,7 @@
 
 import pytest
 
-from ai_dbg.utils.markdown import extract_json
+from ai_srpg.utils.markdown import extract_json
 
 
 class TestExtractJson:

@@ -3,9 +3,9 @@
 # 默认目标：显示帮助信息
 .DEFAULT_GOAL := help
 
-# 游戏运行时临时目录（对应 src/ai_dbg/paths.py 的 WORLDS_DIR / DEBUG_CACHE_DIR / CHAT_DUMP_DIR / LOGS_DIR）
-# .sessions 是用户级持久会话历史，故意不纳入 clean-temp。
-GAME_TEMP_DIRS := .worlds .debug_cache .chat_dumps logs
+# 游戏运行时目录（对应 src/ai_srpg/paths.py 的 BLUEPRINTS_DIR / DUNGEONS_DIR / WORLDS_DIR / SESSIONS_DIR / DEBUG_CACHE_DIR / CHAT_DUMP_DIR / LOGS_DIR）
+# 均为可重建的运行期数据：清了不影响代码与测试，下次运行自动重新创建。
+GAME_TEMP_DIRS := .blueprints .dungeons .worlds .sessions .debug_cache .chat_dumps logs
 
 # 推荐：uv 环境完整设置
 install:
@@ -30,7 +30,7 @@ test:
 	uv run pytest tests/ -v
 
 # 运行类型检查
-# mypy_path="src"（见 pyproject.toml）让 ai_dbg 在 scripts/src/tests 下解析到同一路径，
+# mypy_path="src"（见 pyproject.toml）让 ai_srpg 在 scripts/src/tests 下解析到同一路径，
 # 因此可单次运行、共用 .mypy_cache（早期跨目录缓存冲突已消除）。
 lint:
 	@echo "🔍 运行类型检查..."

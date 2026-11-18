@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from ai_dbg.entitas import dump_components
-from ai_dbg.game.persistence import restore_world
-from ai_dbg.game.persistence import save as persistence_save
-from ai_dbg.models import (
+from ai_srpg.entitas import dump_components
+from ai_srpg.game.persistence import restore_world
+from ai_srpg.game.persistence import save as persistence_save
+from ai_srpg.models import (
     AgentMemory,
     AIMessage,
     Blueprint,

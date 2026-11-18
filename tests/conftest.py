@@ -2,10 +2,10 @@
 
 import pytest
 
-from ai_dbg.game.assembly import create_dbg_game
-from ai_dbg.game.context import DBGGame
-from ai_dbg.game.events import RecordingEventSink
-from ai_dbg.models import (
+from ai_srpg.game.assembly import create_srpg_game
+from ai_srpg.game.context import SRPGGame
+from ai_srpg.game.events import RecordingEventSink
+from ai_srpg.models import (
     Actor,
     ActorType,
     Blueprint,
@@ -15,7 +15,7 @@ from ai_dbg.models import (
 
 
 @pytest.fixture
-def sample_game() -> DBGGame:
+def sample_game() -> SRPGGame:
     """Create a sample game for testing."""
     # 创建基本的依赖
     blueprint = Blueprint(
@@ -32,7 +32,7 @@ def sample_game() -> DBGGame:
         agent_memories={},
         blueprint=blueprint,
     )
-    return create_dbg_game(
+    return create_srpg_game(
         name="test_blueprint",
         player_name="test_player",
         player_actor="test_actor",

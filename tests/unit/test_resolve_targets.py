@@ -3,15 +3,15 @@
 from typing import Any, Dict
 from unittest.mock import MagicMock
 
-import ai_dbg.game.combat.targeting as combat_processor
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.assembly import create_dbg_game
-from ai_dbg.game.combat import resolve_targets
-from ai_dbg.game.context import DBGGame, ECSContext
-from ai_dbg.game.entities import (
+import ai_srpg.game.combat.targeting as combat_processor
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.assembly import create_srpg_game
+from ai_srpg.game.combat import resolve_targets
+from ai_srpg.game.context import ECSContext, SRPGGame
+from ai_srpg.game.entities import (
     create_entity,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     Blueprint,
     Card,
@@ -25,11 +25,11 @@ from ai_dbg.models import (
     TargetType,
     WorldState,
 )
-from ai_dbg.systems.transfer_cards_action_system import TransferCardsActionSystem
+from ai_srpg.systems.transfer_cards_action_system import TransferCardsActionSystem
 from dungeon_support import install_combat
 
 
-def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame:
+def _make_game(player_name: str = "player", actor_name: str = "hero") -> SRPGGame:
     blueprint = Blueprint(
         name="test",
         player_actor=actor_name,
@@ -44,7 +44,7 @@ def _make_game(player_name: str = "player", actor_name: str = "hero") -> DBGGame
         agent_memories={},
         blueprint=blueprint,
     )
-    return create_dbg_game(
+    return create_srpg_game(
         name="test",
         player_name=player_name,
         player_actor=actor_name,

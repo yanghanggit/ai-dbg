@@ -10,16 +10,16 @@ from unittest.mock import patch
 
 import pytest
 
-from ai_dbg.deepseek import (
+from ai_srpg.deepseek import (
     LOOP_END_ATTR,
     LOOP_ID_ATTR,
     ToolDefinition,
     ToolFunction,
     agent_loop,
 )
-from ai_dbg.deepseek.client import ToolCall
-from ai_dbg.llm import ChatCompletionRequest, ChatCompletionResult
-from ai_dbg.models import (
+from ai_srpg.deepseek.client import ToolCall
+from ai_srpg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_srpg.models import (
     AIMessage,
     ChatMessage,
     SystemMessage,
@@ -50,7 +50,7 @@ class _FakeStopClient:
 async def test_agent_loop_stamps_both_boundaries_queryable_by_loop_id() -> None:
     """agent_loop 应在起点打 loop_id、末条消息打 loop_id_end，供 find_marked_span 反查。"""
     messages: list[ChatMessage] = [SystemMessage(content="sys")]
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", _FakeStopClient()):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", _FakeStopClient()):
         result = await agent_loop(
             name="t",
             input_message="hello",
@@ -76,7 +76,7 @@ async def test_agent_loop_stamps_both_boundaries_queryable_by_loop_id() -> None:
 async def test_agent_loop_without_loop_id_does_not_stamp() -> None:
     """未传 loop_id 时不打边界标记，按标记反查返回 None。"""
     messages: list[ChatMessage] = [SystemMessage(content="sys")]
-    with patch("ai_dbg.deepseek.agent_loop.DEEPSEEK_SERVICE", _FakeStopClient()):
+    with patch("ai_srpg.deepseek.agent_loop.DEEPSEEK_SERVICE", _FakeStopClient()):
         await agent_loop(
             name="t",
             input_message="hello",

@@ -2,10 +2,10 @@
 
 from typing import Any
 
-from ai_dbg.game.assembly import create_dbg_game
-from ai_dbg.game.entities import create_entity
-from ai_dbg.game.lifecycle import initialize_game
-from ai_dbg.models import (
+from ai_srpg.game.assembly import create_srpg_game
+from ai_srpg.game.entities import create_entity
+from ai_srpg.game.lifecycle import initialize_game
+from ai_srpg.models import (
     ActorComponent,
     Blueprint,
     CharacterStats,
@@ -34,7 +34,7 @@ def _make_opening_game() -> Any:
         agent_memories={},
         blueprint=blueprint,
     )
-    game = create_dbg_game(
+    game = create_srpg_game(
         name="test",
         player_name="player",
         player_actor="角色.玩家",

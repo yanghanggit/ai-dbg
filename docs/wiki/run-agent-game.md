@@ -1,14 +1,14 @@
-# DBG AI 操作 CLI（ai-dbg-agent-game）
+# SRPG AI 操作 CLI（ai-srpg-agent-game）
 
 ---
 
 ## 定位
 
-`ai-dbg-agent-game` 是离线、快照驱动的副本推进工具：一次调用只完成一个动作，世界状态不在进程内，而在 `.worlds/{user}/{game}/{timestamp}/`；用户级会话历史独立存放在 `.sessions/`，跨快照持续累积。每条命令都执行同一循环：读取世界快照并加载用户会话 → `restore_game` → 触发动作 → 唯一全局 pipeline 推进 → 写出新快照。命令之间没有持久内存，任意一份世界快照都可独立复位并继续。
+`ai-srpg-agent-game` 是离线、快照驱动的副本推进工具：一次调用只完成一个动作，世界状态不在进程内，而在 `.worlds/{user}/{game}/{timestamp}/`；用户级会话历史独立存放在 `.sessions/`，跨快照持续累积。每条命令都执行同一循环：读取世界快照并加载用户会话 → `restore_game` → 触发动作 → 唯一全局 pipeline 推进 → 写出新快照。命令之间没有持久内存，任意一份世界快照都可独立复位并继续。
 
 它不依赖常驻服务端，适合复现问题、做规则回归和逐步观察 ECS 状态。需要走真实 HTTP 契约时改用 API 路径。
 
-→ 参见：[DBG AI 代理 API 走查 CLI（ai-dbg-agent-api）](run-agent-api.md)
+→ 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)
 → 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
 
@@ -24,9 +24,9 @@
 
 ## 职责分层
 
-Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_dbg/dbg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 负责开场，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩。
+Click 层只做参数解析、日志初始化、快照路径构造与错误退出。动作编排在 `ai_srpg/srpg_game_agent/`：`core.py` 负责创建/复位游戏，`dungeon.py` 负责进入、推进、退出，`opening.py` 负责开场，`combat.py` 负责战斗动作，`compact.py` 负责记忆压缩。
 
-真正的规则校验与 ECS 动作触发在 `ai_dbg/services/`。这一层与 CLI 解耦，同时被服务端 API 与测试复用；CLI 不是规则实现处，只是快照读写与动作选择的薄壳。
+真正的规则校验与 ECS 动作触发在 `ai_srpg/services/`。这一层与 CLI 解耦，同时被服务端 API 与测试复用；CLI 不是规则实现处，只是快照读写与动作选择的薄壳。
 
 ## 全局 system 骨架
 

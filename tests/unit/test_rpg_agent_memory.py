@@ -1,9 +1,9 @@
-from ai_dbg.game.entities import (
+from ai_srpg.game.entities import (
     create_entity,
 )
 
 """
-Tests for DBGGame memory message management methods:
+Tests for SRPGGame memory message management methods:
   - add_human_message
   - add_ai_message
   - reset_agent_memory
@@ -17,8 +17,8 @@ from typing import Any, List
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.memory import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.memory import (
     KEEP_ON_COMPACT_ATTR,
     REPLACED_MESSAGES_ATTR,
     add_ai_message,
@@ -33,7 +33,7 @@ from ai_dbg.game.memory import (
     replace_span,
     reset_agent_memory,
 )
-from ai_dbg.models import AIMessage, ChatMessage, HumanMessage, SystemMessage
+from ai_srpg.models import AIMessage, ChatMessage, HumanMessage, SystemMessage
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -42,7 +42,7 @@ from ai_dbg.models import AIMessage, ChatMessage, HumanMessage, SystemMessage
 
 @pytest.fixture
 def game(sample_game: Any) -> Any:
-    """Alias for sample_game — a fully-constructed DBGGame with no blueprint entities."""
+    """Alias for sample_game — a fully-constructed SRPGGame with no blueprint entities."""
     return sample_game
 
 

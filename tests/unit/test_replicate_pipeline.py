@@ -8,7 +8,7 @@ from typing import Optional
 
 import pytest
 
-from ai_dbg.replicate.pipeline import image_format_from_url
+from ai_srpg.replicate.pipeline import image_format_from_url
 
 
 @pytest.mark.parametrize(

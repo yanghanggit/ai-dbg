@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.models import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.models import (
     ActorComponent,
     Card,
     CharacterStats,
@@ -21,7 +21,7 @@ from ai_dbg.models import (
     PlayerComponent,
     StageComponent,
 )
-from ai_dbg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
+from ai_srpg.systems.equip_gear_item_action_system import EquipGearItemActionSystem
 from dungeon_support import (
     install_combat,
     set_combat_state,

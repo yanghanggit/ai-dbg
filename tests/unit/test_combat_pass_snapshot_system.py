@@ -5,10 +5,10 @@ from typing import Any
 
 import pytest
 
-from ai_dbg.game.dungeon import current_combat_entity
-from ai_dbg.game.entities import create_entity
-from ai_dbg.game.entities.serialization import serialize_context
-from ai_dbg.models import (
+from ai_srpg.game.dungeon import current_combat_entity
+from ai_srpg.game.entities import create_entity
+from ai_srpg.game.entities.serialization import serialize_context
+from ai_srpg.models import (
     COMPONENT_TYPES,
     ActorComponent,
     CombatPassSnapshotComponent,
@@ -16,9 +16,9 @@ from ai_dbg.models import (
     CombatState,
     CurrentCombatTurnComponent,
 )
-from ai_dbg.systems.combat_pass_context import CombatPassContextMixin
-from ai_dbg.systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
-from ai_dbg.systems.pass_turn_action_system import PassTurnActionSystem
+from ai_srpg.systems.combat_pass_context import CombatPassContextMixin
+from ai_srpg.systems.combat_pass_snapshot_system import CombatPassSnapshotSystem
+from ai_srpg.systems.pass_turn_action_system import PassTurnActionSystem
 from dungeon_support import (
     advance_current_turn,
     current_round_entity,

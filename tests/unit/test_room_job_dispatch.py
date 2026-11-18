@@ -5,7 +5,7 @@ from typing import Any, Optional
 import pytest
 from procrastinate.exceptions import AlreadyEnqueued
 
-from ai_dbg.services.job_dispatch import RoomBusyError, defer_room_job
+from ai_srpg.services.job_dispatch import RoomBusyError, defer_room_job
 
 
 class _FakeTask:

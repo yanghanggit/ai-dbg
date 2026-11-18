@@ -16,30 +16,30 @@ from typing import Any
 
 import pytest
 
-from ai_dbg.entitas.entity import Entity
-from ai_dbg.game.entities import (
+from ai_srpg.entitas.entity import Entity
+from ai_srpg.game.entities import (
     create_entity,
     destroy_entity,
     get_entity_by_name,
 )
-from ai_dbg.game.lifecycle import (
+from ai_srpg.game.lifecycle import (
     exit_game,
     initialize_game,
 )
-from ai_dbg.game.memory import (
+from ai_srpg.game.memory import (
     add_human_message,
     add_system_message,
     get_agent_memory,
 )
-from ai_dbg.game.messaging import (
+from ai_srpg.game.messaging import (
     broadcast_to_stage,
     notify_entities,
 )
-from ai_dbg.game.persistence import (
+from ai_srpg.game.persistence import (
     flush_entities,
     restore_from_snapshot,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     ActorComponent,
     HumanMessage,
     IdentityComponent,

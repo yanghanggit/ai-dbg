@@ -3,7 +3,7 @@
 entitas 是底层库，本身不感知上层游戏；「``add`` 只在实体创建阶段使用」是**上层
 项目**的约定，因此约束放在 ``tests/`` 而不是 entitas 内部：
 
-- 仅 ``src/ai_dbg/game/entities/blueprint.py`` 中以 ``create`` / ``_create`` 开头的函数；
+- 仅 ``src/ai_srpg/game/entities/blueprint.py`` 中以 ``create`` / ``_create`` 开头的函数；
 - ``tests/`` 下全部代码。
 
 运行期（systems / services / pipelines）必须使用 ``Entity.replace``：它同时承担
@@ -27,7 +27,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 SCAN_DIRS: Final = ("src", "demo")
 
 #: 允许调用 add 的唯一模块。
-DBG_GAME_PATH: Final = ROOT / "src" / "ai_dbg" / "game" / "entities/blueprint.py"
+SRPG_GAME_PATH: Final = ROOT / "src" / "ai_srpg" / "game" / "entities/blueprint.py"
 
 #: 模块内允许调用 add 的函数名前缀。
 CREATE_FUNC_PATTERN: Final = re.compile(r"^_?create")
@@ -113,7 +113,7 @@ class _AddUsageChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _allowed_here(self) -> bool:
-        if self._path.resolve() != DBG_GAME_PATH.resolve():
+        if self._path.resolve() != SRPG_GAME_PATH.resolve():
             return False
         function = self._func_stack[-1] if self._func_stack else ""
         return CREATE_FUNC_PATTERN.match(function) is not None
@@ -163,7 +163,7 @@ def react(self, entities):
     entity = entities[0]
     entity.add(EquippedGearComponent, entity.name, [])
 """
-    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_srpg" / "systems" / "fake_system.py"
     assert [(v.function, v.line) for v in _check_source(source, path)] == [("react", 4)]
 
 
@@ -173,11 +173,11 @@ def test_checker_flags_private_add_in_runtime_module() -> None:
 def react(self, entity):
     entity._add(ActorComponent, "name", "")
 """
-    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_srpg" / "systems" / "fake_system.py"
     assert [(v.function, v.line) for v in _check_source(source, path)] == [("react", 3)]
 
 
-def test_checker_allows_add_in_dbg_game_create_function() -> None:
+def test_checker_allows_add_in_srpg_game_create_function() -> None:
     """自检：entities/blueprint.py 的 create_* / _create_* 函数允许 add。"""
     source = """
 def create_actor_entities(self, actor_models):
@@ -189,7 +189,7 @@ def _create_world_entities(self, world_models):
 def build_from_blueprint(self):
     entity.add(WorldComponent, "world")
 """
-    violations = _check_source(source, DBG_GAME_PATH)
+    violations = _check_source(source, SRPG_GAME_PATH)
     assert [(v.function, v.line) for v in violations] == [("build_from_blueprint", 9)]
 
 
@@ -202,5 +202,5 @@ def build(processors, seen, db, entities):
     db.add(document)
     entities.add(entity)
 """
-    path = ROOT / "src" / "ai_dbg" / "systems" / "fake_system.py"
+    path = ROOT / "src" / "ai_srpg" / "systems" / "fake_system.py"
     assert _check_source(source, path) == []

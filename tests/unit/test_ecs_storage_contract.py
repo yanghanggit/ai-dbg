@@ -12,16 +12,16 @@ from typing import Any, Iterator
 
 import pytest
 
-from ai_dbg.entitas import Component, Entity
-from ai_dbg.game.context import ECSContext
-from ai_dbg.game.entities import (
+from ai_srpg.entitas import Component, Entity
+from ai_srpg.game.context import ECSContext
+from ai_srpg.game.entities import (
     create_entity,
     destroy_entity,
     get_entity_by_name,
     restore_context,
     serialize_context,
 )
-from ai_dbg.models import (
+from ai_srpg.models import (
     COMPONENT_TYPES,
     IdentityComponent,
     create_component_type,
@@ -38,7 +38,7 @@ def _clean_dynamic_component_types() -> Iterator[None]:
 
 
 class _GameImpl:
-    """最小 DBGGame 替身：只提供函数所需的 ECS context。"""
+    """最小 SRPGGame 替身：只提供函数所需的 ECS context。"""
 
     def __init__(self) -> None:
         self.ecs = ECSContext()
@@ -124,7 +124,7 @@ class TestIndexHandleContract:
         assert entity in manager.ecs.entities
 
     def test_group_entities_support_copy_for_safe_iteration(self) -> None:
-        from ai_dbg.entitas import Matcher
+        from ai_srpg.entitas import Matcher
 
         manager = _new_game()
         entity = create_entity(manager, "iter")
