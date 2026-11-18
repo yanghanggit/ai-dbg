@@ -8,7 +8,6 @@ from ai_srpg.game.events.sink import RecordingEventSink
 from ai_srpg.models import (
     Actor,
     ActorType,
-    Blueprint,
     WorldState,
 )
 
@@ -16,21 +15,7 @@ from ai_srpg.models import (
 @pytest.fixture
 def sample_game() -> SRPGGame:
     """Create a sample game for testing."""
-    # 创建基本的依赖
-    blueprint = Blueprint(
-        name="test_blueprint",
-        player_actor="test_player_actor",
-        campaign_setting="test_setting",
-        system_rules="",
-        stages=[],
-        world_entities=[],
-    )
-    world = WorldState(
-        entity_counter=1000,
-        entities={},
-        agent_memories={},
-        blueprint=blueprint,
-    )
+    world = WorldState(entity_counter=1000)
     return create_srpg_game(
         name="test_blueprint",
         world=world,

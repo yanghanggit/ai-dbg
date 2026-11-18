@@ -12,6 +12,7 @@ from ...models import (
     ActorComponent,
     ActorType,
     AppearanceComponent,
+    Blueprint,
     IdentityComponent,
     MonsterComponent,
     NPCComponent,
@@ -30,30 +31,27 @@ from .queries import get_actor_entity
 
 def build_from_blueprint(
     srpg_game: SRPGGame,
+    blueprint: Blueprint,
     *,
     player_name: str,
     player_actor: Optional[str] = None,
 ) -> None:
-    """创建并初始化新游戏世界，包括世界、角色和场景。
+    """按蓝图创建并初始化新游戏世界，包括世界、角色和场景。
 
-    ``player_name`` 是玩家身份（来自会话/房间），``player_actor`` 缺省时取蓝图声明的
-    受控角色；两者只在构建期使用，之后以 ECS 的 ``PlayerComponent`` 为准。
+    ``blueprint`` 是构建期输入，不写进任何运行时容器；``player_name`` 是玩家身份
+    （来自会话/房间），``player_actor`` 缺省时取蓝图声明的受控角色。两者只在构建期
+    使用，之后以 ECS 的 ``PlayerComponent`` 为准。
     """
-    assert len(srpg_game.world.entities) == 0, "游戏中有实体，不能创建新的游戏"
-    if len(srpg_game.world.entities) > 0:
-        logger.warning(
-            f"游戏中有实体，不能创建新的游戏，entities = {srpg_game.world.entities}"
-        )
-        return
+    assert srpg_game.entity_count == 0, "游戏中有实体，不能创建新的游戏"
 
-    _create_world_entities(srpg_game, srpg_game.world.blueprint.world_entities)
+    _create_world_entities(srpg_game, blueprint.world_entities)
     create_actor_entities(
         srpg_game,
-        [actor for stage in srpg_game.world.blueprint.stages for actor in stage.actors],
+        [actor for stage in blueprint.stages for actor in stage.actors],
     )
-    create_stage_entities(srpg_game, srpg_game.world.blueprint.stages)
+    create_stage_entities(srpg_game, blueprint.stages)
 
-    actor_name = player_actor or srpg_game.world.blueprint.player_actor
+    actor_name = player_actor or blueprint.player_actor
     assert player_name.strip() != "", "玩家名字不能为空"
     assert actor_name.strip() != "", "玩家角色不能为空"
     player_actor_entity = get_actor_entity(srpg_game, actor_name)
