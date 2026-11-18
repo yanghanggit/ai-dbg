@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.gameplay.jobs import advance_game_job
 from ai_srpg.services.api import games as games_module
+from ai_srpg.services.api import rooms as rooms_module
 from ai_srpg.services.api.games import games_api_router
 from ai_srpg.services.api.rooms import rooms_api_router
 from ai_srpg.services.http_errors import register_room_error_handlers
@@ -40,6 +41,14 @@ def client(app: FastAPI) -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _memory_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """会话游标来自存储层；单元测试一律换成内存实现，避免读开发库。"""
+    fresh = lambda user_name: PlayerSession(name=user_name)  # noqa: E731
+    monkeypatch.setattr(rooms_module, "open_session", fresh)
+    monkeypatch.setattr(games_module, "open_session", fresh)
+
+
 @pytest.fixture
 def calls(monkeypatch: pytest.MonkeyPatch) -> Dict[str, List[Any]]:
     """替换开局与派发：记录调用参数，避免访问数据库与队列。"""
@@ -54,11 +63,6 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Dict[str, List[Any]]:
         return 42
 
     monkeypatch.setattr(games_module, "load_or_create_game", fake_load)
-    monkeypatch.setattr(
-        games_module,
-        "open_session",
-        lambda user_name: PlayerSession(name=user_name),
-    )
     monkeypatch.setattr(games_module, "defer_room_job", fake_defer)
     monkeypatch.setattr(games_module, "list_game_snapshots", lambda *a, **k: [])
     return recorded

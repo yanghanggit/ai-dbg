@@ -17,6 +17,7 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     from ..systems.destroy_entity_system import DestroyEntitySystem
     from ..systems.epilogue_system import EpilogueSystem
     from ..systems.prologue_system import PrologueSystem
+    from ..systems.scene_pulse_system import ScenePulseSystem
 
     pipeline = ProcessorPipeline()
 
@@ -24,6 +25,12 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     # 通用前置：每轮固定入口
     # ---------------------------------------------------------------------
     pipeline.add(PrologueSystem(srpg_game))
+
+    # ---------------------------------------------------------------------
+    # 业务：目前只有场景心跳；真实玩法 system 追加在这一段。
+    # 它们可以发布领域事件，事件由游戏的事件出口交给订阅者（如会话历史）。
+    # ---------------------------------------------------------------------
+    pipeline.add(ScenePulseSystem(srpg_game))
 
     # ---------------------------------------------------------------------
     # 通用尾部：清理动作组件、销毁待销毁实体并收尾
