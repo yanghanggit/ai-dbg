@@ -4,10 +4,14 @@ from fastapi import APIRouter
 
 from .components import components_api_router
 from .entities import entities_api_router
+from .games import games_api_router
 from .jobs import jobs_api_router
+from .rooms import rooms_api_router
 from .session_messages import session_messages_api_router
 
 API_ROUTERS: tuple[APIRouter, ...] = (
+    rooms_api_router,
+    games_api_router,
     session_messages_api_router,
     components_api_router,
     entities_api_router,

@@ -11,7 +11,8 @@ from procrastinate.jobs import Status as ProcrastinateJobStatus
 from pydantic import BaseModel, Field
 
 from ...entitas import ContextData
-from ...models import JobEvent, SessionMessage
+from ...models import GameSnapshotInfo, JobEvent, SessionMessage
+from ...session import PlayerRoom
 
 ################################################################################################################
 # 组件 / 实体
@@ -31,6 +32,47 @@ class EntitiesDetailsResponse(BaseModel):
     """一组实体的序列化结果。"""
 
     entities: ContextData
+
+
+################################################################################################################
+# 房间 / 游戏
+
+
+################################################################################################################
+@final
+class RoomStateResponse(BaseModel):
+    """房间当前状态；``session_event_sequence`` 可作会话增量读取的游标。"""
+
+    user_name: str
+    game: Optional[str] = None
+    session_event_sequence: int = 0
+
+    @classmethod
+    def from_room(cls, room: PlayerRoom) -> "RoomStateResponse":
+        session = room.player_session
+        return cls(
+            user_name=room.username,
+            game=room.game.name if room.game is not None else None,
+            session_event_sequence=(
+                session.event_sequence if session is not None else 0
+            ),
+        )
+
+
+################################################################################################################
+@final
+class DispatchJobResponse(BaseModel):
+    """已派发的后台 job。"""
+
+    job_id: int
+
+
+################################################################################################################
+@final
+class SnapshotListResponse(BaseModel):
+    """快照元数据列表（时间倒序）。"""
+
+    snapshots: List[GameSnapshotInfo]
 
 
 ################################################################################################################

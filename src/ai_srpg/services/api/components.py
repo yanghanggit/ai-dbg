@@ -13,7 +13,7 @@ from ...models import COMPONENT_TYPES
 from .schemas import ComponentNamesResponse
 
 ################################################################################################################
-components_api_router = APIRouter()
+components_api_router = APIRouter(tags=["components"])
 
 
 ################################################################################################################

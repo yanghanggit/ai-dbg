@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from starlette.types import Scope
 
+from ai_srpg import __version__
 from ai_srpg.gameplay.jobs import (
     advance_game_job,  # noqa: F401  # 注册 Procrastinate task
 )
@@ -82,13 +83,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await asyncio.wait_for(worker_task, timeout=10)
 
 
-app = FastAPI(lifespan=lifespan)
+#: OpenAPI 的标签分组：顺序决定 /docs 里分组的呈现顺序
+OPENAPI_TAGS = [
+    {"name": "meta", "description": "服务自描述与路由清单"},
+    {"name": "rooms", "description": "玩家房间（会话容器）的生命周期；进入房间即登录"},
+    {"name": "games", "description": "房间内的游戏局：开局、推进、快照"},
+    {"name": "session-messages", "description": "用户级会话历史的增量读取"},
+    {"name": "components", "description": "ECS 组件类名清单"},
+    {"name": "entities", "description": "实体状态的只读查询"},
+    {"name": "jobs", "description": "后台 job 的队列状态、执行事件与 SSE 监听"},
+]
+
+app = FastAPI(
+    title="AI SRPG 游戏服务器",
+    version=__version__,
+    description="ECS 世界状态 + 后台 job 的常驻服务端；无鉴权阶段：路径中的 user_name 即身份。",
+    openapi_tags=OPENAPI_TAGS,
+    lifespan=lifespan,
+)
 register_room_error_handlers(app)
 
 
-@app.get(path="/", response_model=ServerInfoResponse)
+@app.get(
+    path="/", response_model=ServerInfoResponse, tags=["meta"], summary="服务自描述"
+)
 async def get_api_info(request: Request) -> ServerInfoResponse:
-    """API 根路由接口"""
+    """根路由：返回服务信息与已注册路由清单（供客户端自发现）。"""
     from fastapi.routing import APIRoute
 
     base_url = str(request.base_url)
@@ -116,7 +136,7 @@ async def get_api_info(request: Request) -> ServerInfoResponse:
         description="AI SRPG Game Server API Root Endpoint",
         status="healthy",
         timestamp=datetime.now(),
-        version="0.0.1",
+        version=__version__,
         routes=routes_info,
     )
 

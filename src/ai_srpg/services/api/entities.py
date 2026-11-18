@@ -10,41 +10,15 @@ from fastapi import APIRouter, HTTPException, Query, status
 from loguru import logger
 
 from ...entitas import Component, Entity, Matcher
-from ...game.context import SRPGGame
 from ...models import COMPONENT_TYPES
-from ...session.errors import GameNotFoundError, RoomNotFoundError
-from ...session.server import GameServer
+from ...session.access import require_game
 from ..dependencies import CurrentGameServer
 from .schemas import EntitiesDetailsResponse
 
 ################################################################################################################
-entities_api_router = APIRouter()
+entities_api_router = APIRouter(tags=["entities"])
 
 
-################################################################################################################
-def _require_game(game_server: GameServer, user_name: str, game_name: str) -> SRPGGame:
-    """取当前可读的游戏实例；读路径不取房间锁。"""
-
-    # get_room 同时刷新活跃时间，读路径上 has_room 与 get_room 之间没有 await
-    room = game_server.get_room(user_name)
-    if room is None:
-        raise RoomNotFoundError(user_name)
-
-    game = room.game
-    if game is None:
-        raise GameNotFoundError(user_name=user_name)
-
-    if game.name != game_name:
-        logger.error(f"game_name mismatch: user={user_name}, game={game_name}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="游戏名称不匹配",
-        )
-
-    return game
-
-
-################################################################################################################
 def _resolve_component_types(component_names: List[str]) -> List[Type[Component]]:
     """将组件名称列表解析为组件类型列表。
 
@@ -90,7 +64,7 @@ async def get_entities_details(
             detail="请提供至少一个实体名称",
         )
 
-    game = _require_game(game_server, user_name, game_name)
+    game = require_game(game_server, user_name, game_name)
 
     entities: Set[Entity] = set()
     for entity_name in entity_names:
@@ -132,7 +106,7 @@ async def get_entities_group(
             detail="请至少提供一个组件条件",
         )
 
-    game = _require_game(game_server, user_name, game_name)
+    game = require_game(game_server, user_name, game_name)
 
     matcher = Matcher(
         all_of=_resolve_component_types(all_of) or None,

@@ -22,7 +22,7 @@ from .schemas import (
 )
 
 ################################################################################################################
-jobs_api_router = APIRouter()
+jobs_api_router = APIRouter(tags=["jobs"])
 
 TERMINAL_STATUSES: Final = frozenset(
     {

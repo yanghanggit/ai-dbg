@@ -12,7 +12,7 @@ from ..dependencies import CurrentGameServer
 from .schemas import SessionMessageResponse
 
 ################################################################################################################
-session_messages_api_router = APIRouter()
+session_messages_api_router = APIRouter(tags=["session-messages"])
 
 
 ################################################################################################################
