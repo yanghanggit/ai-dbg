@@ -7,6 +7,7 @@ that runs them in order.
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Protocol
 
 
@@ -41,12 +42,23 @@ class ProcessorObserver(Protocol):
         """某个 system 抛异常。"""
 
 
+class ErrorPolicy(Enum):
+    """What the pipeline does when a processor raises."""
+
+    PROPAGATE = "propagate"
+    CONTINUE = "continue"
+
+
 class ExecuteProcessor(ABC):
     """Base class for processors that run every frame/cycle.
 
     Execute processors contain the main game logic and are called
     repeatedly during the game loop.
     """
+
+    #: 失败后的调度策略，由组装方按 processor 在 pipeline 中的位置声明。
+    #: 默认传播：pipeline 的意义就是顺序依赖，某一步没有完成时序列不再可信。
+    error_policy: ErrorPolicy = ErrorPolicy.PROPAGATE
 
     @abstractmethod
     async def execute(self) -> None:

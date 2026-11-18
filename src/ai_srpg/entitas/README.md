@@ -118,6 +118,55 @@ await pipeline.execute()
 pipeline.cleanup()
 ```
 
+## 失败与提前结束（pass 语义）
+
+pipeline 只定义调度，不解释失败的严重性。一次 `execute()` 称为一个 **pass**，
+结果是 `PassResult`：
+
+- `completed`：所有 processor 都正常返回（可能含 `CONTINUE` 记录的失败）；
+- `interrupted`：失败按策略传播，剩余 processor 被跳过；
+- `aborted_by is not None`：显式提前结束；
+- `ran` / `failures` / `skipped`：逐项记录执行、失败与被跳过的 processor。
+
+### 错误策略由组装方声明
+
+processor 抛异常只表示「这一步没完成」，不表示「整条 pipeline 该停」。
+停不停由组装方按 processor 在序列中的位置声明：
+
+```python
+from ai_srpg.entitas import ErrorPolicy, ExecuteProcessor
+
+
+class CollectBonus(ExecuteProcessor):
+    error_policy = ErrorPolicy.CONTINUE  # 旁路逻辑：失败也继续
+
+    async def execute(self) -> None:
+        ...
+```
+
+默认 `ErrorPolicy.PROPAGATE`：pipeline 的意义就是顺序依赖，某一步没有完成时
+序列不再可信，剩余 processor 被跳过，异常继续上抛。`CONTINUE` 的失败会进
+`PassResult.failures`，pass 仍算 `completed`。
+
+### 显式提前结束
+
+`StopPipeline` 是控制流信号，不是错误。它继承 `BaseException`，因此不会被
+`except Exception` 吞掉；pipeline 记录 `aborted_by` 与 `skipped` 后逐层上抛，
+由应用边界消费。
+
+```python
+from ai_srpg.entitas import StopPipeline
+
+if game.is_over:
+    raise StopPipeline("campaign finished")
+```
+
+### 应用边界
+
+`process_pipeline(pipeline, observer)` 负责：执行一次 pass、保证 `cleanup()`
+一定运行、把 `StopPipeline` 转成 `PassResult` 而不当作失败。真正的失败仍然
+上抛，由上层决定重试与状态处理；最近一次结果保存在 `pipeline.last_pass`。
+
 ## 序列化（dump / load）
 
 以**实体名作 key** 的纯 dict 表示，只保存「重建 Context 核心」所需的组件；`pools` /

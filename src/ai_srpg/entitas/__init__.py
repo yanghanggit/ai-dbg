@@ -9,11 +9,14 @@ from .exceptions import (
     GroupSingleEntity,
     MissingComponent,
     MissingEntity,
+    StopPipeline,
 )
 from .group import Group, GroupEvent
 from .matcher import Matcher
+from .pass_result import PassResult, ProcessorFailure
 from .processor_interfaces import (
     CleanupProcessor,
+    ErrorPolicy,
     ExecuteProcessor,
     InitializeProcessor,
     TearDownProcessor,
@@ -47,6 +50,10 @@ __all__ = [
     "CleanupProcessor",
     "TearDownProcessor",
     "ReactiveProcessor",
+    "ErrorPolicy",
+    "PassResult",
+    "ProcessorFailure",
+    "StopPipeline",
     "Event",
     "ComponentData",
     "EntityData",

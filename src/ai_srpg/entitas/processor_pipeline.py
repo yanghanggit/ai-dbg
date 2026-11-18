@@ -3,8 +3,11 @@
 import time
 from typing import List, Optional, Union, override
 
+from .exceptions import StopPipeline
+from .pass_result import PassResult, ProcessorFailure
 from .processor_interfaces import (
     CleanupProcessor,
+    ErrorPolicy,
     ExecuteProcessor,
     InitializeProcessor,
     ProcessorObserver,
@@ -29,6 +32,13 @@ class ProcessorPipeline(
         self._execute_processors: List[ExecuteProcessor] = []
         self._cleanup_processors: List[CleanupProcessor] = []
         self._tear_down_processors: List[TearDownProcessor] = []
+        self._last_pass: PassResult = PassResult()
+
+    ###########################################################################
+    @property
+    def last_pass(self) -> PassResult:
+        """最近一次 ``execute()`` 的调度结果。"""
+        return self._last_pass
 
     def add(
         self,
@@ -63,25 +73,51 @@ class ProcessorPipeline(
 
     @override
     async def execute(self, observer: Optional[ProcessorObserver] = None) -> None:
-        """Executes all execute processors in the order they were added."""
-        for processor in self._execute_processors:
-            system = type(processor).__name__
+        """Executes all execute processors in the order they were added.
+
+        失败语义由每个 processor 的 ``error_policy`` 决定；``StopPipeline``
+        是显式的提前结束信号，会逐层向上传递，由应用边界消费。
+        """
+        systems = [type(processor).__name__ for processor in self._execute_processors]
+        ran: List[str] = []
+        failures: List[ProcessorFailure] = []
+
+        for index, processor in enumerate(self._execute_processors):
+            system = systems[index]
             if observer is not None:
                 observer.on_processor_started(system)
             started = time.perf_counter()
+
             try:
                 await processor.execute()
-            except Exception as exc:
-                if observer is not None:
-                    observer.on_processor_failed(
-                        system, exc, (time.perf_counter() - started) * 1000.0
-                    )
+            except StopPipeline:
+                self._last_pass = PassResult(
+                    ran=tuple(ran),
+                    failures=tuple(failures),
+                    skipped=tuple(systems[index + 1 :]),
+                    aborted_by=system,
+                )
                 raise
+            except Exception as exc:
+                duration_ms = (time.perf_counter() - started) * 1000.0
+                if observer is not None:
+                    observer.on_processor_failed(system, exc, duration_ms)
+                failures.append(ProcessorFailure(system, exc, duration_ms))
+                if processor.error_policy is ErrorPolicy.PROPAGATE:
+                    self._last_pass = PassResult(
+                        ran=tuple(ran),
+                        failures=tuple(failures),
+                        skipped=tuple(systems[index + 1 :]),
+                    )
+                    raise
             else:
+                ran.append(system)
                 if observer is not None:
                     observer.on_processor_finished(
                         system, (time.perf_counter() - started) * 1000.0
                     )
+
+        self._last_pass = PassResult(ran=tuple(ran), failures=tuple(failures))
 
     @override
     def cleanup(self) -> None:
