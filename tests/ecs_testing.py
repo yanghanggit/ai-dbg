@@ -86,39 +86,8 @@ class Transform(Component):
     scale: float
 
 
-# Mutable component examples
+# 不可变组件示例：用于验证冻结语义与 replace 写入
 class Counter(Component):
-    """Counter component with mutable value for incremental operations."""
+    """Counter component used to verify frozen components require replace."""
 
     value: int = 0
-
-
-class ResourcePool(Component):
-    """Resource pool with current and max values, demonstrates a mutable component."""
-
-    current: int
-    maximum: int
-
-    def model_post_init(self, __context: None) -> None:
-        """Validate resource values after initialization."""
-        if self.current < 0:
-            raise ValueError("Resource value must be non-negative")
-        if self.maximum <= 0:
-            raise ValueError("Maximum resource must be positive")
-        if self.current > self.maximum:
-            raise ValueError("Current resource cannot exceed maximum")
-
-    def consume(self, amount: int) -> bool:
-        """Consume resources from the pool if available."""
-        if amount <= 0:
-            raise ValueError("Consumption amount must be positive")
-        if self.current >= amount:
-            self.current -= amount
-            return True
-        return False
-
-    def refill(self, amount: int) -> None:
-        """Refill resources up to the maximum."""
-        if amount <= 0:
-            raise ValueError("Refill amount must be positive")
-        self.current = min(self.current + amount, self.maximum)

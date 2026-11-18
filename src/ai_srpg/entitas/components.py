@@ -9,6 +9,10 @@ from pydantic import BaseModel, ConfigDict
 class Component(BaseModel):
     """Base class for all Pydantic-based components.
 
+    Components are immutable value objects: field assignment raises, and any
+    change must go through ``Entity.add`` / ``Entity.replace`` / ``Entity.remove``
+    so that observers and groups see it.
+
     This provides:
     - Automatic validation of field types
     - JSON serialization/deserialization
@@ -18,7 +22,7 @@ class Component(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,  # Allows custom types if needed
         str_strip_whitespace=True,  # Auto-strip strings
-        validate_assignment=True,  # Validate on assignment
+        frozen=True,  # 组件是只读值对象；修改必须走 Entity.replace
     )
 
     def __repr__(self) -> str:

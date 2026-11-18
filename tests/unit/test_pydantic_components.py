@@ -7,7 +7,7 @@ import pytest
 
 from ai_srpg.entitas import Context, Entity, Matcher
 from ai_srpg.entitas.components import Component
-from ecs_testing import Counter, Health, Marker, Position, ResourcePool
+from ecs_testing import Counter, Health, Marker, Position
 
 
 def _new_entity() -> Entity:
@@ -162,80 +162,42 @@ class TestPydanticComponents:
             assert hasattr(pos, "x")
             assert hasattr(pos, "y")
 
-    def test_mutable_component(self) -> None:
-        """Test that components can be modified after creation."""
-        entity = _new_entity()
+    def test_component_model_is_frozen(self) -> None:
+        """组件基类默认冻结：字段赋值必须被拒绝。"""
+        assert Component.model_config.get("frozen") is True
 
-        # Add a counter component
+    def test_component_is_immutable(self) -> None:
+        """直接给组件字段赋值会失败，读取仍是原值。"""
+        entity = _new_entity()
         entity.add(Counter, 5)
         counter = entity.get(Counter)
 
-        # Verify it's a Component and mutable
-        assert isinstance(counter, Component)
+        with pytest.raises(ValueError, match="frozen"):
+            counter.value = 10
 
-        # Test modifying the component directly
-        counter.value = 10
-        assert counter.value == 10
+        assert counter.value == 5
 
-        # Verify the entity still has the same component with updated value
-        updated_counter = entity.get(Counter)
-        assert updated_counter is counter  # Should be the same instance
-        assert updated_counter.value == 10
-
-    def test_mutable_component_methods(self) -> None:
-        """Test methods on mutable components that modify their state."""
+    def test_component_update_requires_replace(self) -> None:
+        """修改组件必须 replace：旧实例保持不变，新实例生效。"""
         entity = _new_entity()
+        entity.add(Counter, 5)
+        old = entity.get(Counter)
 
-        # Add a resource pool with methods
-        entity.add(ResourcePool, 50, 100)
-        pool = entity.get(ResourcePool)
+        entity.replace(Counter, 10)
+        new = entity.get(Counter)
 
-        # Test initial values
-        assert pool.current == 50
-        assert pool.maximum == 100
+        assert old.value == 5
+        assert new.value == 10
+        assert new is not old
 
-        # Test consume method
-        success = pool.consume(20)
-        assert success
-        assert pool.current == 30
-
-        # Test failed consumption
-        success = pool.consume(40)
-        assert not success
-        assert pool.current == 30  # Should remain unchanged
-
-        # Test refill method
-        pool.refill(40)
-        assert pool.current == 70
-
-        # Test refill beyond maximum
-        pool.refill(50)
-        assert pool.current == 100  # Should cap at maximum
-
-        # Test validation
-        with pytest.raises(ValueError, match="Consumption amount must be positive"):
-            pool.consume(-10)
-
-        with pytest.raises(ValueError, match="Refill amount must be positive"):
-            pool.refill(0)
-
-    def test_mutable_component_in_context(self) -> None:
-        """Test that mutable components work correctly with Context and Groups."""
+    def test_frozen_component_replace_updates_group(self) -> None:
+        """replace 冻结组件后，分组仍包含实体且读到新值。"""
         context = Context()
-
-        # Create entity with mutable component
         entity = context.create_entity()
         entity.add(Counter, 5)
+        group = context.get_group(Matcher(Counter))
 
-        # Get component and modify it
-        counter = entity.get(Counter)
-        counter.value = 10
+        entity.replace(Counter, 10)
 
-        # The group should still contain the entity with the modified component
-        counter_group = context.get_group(Matcher(Counter))
-        assert len(counter_group.entities) == 1
-
-        # Check that component in the group is updated
-        for e in counter_group.entities:
-            c = e.get(Counter)
-            assert c.value == 10
+        assert entity in group.entities
+        assert entity.get(Counter).value == 10

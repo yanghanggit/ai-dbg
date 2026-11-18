@@ -83,6 +83,10 @@ context.destroy_entity(hero)
 字典或嵌套模型（`component.cards.append(...)`、`component.stats.hp = ...` 都属于隐式
 写入）。这类修改不经过 `replace`，不会触发事件，也不会被分组 / 反应式系统观察到。
 
+`Component` 默认 `frozen=True`：直接给字段赋值会被 Pydantic 拒绝，因此字段级写入
+必须走 `replace`。它只覆盖字段赋值，不覆盖容器原地修改——列表 / 字典 / 嵌套对象
+仍需遵守上面的只读约定。
+
 需要修改嵌套数据时，先构造新值，再整体写回：
 
 ```python
