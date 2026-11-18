@@ -24,6 +24,16 @@ def _is_persistable_component(comp_type: Type[Component]) -> bool:
     return COMPONENT_TYPES.get(comp_type.__name__) is not None
 
 
+def _require_registered_component(comp_type: Type[Component]) -> bool:
+    """快照过滤器：遇到未注册组件直接报错，避免静默丢数据。"""
+    registered = COMPONENT_TYPES.get(comp_type.__name__)
+    if registered is not comp_type:
+        raise ValueError(
+            f"组件类型未注册（或同名类型不一致），无法写入快照: {comp_type.__name__}"
+        )
+    return True
+
+
 #################################################################################################################################################
 class ECSContext(Context):
     """游戏层 ECS 上下文：在基础 Context 上维护实体名称索引。"""
@@ -71,6 +81,22 @@ class ECSContext(Context):
             return dump_context(self, component_filter=_is_persistable_component)
         ordered = sorted(entities, key=lambda entity: entity.index)
         return dump_entities(ordered, component_filter=_is_persistable_component)
+
+    def snapshot_entities(self) -> ContextData:
+        """导出全量实体快照；未注册组件直接报错，保证不静默丢数据。"""
+        ordered = sorted(self.entities, key=lambda entity: entity.index)
+        return dump_entities(ordered, component_filter=_require_registered_component)
+
+    def clear(self) -> None:
+        """清空 context：实体、组件池、分组与名称索引全部重置。
+
+        分组对象会失效；reactive processors 的 collector 仍持有旧 group 引用，
+        因此调用方在 ``clear()`` 之后必须重建 pipeline。
+        """
+        self._pools.clear()
+        self._handles.clear()
+        self._groups.clear()
+        self._entity_index.clear()
 
     def restore(
         self, data: ContextData, resolve_type: ComponentResolver

@@ -5,6 +5,7 @@ from .api import *
 from .assets_meta import *
 from .blueprint import *
 from .components import *
+from .context_snapshot import *
 from .entities import *
 from .entity_factory import *
 from .entity_naming import *
