@@ -1,4 +1,4 @@
-"""PostgreSQL 连接配置：全部字段来自环境变量。"""
+"""PostgreSQL 连接配置：所有字段必须由环境变量提供。"""
 
 import os
 from typing import Final, final
@@ -12,17 +12,32 @@ from sqlalchemy.engine import URL
 load_dotenv()
 
 
-def _env(name: str, default: str) -> str:
-    return os.getenv(name, default)
+def _require_env(name: str, *, allow_empty: bool = False) -> str:
+    value = os.getenv(name)
+    if value is None or (not allow_empty and value.strip() == ""):
+        raise RuntimeError(
+            f"缺少环境变量 {name}；请复制 .env.example 为 .env 并填写 PostgreSQL 配置"
+        )
+    return value
+
+
+def _require_port() -> int:
+    raw = _require_env("AI_SRPG_DB_PORT")
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"环境变量 AI_SRPG_DB_PORT 必须是整数: {raw!r}") from exc
 
 
 @final
 class PostgreSQLConfig(BaseModel):
-    host: str = Field(default_factory=lambda: _env("AI_SRPG_DB_HOST", "localhost"))
-    port: int = Field(default_factory=lambda: int(_env("AI_SRPG_DB_PORT", "5432")))
-    database: str = Field(default_factory=lambda: _env("AI_SRPG_DB_NAME", "ai-srpg-db"))
-    user: str = Field(default_factory=lambda: _env("AI_SRPG_DB_USER", "postgres"))
-    password: str = Field(default_factory=lambda: _env("AI_SRPG_DB_PASSWORD", ""))
+    host: str = Field(default_factory=lambda: _require_env("AI_SRPG_DB_HOST"))
+    port: int = Field(default_factory=_require_port)
+    database: str = Field(default_factory=lambda: _require_env("AI_SRPG_DB_NAME"))
+    user: str = Field(default_factory=lambda: _require_env("AI_SRPG_DB_USER"))
+    password: str = Field(
+        default_factory=lambda: _require_env("AI_SRPG_DB_PASSWORD", allow_empty=True)
+    )
 
     def _url(self, *, database: str) -> str:
         return URL.create(
@@ -44,5 +59,5 @@ class PostgreSQLConfig(BaseModel):
         return self._url(database="postgres")
 
 
-# 默认配置实例
+# 启动时校验并构建的配置实例；缺少任一必需变量会立即失败。
 postgresql_config: Final[PostgreSQLConfig] = PostgreSQLConfig()

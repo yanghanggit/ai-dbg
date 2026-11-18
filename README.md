@@ -37,7 +37,7 @@ source .venv/bin/activate        # macOS/Linux
 
 ### 配置
 
-复制 `cp .env.example .env`，填好 `DEEPSEEK_API_KEY`、`GAME_SERVER_PORT` 等。PostgreSQL 连接全部来自 `AI_SRPG_DB_HOST` / `AI_SRPG_DB_PORT` / `AI_SRPG_DB_NAME` / `AI_SRPG_DB_USER` / `AI_SRPG_DB_PASSWORD`，密码可留空。
+复制 `cp .env.example .env`，填好 `DEEPSEEK_API_KEY`、`GAME_SERVER_PORT` 等。PostgreSQL 连接全部来自 `AI_SRPG_DB_HOST` / `AI_SRPG_DB_PORT` / `AI_SRPG_DB_NAME` / `AI_SRPG_DB_USER` / `AI_SRPG_DB_PASSWORD`；缺少任一变量（密码可留空）会在导入配置时直接失败。
 
 ### 重置开发数据库
 
