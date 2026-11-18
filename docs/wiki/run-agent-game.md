@@ -9,7 +9,6 @@
 它不依赖常驻服务端，适合复现问题、做规则回归和逐步观察 ECS 状态。需要走真实 HTTP 契约时改用 API 路径。
 
 → 参见：[SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](run-agent-api.md)
-→ 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
 
 ## 运行模型
@@ -35,8 +34,6 @@ Click 层只做参数解析、日志初始化、快照路径构造与错误退�
 开场、战斗是 `world` 中的房间状态，压缩是 `CompactContextAction` 动作；三者都不是独立的 pipeline。开场 system 在战斗回合中自行跳过，战斗 system 在开场或压缩回合中同样自行跳过。
 
 顺序就是因果链：回合开始必须先于抽牌，死亡判定必须先于胜负判定，胜负判定必须先于战后转换，后战斗转换必须先于牌堆拆除。全局装配函数中的相邻注释是对这些不可交换顺序的显式约束。
-
-→ 参见：[战斗管道（Combat Pipeline）](combat-pipeline.md)
 
 ## 与测试的分工
 

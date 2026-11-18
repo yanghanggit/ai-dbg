@@ -1,7 +1,7 @@
 """玩家出牌决策系统：把玩家已决定的出牌 / 过牌记成一条决策记录（无推理，原因留白）。
 
 记录形状与 `MonsterCombatDecisionSystem` 一致，合法性判定复用 `play_blocked_cause`，
-因此记录不会与结算层的拦截结论矛盾。设计取舍见 docs/wiki/combat-pipeline.md。
+因此记录不会与结算层的拦截结论矛盾。
 """
 
 import json

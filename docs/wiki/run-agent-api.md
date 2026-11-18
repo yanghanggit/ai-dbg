@@ -9,7 +9,6 @@
 服务端是唯一真相，CLI 不缓存世界状态、不读写 `.worlds/`，只以 `--user/--game` 寻址。世界状态与用户级会话历史都由服务端持有；会话历史跨游戏持续累积，不随新局清空。每次动作前用 `status` 取当前局面。
 
 → 参见：[SRPG AI 操作 CLI（ai-srpg-agent-game）](run-agent-game.md)
-→ 参见：[世界快照持久化（World Persistence）](world-persistence.md)
 → 参见：[用户会话历史（PlayerSession）](session-history.md)
 → 参见：[Job 执行与事件日志（Job Execution）](job-execution.md)
 

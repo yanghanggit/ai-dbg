@@ -2,7 +2,7 @@
 
 `submit_decision` 是唯一提交方式（非法提交由工具回错，模型在同一段 loop 内自纠）；
 loop 后整段过程被替换成一条决策记录（形状与 `PlayerCombatDecisionSystem` 一致），
-没提交出可执行结果时兜底过牌。设计取舍见 docs/wiki/combat-pipeline.md。
+没提交出可执行结果时兜底过牌。
 """
 
 from functools import partial

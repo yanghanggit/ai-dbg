@@ -21,5 +21,3 @@
 ## 作用域
 
 逐次去痕只作用于怪物决策这类角色侧工具循环；场景侧出牌结算已无 LLM。阈值压缩对所有 agent 一视同仁，是最后兜底手段。
-
-→ 参见：[战斗管道（Combat Pipeline）](combat-pipeline.md)、[世界快照持久化（World Persistence）](world-persistence.md)

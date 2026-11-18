@@ -9,7 +9,7 @@
 >
 > - 写**设计意图与架构决策**：解释"为何这样设计"、"与哪些系统交互"，不描述实现步骤。代码已能自述的细节不再复述。
 > - 写**跨系统关联**：本系统如何被其他系统驱动、产出被谁消费。单系统内部的步骤逻辑靠代码阅读。
-> - 写**相对稳定的知识**：核心类名（如 `GearItem`、`DeckComponent`）可用行内代码引用；变量名、函数名、字段名随实现变化，引用它们等于复述代码，应规避。
+> - 写**相对稳定的知识**：核心类名（如 `Job`、`PlayerSession`）可用行内代码引用；变量名、函数名、字段名随实现变化，引用它们等于复述代码，应规避。
 > - 写**紧凑精要**：追求信息密度，避免铺陈。一段文字如果删掉后设计意图仍然完整，就该删。
 > - 写**系统层面而非表现层**：只陈述引擎与系统的事实和关系，不写表现层的呈现、交互或实现归属。
 >
@@ -29,24 +29,13 @@
 
 ## 知识领域索引
 
-### wiki/ — 核心系统设计
+### wiki/ — 基建与工具
 
 | 文档 | 简介 |
 | ------ | ------ |
-| [消耗品系统（ConsumableItem）](wiki/consumable-item.md) | 消耗品的数据模型、内置卡牌与战斗使用管道 |
-| [装备系统（GearItem）](wiki/gear-item.md) | 装备的数据模型、装备物化为手牌的管道、战斗结束归还 |
-| [材料系统（MaterialItem）](wiki/material-item.md) | 原料类道具的数据模型、堆叠规则与当前无获取/消费入口的定位 |
+| [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与回滚 |
+| [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件，不随世界快照回滚；与 job 日志的分工 |
+| [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段：逐次去痕与按上下文占比触发的全局压缩 |
+| [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
 | [SRPG AI 操作 CLI（ai-srpg-agent-game）](wiki/run-agent-game.md) | 离线快照驱动的副本推进：新局直达副本、开场/战斗流程、全局 system 骨架与开发调测命令 |
 | [SRPG AI 代理 API 走查 CLI（ai-srpg-agent-api）](wiki/run-agent-api.md) | 一次调用一次动作、服务端为唯一真相；status 快照与 suggested_actions 驱动代理走查 |
-| [世界快照持久化（World Persistence）](wiki/world-persistence.md) | 开发期明文快照留痕的设计意图：人可读状态切片、快照驱动 CLI 的读写循环、非最终存储的定位 |
-| [用户会话历史（PlayerSession）](wiki/session-history.md) | 用户级 append-only 上帝视角：跨游戏持续累积领域事件，不随世界快照回滚；与 job 日志的分工 |
-| [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与回滚 |
-| [战斗管道（Combat Pipeline）](wiki/combat-pipeline.md) | ECS 处理器链的架构设计：管道心跳驱动、牌库预置与抽牌堆确定性填充、静态伤害/格挡结算、回合行动序列与生命周期阶段 |
-| [神器（Artifact）](wiki/artifact.md) | 场景级修正规则的数据模型与挂载方式；当前保留数据形状，运行时结算未启用 |
-| [卡牌数据模型（Card）](wiki/card.md) | Card 字段的三层结构（确定性骨架 / 保留词缀数据 / 生命周期流转）、来源引用（source）与静态结算的设计取舍 |
-| [三端化思维（攻击端 / 防御端 / 运转端）](wiki/combat-ports.md) | 端口化思维方法论：攻击端（前端/成长性/铺垫）、防御端（前端/成长性/特殊）、运转端（过牌/加费/启动）及其与 Card 字段的映射 |
-| [工具即上下文（Tools as Context）](wiki/tools-as-context.md) | 方法论：工具的 name/description/parameters 本身即上下文；据此把约束下沉到 schema / description / 对象说明，减少提示词重复与冗余 |
-| [手牌（HandComponent）](wiki/hand.md) | 手牌的双重身份：作为出牌者的行动选择集、作为被命中者的当前状态，及其与牌堆/静态结算/装备的关联 |
-| [SRPG 核心概念定义与逻辑关系总结](<wiki/SRPG 核心概念定义与逻辑关系总结.md>) | Modifiers（对局级规则）与 Affixes（一次性效果词缀）二者的定义、归属与逻辑关系：宏观-微观模型 |
-| [上下文窗口管理（Context Window Management）](wiki/context-window-management.md) | 应对 agent 记忆膨胀的两种减量手段：怪物决策的逐次去痕与按上下文占比触发的全局压缩 |
-| [战役设定与全局规则（CAMPAIGN_SETTING / SYSTEM_RULES）](wiki/campaign-setting-rules-bridge.md) | 故事层两字段的分层（均封存在 demo/）、抽象设定的惰性知识与内容无关边界 |
