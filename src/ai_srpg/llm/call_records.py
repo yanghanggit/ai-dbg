@@ -10,7 +10,6 @@
 1. 请求级：``ChatCompletionRequest.record``——「我想不想留痕」；
 2. 进程级：环境变量 ``AI_SRPG_LLM_CALL_LOG_ENABLED``——「这台进程允不允许落盘」。
 
-旧名 ``AI_SRPG_CHAT_DUMP_ENABLED`` 仍兼容（读到会提示一次）。
 ``request.record=True`` 但进程级关闭时只警告一次再跳过：静默失效比不落盘更糟。
 """
 
@@ -35,16 +34,12 @@ from .types import ChatCompletionRequest, ChatCompletionResult
 #: 进程级总开关；未设置视为开启
 ENV_CALL_LOG_SWITCH: str = "AI_SRPG_LLM_CALL_LOG_ENABLED"
 
-#: 旧变量名（chat_dump 时代）；只读兼容，命中时提示一次
-LEGACY_ENV_CALL_LOG_SWITCH: str = "AI_SRPG_CHAT_DUMP_ENABLED"
-
 #: 记录结构版本；字段变化时递增
 SCHEMA_VERSION: int = 1
 
 _FALSE_VALUES: frozenset[str] = frozenset({"0", "false", "no", "off"})
 
 _warned_env_suppressed: bool = False
-_warned_legacy_env: bool = False
 
 
 ############################################################################################################
@@ -69,10 +64,6 @@ class LlmCallRecord(BaseModel):
 def env_allows_call_log() -> bool:
     """进程级总开关是否允许记录（默认允许；调用时读取环境变量）。"""
     raw = os.getenv(ENV_CALL_LOG_SWITCH)
-    if raw is None:
-        raw = os.getenv(LEGACY_ENV_CALL_LOG_SWITCH)
-        if raw is not None:
-            _warn_legacy_env()
     if raw is None:
         return True
     return raw.strip().lower() not in _FALSE_VALUES
@@ -222,24 +213,12 @@ def _warn_env_suppressed() -> None:
         return
     _warned_env_suppressed = True
     logger.warning(
-        f"llm call 记录已被环境变量 {ENV_CALL_LOG_SWITCH} 关闭；"
-        "request.record=True 被忽略（本进程不再记录，仅提示一次）"
-    )
-
-
-def _warn_legacy_env() -> None:
-    global _warned_legacy_env
-    if _warned_legacy_env:
-        return
-    _warned_legacy_env = True
-    logger.warning(
-        f"{LEGACY_ENV_CALL_LOG_SWITCH} 已更名为 {ENV_CALL_LOG_SWITCH}，请更新 .env"
+        f"llm call 记录已被环境变量 {ENV_CALL_LOG_SWITCH} 关闭；request.record=True 被忽略（本进程不再记录，仅提示一次）"
     )
 
 
 __all__ = [
     "ENV_CALL_LOG_SWITCH",
-    "LEGACY_ENV_CALL_LOG_SWITCH",
     "SCHEMA_VERSION",
     "LlmCallRecord",
     "build_llm_call_record",

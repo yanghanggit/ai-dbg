@@ -8,7 +8,6 @@ import pytest
 
 from ai_srpg.llm.call_records import (
     ENV_CALL_LOG_SWITCH,
-    LEGACY_ENV_CALL_LOG_SWITCH,
     LlmCallRecord,
     build_llm_call_record,
     env_allows_call_log,
@@ -30,10 +29,8 @@ from ai_srpg.models import AIMessage, SystemMessage, get_buffer_string
 @pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(ENV_CALL_LOG_SWITCH, raising=False)
-    monkeypatch.delenv(LEGACY_ENV_CALL_LOG_SWITCH, raising=False)
     module = importlib.import_module("ai_srpg.llm.call_records")
     monkeypatch.setattr(module, "_warned_env_suppressed", False)
-    monkeypatch.setattr(module, "_warned_legacy_env", False)
 
 
 @pytest.fixture
@@ -245,15 +242,6 @@ def test_env_switch_off_and_request_record_false_stay_silent(
     assert not importlib.import_module(
         "ai_srpg.llm.call_records"
     )._warned_env_suppressed
-
-
-def test_legacy_env_name_still_works(
-    calls_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv(LEGACY_ENV_CALL_LOG_SWITCH, "true")
-
-    assert env_allows_call_log()
-    assert importlib.import_module("ai_srpg.llm.call_records")._warned_legacy_env
 
 
 ###############################################################################################################

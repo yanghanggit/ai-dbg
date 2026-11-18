@@ -90,10 +90,15 @@ def llm_calls(limit: int, label: str | None) -> None:
     for record in records:
         status = "ERR" if record.response.get("error") else "OK"
         tokens = (record.usage or {}).get("total_tokens", "-")
-        click.echo(
-            f"{record.created_at.astimezone():%Y-%m-%d %H:%M:%S}  {record.request_id[:8]}  "
-            f"{status:<3}  {record.elapsed_ms:>6}ms  {str(tokens):>6}tok  {record.label}"
-        )
+        fields = [
+            f"{record.created_at.astimezone():%Y-%m-%d %H:%M:%S}",
+            record.request_id[:8],
+            f"{status:<3}",
+            f"{record.elapsed_ms:>6}ms",
+            f"{str(tokens):>6}tok",
+            record.label,
+        ]
+        click.echo("  ".join(fields))
 
 
 ###############################################################################

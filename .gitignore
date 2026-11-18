@@ -64,8 +64,6 @@ htmlcov/
 # Other Files and Directories to Ignore
 # -----------------------------------------------------------------------------
 .blueprints/
-.sessions/
-.debug_cache/
 .llm_calls/
 
 # Local AI Agent Configurations (e.g., Claude, Gemini, etc.)
