@@ -17,13 +17,12 @@ def log_call(action: str, **params: object) -> None:
 
 
 ###############################################################################
-async def create_and_initialize_game(user: str, game: str, dungeon: str) -> None:
+async def create_and_initialize_game(user: str, game: str) -> None:
     """创建并初始化一局游戏（骨架）。"""
     log_call(
         "create_and_initialize_game",
         user=user,
         game=game,
-        dungeon=dungeon,
     )
 
 
