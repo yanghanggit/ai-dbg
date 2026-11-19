@@ -99,14 +99,20 @@ def list_actor_summaries(srpg_game: SRPGGame) -> List[ActorSummary]:
     return summaries
 
 
-class Exit(NamedTuple):
-    """战场上的相邻一格：坐标，以及那一格上有没有据点。"""
+class Cell(NamedTuple):
+    """战场上的一格：坐标、格上的据点（如果有）、站在格上的角色。
+
+    据点与站在格上的角色是平级的：一格可以只有空地，可以有据点，也可以有人就站在
+    据点所在的那一格（兵临城下）。
+    """
 
     x: int
     y: int
     stage: Optional[str] = None
+    actors: Tuple[str, ...] = ()
 
 
+############################################################################################################
 def get_global_stage(srpg_game: SRPGGame, stage_name: str) -> Entity:
     """沿父链上溯到全局舞台（舞台树的根，自带网格）。"""
     entity = get_stage_entity(srpg_game, stage_name)
@@ -120,46 +126,125 @@ def get_global_stage(srpg_game: SRPGGame, stage_name: str) -> Entity:
     return entity
 
 
+def is_on_map(srpg_game: SRPGGame, entity: Entity) -> bool:
+    """这个实体是否站在战役地图上（而不是某个据点内部）。"""
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    return stage_entity.has(GlobalStageComponent)
+
+
+def get_settlement(srpg_game: SRPGGame, entity: Entity) -> Optional[Entity]:
+    """实体所属的据点：据点对外只是一个节点，就是全局舞台的直接子舞台。
+
+    站在地图上返回 ``None``；无论在里面走到多深，返回的都是同一个据点根。
+    """
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    if stage_entity.has(GlobalStageComponent):
+        return None
+    node = stage_entity
+    while True:
+        parent_name = node.get(StageComponent).parent_stage
+        assert parent_name is not None, f"{node.name} 不在任何全局舞台之下"
+        parent = get_stage_entity(srpg_game, parent_name)
+        assert parent is not None, f"{node.name} 的父舞台不存在: {parent_name}"
+        if parent.has(GlobalStageComponent):
+            return node
+        node = parent
+
+
 def get_cell(srpg_game: SRPGGame, entity: Entity) -> Tuple[Entity, Tuple[int, int]]:
-    """实体在战场上的位置：站在空地上用自己的坐标，在据点里用据点所在的格子。"""
+    """实体在战役地图上的位置：站在地图上用自己的坐标，在据点里用据点所在的格。"""
     if entity.has(PositionComponent):
         position = entity.get(PositionComponent)
         return _global_stage_of_entity(srpg_game, entity), (position.x, position.y)
 
-    stage_entity = resolve_stage_entity(srpg_game, entity)
-    assert stage_entity is not None, f"{entity.name} 无所在舞台"
-    global_stage = get_global_stage(srpg_game, stage_entity.name)
-    assert (
-        stage_entity is not global_stage
-    ), f"{entity.name} 站在全局舞台上，却没有格子坐标"
-    position = stage_entity.get(PositionComponent)
+    settlement = get_settlement(srpg_game, entity)
+    assert settlement is not None, f"{entity.name} 站在地图上，却没有格子坐标"
+    position = settlement.get(PositionComponent)
+    global_stage = get_global_stage(srpg_game, settlement.name)
     return global_stage, (position.x, position.y)
 
 
-def get_exits(srpg_game: SRPGGame, entity: Entity) -> List[Exit]:
-    """相邻且在图内的格子；斜向也算相邻，与广播的距离口径一致。
+def get_map_cells(srpg_game: SRPGGame, entity: Entity) -> List[Cell]:
+    """地图上的相邻格；斜向也算相邻，与广播的距离口径一致。
 
-    目标格上有据点时带上据点名：走过去就是进那个据点，空地上则只是站在格上。
+    包含实体自己所在的那一格——「脚下有什么」决定能不能进城。
     """
     global_stage, (x, y) = get_cell(srpg_game, entity)
     grid = global_stage.get(GlobalStageComponent)
-    occupied: Dict[Tuple[int, int], str] = {}
+
+    by_cell: Dict[Tuple[int, int], Dict[str, object]] = {}
     for child in get_child_stages(srpg_game, global_stage.name):
         if not child.has(PositionComponent):
             continue
         position = child.get(PositionComponent)
-        occupied[(position.x, position.y)] = child.name
+        by_cell.setdefault((position.x, position.y), {})["stage"] = child.name
 
-    exits: List[Exit] = []
+    for actor in get_actors_in_stage(srpg_game, global_stage):
+        if not actor.has(PositionComponent) or actor.index == entity.index:
+            continue
+        position = actor.get(PositionComponent)
+        entry = by_cell.setdefault((position.x, position.y), {})
+        entry["actors"] = (*_actors_of(entry), actor.name)
+
+    cells: List[Cell] = []
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
-            if dx == 0 and dy == 0:
-                continue
             nx, ny = x + dx, y + dy
             if not (0 <= nx < grid.width and 0 <= ny < grid.height):
                 continue
-            exits.append(Exit(x=nx, y=ny, stage=occupied.get((nx, ny))))
-    return sorted(exits)
+            entry = by_cell.get((nx, ny), {})
+            cells.append(
+                Cell(
+                    x=nx,
+                    y=ny,
+                    stage=entry.get("stage"),  # type: ignore[arg-type]
+                    actors=entry.get("actors", ()),  # type: ignore[arg-type]
+                )
+            )
+    return sorted(cells)
+
+
+def get_adjacent_stages(srpg_game: SRPGGame, entity: Entity) -> List[Entity]:
+    """据点内部的可去区域：子区域与父区域。
+
+    父区域是全局舞台时不在此列——那是「出城」，不是城内移动。
+    """
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    assert not stage_entity.has(
+        GlobalStageComponent
+    ), f"{entity.name} 站在地图上，没有城内可去的区域"
+
+    found = list(get_child_stages(srpg_game, stage_entity.name))
+    parent_name = stage_entity.get(StageComponent).parent_stage
+    assert parent_name is not None, f"{stage_entity.name} 不在任何全局舞台之下"
+    parent = get_stage_entity(srpg_game, parent_name)
+    assert parent is not None, f"{stage_entity.name} 的父舞台不存在: {parent_name}"
+    if not parent.has(GlobalStageComponent):
+        found.append(parent)
+    return found
+
+
+def get_stage_at_cell(
+    srpg_game: SRPGGame, global_stage: Entity, cell: Tuple[int, int]
+) -> Optional[Entity]:
+    """某一格上的据点；空地上没有据点。"""
+    for child in get_child_stages(srpg_game, global_stage.name):
+        if not child.has(PositionComponent):
+            continue
+        position = child.get(PositionComponent)
+        if (position.x, position.y) == cell:
+            return child
+    return None
+
+
+def _actors_of(entry: Dict[str, object]) -> Tuple[str, ...]:
+    """格子条目里已经记下的角色名。"""
+    actors = entry.get("actors", ())
+    assert isinstance(actors, tuple)
+    return actors
 
 
 def _global_stage_of_entity(srpg_game: SRPGGame, entity: Entity) -> Entity:

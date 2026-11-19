@@ -8,9 +8,12 @@ from ai_srpg.entitas.components import Component
 from ai_srpg.models import (
     ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
-    ActorMoveAction,
+    ActorEnterStageAction,
+    ActorExitStageAction,
+    ActorMoveWithinStageAction,
     ActorPlanAction,
     ActorSpeakAction,
+    ActorTravelAction,
     ActorWaitAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
@@ -37,7 +40,10 @@ def isolated_registries() -> Iterator[None]:
 PRODUCTION_ACTIONS = [
     ActorPlanAction,
     ActorSpeakAction,
-    ActorMoveAction,
+    ActorTravelAction,
+    ActorEnterStageAction,
+    ActorExitStageAction,
+    ActorMoveWithinStageAction,
     ActorWaitAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
@@ -47,6 +53,7 @@ PRODUCTION_ACTIONS = [
 FIELDLESS_ACTIONS = [
     ActorPlanAction,
     ActorWaitAction,
+    ActorExitStageAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
 ]

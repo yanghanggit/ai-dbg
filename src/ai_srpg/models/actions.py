@@ -82,11 +82,39 @@ class ActorSpeakAction(Component):
 @final
 @register_action_component_type
 @register_component_type
-class ActorMoveAction(Component):
-    """动作：本轮该角色移动到战场上的相邻一格。"""
+class ActorTravelAction(Component):
+    """动作：本轮该角色在战场上移动到相邻一格（不改变所在层）。"""
 
     cell_x: int
     cell_y: int
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorEnterStageAction(Component):
+    """动作：本轮该角色从格子走进那一格上的据点。"""
+
+    stage_name: str
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorExitStageAction(Component):
+    """动作：本轮该角色离开所在据点，回到战场上据点所在的那一格。"""
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorMoveWithinStageAction(Component):
+    """动作：本轮该角色在据点内部移动到一个相邻的区域。"""
+
+    destination: str
 
 
 ############################################################################################################
@@ -100,9 +128,12 @@ class ActorWaitAction(Component):
 ############################################################################################################
 __all__ = [
     "ACTION_COMPONENT_TYPES",
-    "ActorMoveAction",
+    "ActorEnterStageAction",
+    "ActorExitStageAction",
+    "ActorMoveWithinStageAction",
     "ActorPlanAction",
     "ActorSpeakAction",
+    "ActorTravelAction",
     "ActorWaitAction",
     "RefreshAppearanceAction",
     "RefreshEnvironmentAction",

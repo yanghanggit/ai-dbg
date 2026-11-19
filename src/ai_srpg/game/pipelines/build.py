@@ -14,14 +14,18 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
 
     ### 不这样就循环引用：systems 依赖 game 领域模块，而 game 装配又依赖 systems。
     from ..systems.action_cleanup_system import ActionCleanupSystem
-    from ..systems.actor_move_system import ActorMoveSystem
-    from ..systems.actor_plan_system import ActorPlanSystem
+    from ..systems.actor_enter_stage_system import ActorEnterStageSystem
+    from ..systems.actor_exit_stage_system import ActorExitStageSystem
+    from ..systems.actor_move_within_stage_system import ActorMoveWithinStageSystem
     from ..systems.actor_speak_system import ActorSpeakSystem
+    from ..systems.actor_travel_system import ActorTravelSystem
     from ..systems.actor_wait_system import ActorWaitSystem
     from ..systems.appearance_refresh_system import AppearanceRefreshSystem
     from ..systems.destroy_entity_system import DestroyEntitySystem
     from ..systems.environment_refresh_system import EnvironmentRefreshSystem
     from ..systems.epilogue_system import EpilogueSystem
+    from ..systems.global_plan_system import GlobalPlanSystem
+    from ..systems.local_plan_system import LocalPlanSystem
     from ..systems.prologue_system import PrologueSystem
     from ..systems.stage_pulse_system import StagePulseSystem
     from ..systems.stale_description_system import StaleDescriptionSystem
@@ -41,13 +45,17 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     pipeline.add(AppearanceRefreshSystem(srpg_game))
     pipeline.add(EnvironmentRefreshSystem(srpg_game))
 
-    # 计划：只有被挂上动作的角色才会跑，读到的是本轮刷新后的环境与外观。
-    pipeline.add(ActorPlanSystem(srpg_game))
+    # 计划：两层各有各的上下文与动词，靠 filter 的层级判定互斥。
+    pipeline.add(LocalPlanSystem(srpg_game))
+    pipeline.add(GlobalPlanSystem(srpg_game))
 
-    # 行为：计划时挂上的动作在这里生效，一个动作只做一件事。
+    # 行为：一个动作只做一件事，层级不符的动作不会被处理。
     pipeline.add(ActorSpeakSystem(srpg_game))
     pipeline.add(ActorWaitSystem(srpg_game))
-    pipeline.add(ActorMoveSystem(srpg_game))
+    pipeline.add(ActorTravelSystem(srpg_game))
+    pipeline.add(ActorEnterStageSystem(srpg_game))
+    pipeline.add(ActorExitStageSystem(srpg_game))
+    pipeline.add(ActorMoveWithinStageSystem(srpg_game))
 
     # ---------------------------------------------------------------------
     # 通用尾部：清理动作组件、销毁待销毁实体并收尾
