@@ -1,30 +1,32 @@
-"""玩家房间（会话容器）的生命周期接口。
+"""房间接口：以用户身份进入 / 查询 / 离开自己的房间。
 
-无鉴权阶段：路径里的 ``user_name`` 就是身份。进入房间等价于登录——没有则创建，
-已有则复用；用户级会话随之绑定，与是否已开局无关（房间与游戏是两个生命周期）。
+无鉴权阶段路径里的 ``user_name`` 就是身份；``room_id`` 是内部分局键。
 """
 
 from fastapi import APIRouter, Response, status
 
 from ...gameplay.session_history import open_session
-from ...session.access import require_room
+from ...session.access import require_room_of_user
 from ...session.errors import RoomNotFoundError
 from ...session.room import Room
 from ..dependencies import CurrentRoomRegistry
-from .schemas import RoomStateResponse
+from .schemas import RoomStateResponse, SeatResponse
 
 ################################################################################################################
 rooms_api_router = APIRouter(prefix="/api/rooms/v1", tags=["rooms"])
 
 
 ################################################################################################################
-def room_state(room: Room) -> RoomStateResponse:
-    """把房间内存态映射成传输契约。"""
-    session = room.session
+def room_state(room: Room, user_name: str) -> RoomStateResponse:
+    """把房间内存态映射成传输契约（``user_name`` 是发起请求的身份）。"""
+    session = room.session_of(user_name)
     return RoomStateResponse(
-        user_name=room.user_name,
+        room_id=room.room_id,
+        owner=room.owner,
+        user_name=user_name,
         game=room.game.name if room.game is not None else None,
         session_event_sequence=session.event_sequence if session is not None else 0,
+        seats=[SeatResponse(user_name=s.user_name, actor=s.actor) for s in room.seats],
     )
 
 
@@ -40,7 +42,7 @@ async def enter_room(
 ) -> RoomStateResponse:
     """进入房间，幂等；新建返回 201，复用已有房间返回 200。"""
 
-    room = room_registry.get_room(user_name)
+    room = room_registry.get_room_of_user(user_name)
     if room is not None:
         response.status_code = status.HTTP_200_OK
     else:
@@ -48,10 +50,10 @@ async def enter_room(
 
     # 会话与游戏互不依赖：先进入房间，之后再开局
     async with room.transaction():
-        if room.session is None:
-            room.set_session(open_session(user_name))
+        if room.session_of(user_name) is None:
+            room.attach_session(open_session(room.room_id, user_name))
 
-    return room_state(room)
+    return room_state(room, user_name)
 
 
 ################################################################################################################
@@ -65,7 +67,7 @@ async def get_room(
 ) -> RoomStateResponse:
     """查询房间当前状态；房间不存在时抛 ``RoomNotFoundError``（404）。"""
 
-    return room_state(require_room(room_registry, user_name))
+    return room_state(require_room_of_user(room_registry, user_name), user_name)
 
 
 ################################################################################################################
@@ -75,8 +77,8 @@ async def get_room(
     summary="离开房间（等待进行中的事务结束）",
 )
 async def leave_room(room_registry: CurrentRoomRegistry, user_name: str) -> Response:
-    """移除并关闭房间；房间不存在时抛 ``RoomNotFoundError``（404）。"""
+    """离开房间：移除自己的席位；房间空了就关闭。房间不存在时抛 404。"""
 
-    if await room_registry.remove_room(user_name) is None:
+    if await room_registry.leave_room(user_name) is None:
         raise RoomNotFoundError(user_name)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

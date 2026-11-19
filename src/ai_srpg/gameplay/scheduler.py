@@ -1,19 +1,6 @@
-"""游戏玩法定时系统（骨架）。
+"""玩法定时器骨架：周期性遍历房间，在房间锁内执行一次回调，不含业务逻辑。
 
-只提供“周期性地遍历所有房间、并在房间锁内执行一次回调”的框架，**不含任何业务逻辑**。
-未来要加玩法（例如定时查看 ECS 状态、满足条件就推进玩法）时，只需实现 ``on_room_tick``。
-
-并发约定（重要）
-----------------
-* **发现房间**：用 ``room_registry.snapshot_rooms()`` 做无锁只读快照。
-* **改状态**：必须经 ``room_registry.acquire(user)`` 进入房间锁——同一个房间同一时刻只允许
-  一个 pipeline 访问它的 ECS context。
-* **不阻塞 tick**：用非阻塞方式判断房间是否忙（``room.is_busy``），忙则本轮跳过；否则一个
-  长 pipeline 会拖住整个遍历。
-* **不跑长流程**：本回调只做“判断 + 派发”，真正的 LLM pipeline 交给后台 job
-  （``gameplay.dispatch.defer_room_job`` + Procrastinate worker）执行。
-
-注：房间是进程内内存态，因此定时器应与 RoomRegistry 跑在同一进程（当前由 ``lifespan`` 启动）。
+回调只做「判断 + 派发」，长流程交给后台 job；房间忙则本轮跳过。
 """
 
 import asyncio
@@ -27,19 +14,7 @@ from ..session.room import Room
 
 ###############################################################################################################################################
 async def on_room_tick(room: Room) -> None:
-    """单个房间的一次定时回调（占位，待填充业务逻辑）。
-
-    调用时**已持有该房间的锁**（由 ``_tick_once`` 通过 ``room_registry.acquire`` 获取），
-    因此可以安全读写 ``room.game``（ECS context）。
-
-    未来在此实现玩法，例如：
-
-        # 满足条件时派发 job；长流程交给 worker，不要在本回调里直接跑 pipeline。
-        # from .dispatch import defer_room_job
-        # from .jobs import advance_game_job
-        # if room.game is not None:
-        #     await defer_room_job(advance_game_job, user_name=room.user_name)
-    """
+    """单个房间的定时回调（占位）；调用时已持有该房间的锁。"""
     return
 
 
@@ -56,14 +31,14 @@ async def _tick_once(room_registry: RoomRegistry) -> None:
             continue
 
         try:
-            async with room_registry.acquire(room.user_name) as locked:
+            async with room_registry.acquire(room.room_id) as locked:
                 await on_room_tick(locked)
                 processed += 1
         except (RoomNotFoundError, RoomClosedError):
             # 快照与取锁之间房间被移除/关闭，属正常竞态，跳过即可。
             continue
         except Exception as e:
-            logger.error(f"gameplay tick error for {room.user_name}: {e}")
+            logger.error(f"gameplay tick error for {room.room_id}: {e}")
 
     logger.debug(f"gameplay tick: 扫描 {len(rooms)} 个房间，处理 {processed} 个")
 

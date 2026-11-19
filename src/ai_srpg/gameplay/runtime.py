@@ -1,14 +1,6 @@
-"""一次游戏 pass 的运行时编排：快照 → 执行 → 失败回滚。
+"""一次 pass 的编排：执行前快照 → 运行 → 失败回滚，成功后追加结果快照。
 
-放在编排层而不是 ``process_pipeline``：ECS 运行辅助不应认识数据库，
-快照的保存时机、失败后的回滚、房间锁的获取都属于应用编排。
-
-粒度约定
---------
-* 一个 pass 开始时追加一条整块快照（append-only 历史）；
-* pass 正常结束（含 ``StopPipeline``）不回滚，快照保留为历史；
-* pass 抛异常时把 ECS 与 agent 记忆一起回滚到该快照，再把原异常上抛；
-* 回滚本身失败只记录，不覆盖原始异常，便于定位首个错误。
+失败路径不追加结果快照，因此「最新快照 = 当前状态」始终成立。
 """
 
 from typing import Optional
@@ -30,31 +22,27 @@ from ..session.runtime import get_runtime_room_registry
 
 ###############################################################################
 async def run_game_pass(
-    user_name: str, observer: Optional[ProcessorObserver] = None
+    room_id: str, observer: Optional[ProcessorObserver] = None
 ) -> PassResult:
-    """后台 job 的执行入口：进入房间锁并跑一次 pass。
+    """后台 job 的执行入口：进入房间锁并跑一次 pass，成功后追加结果快照。
 
-    必须从 job 体调用，不要嵌套在已持有 ``room_registry.acquire`` 的代码里，
-    否则会重复获取同一把非重入的房间锁。
-
-    成功后追加一条**结果快照**：房间内存只是当前工作副本，进程重启或房间回收
-    后由最新快照恢复，因此「最新快照 = 当前状态」必须在这里保证。失败路径不追加，
-    只保留 ``run_pass`` 写入的执行前快照作为回滚基线。
+    必须从 job 体调用，不要在已持有 ``room_registry.acquire`` 的代码里调用
+    （房间锁不可重入）。
     """
-    async with get_runtime_room_registry().acquire(user_name) as room:
+    async with get_runtime_room_registry().acquire(room_id) as room:
         result = await run_room_pass(room, observer=observer)
 
         game = room.game
         assert game is not None, "pass 成功后房间必然仍有游戏"
-        snapshot_id = append_game_snapshot(user_name, snapshot_game(game))
-        logger.debug(f"pass result snapshot saved: user={user_name}, id={snapshot_id}")
+        snapshot_id = append_game_snapshot(room_id, snapshot_game(game))
+        logger.debug(f"pass result snapshot saved: room={room_id}, id={snapshot_id}")
         return result
 
 
 ###############################################################################
 async def run_pass(
     game: SRPGGame,
-    user_name: str,
+    room_id: str,
     observer: Optional[ProcessorObserver] = None,
 ) -> PassResult:
     """对任意游戏实例执行一次 pass：快照 → 执行 → 失败回滚。
@@ -65,11 +53,11 @@ async def run_pass(
         observer = get_current_job()
 
     snapshot = snapshot_game(game)
-    snapshot_id = append_game_snapshot(user_name, snapshot)
-    logger.debug(f"pass snapshot saved: user={user_name}, id={snapshot_id}")
+    snapshot_id = append_game_snapshot(room_id, snapshot)
+    logger.debug(f"pass snapshot saved: room={room_id}, id={snapshot_id}")
 
     with llm_call_trace(
-        user=user_name,
+        user=room_id,
         game=game.name,
         snapshot_id=snapshot_id,
     ):
@@ -79,9 +67,7 @@ async def run_pass(
             try:
                 await rollback_game(game, snapshot)
             except Exception:
-                logger.exception(
-                    f"回滚失败: user={user_name}, snapshot_id={snapshot_id}"
-                )
+                logger.exception(f"回滚失败: room={room_id}, snapshot_id={snapshot_id}")
             raise
 
 
@@ -92,7 +78,7 @@ async def run_room_pass(
     """在已持有房间锁的前提下执行一次 pass。"""
     game = room.game
     if game is None:
-        raise GameNotFoundError(user_name=room.user_name)
+        raise GameNotFoundError(room_id=room.room_id)
 
     if observer is None:
         observer = get_current_job()
@@ -100,10 +86,10 @@ async def run_room_pass(
     current_job = get_current_job()
     with llm_call_trace(
         scope="room",
-        scope_id=room.user_name,
-        user=room.user_name,
+        scope_id=room.room_id,
+        user=room.owner,
         game=game.name,
-        room=room.user_name,
+        room=room.room_id,
         job_id=current_job.job_id if current_job is not None else None,
     ):
-        return await run_pass(game, room.user_name, observer)
+        return await run_pass(game, room.room_id, observer)

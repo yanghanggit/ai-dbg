@@ -18,7 +18,7 @@ async def test_tick_calls_hook_under_lock(monkeypatch: pytest.MonkeyPatch) -> No
 
     async def hook(room: Room) -> None:
         lock_held.append(room.is_busy)  # 回调应在房间锁内执行
-        seen.append(room.user_name)
+        seen.append(room.room_id)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
@@ -44,7 +44,7 @@ async def test_tick_skips_busy_room(monkeypatch: pytest.MonkeyPatch) -> None:
     await started.wait()
 
     async def hook(r: Room) -> None:
-        seen.append(r.user_name)
+        seen.append(r.room_id)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
@@ -63,7 +63,7 @@ async def test_tick_skips_closed_room(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: List[str] = []
 
     async def hook(r: Room) -> None:
-        seen.append(r.user_name)
+        seen.append(r.room_id)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 

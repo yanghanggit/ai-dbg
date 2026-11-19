@@ -35,7 +35,7 @@ def user_name() -> Iterator[str]:
     yield name
     db = SessionLocal()
     try:
-        db.query(GameSnapshotDB).filter(GameSnapshotDB.user_name == name).delete()
+        db.query(GameSnapshotDB).filter(GameSnapshotDB.room_id == name).delete()
         db.commit()
     finally:
         db.close()

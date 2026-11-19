@@ -1,8 +1,4 @@
-"""session_messages 的读写操作。
-
-会话历史是 append-only 的：这里只有追加与按序号读取，没有更新与删除。
-「何时追加」由上层（领域事件 sink）决定，本层不做编排。
-"""
+"""session_messages 的读写：只追加与按序号读取；读取可按 ``viewer`` 过滤可见性。"""
 
 from typing import List, Optional
 
@@ -27,19 +23,21 @@ def _to_model(row: SessionMessageDB) -> SessionMessage:
         job_id=row.job_id,
         game_name=row.game_name,
         actor=row.actor,
+        user_name=row.user_name,
         created_at=row.created_at,
     )
 
 
 ###############################################################################
-def append_session_message(user_name: str, message: SessionMessage) -> None:
+def append_session_message(room_id: str, message: SessionMessage) -> None:
     """追加一条会话消息；序号冲突会由唯一约束抛出（不应发生）。"""
     db = SessionLocal()
     try:
         db.add(
             SessionMessageDB(
-                user_name=user_name,
+                room_id=room_id,
                 sequence_id=message.sequence_id,
+                user_name=message.user_name,
                 job_id=message.job_id,
                 game_name=message.game_name,
                 actor=message.actor,
@@ -61,34 +59,41 @@ def append_session_message(user_name: str, message: SessionMessage) -> None:
 
 ###############################################################################
 def list_session_messages(
-    user_name: str, *, after_sequence_id: int = 0, limit: int = 500
+    room_id: str,
+    *,
+    after_sequence_id: int = 0,
+    limit: int = 500,
+    viewer: Optional[str] = None,
 ) -> List[SessionMessage]:
-    """按序号升序读取某用户的历史；``after_sequence_id`` 用于增量拉取。"""
+    """按序号升序读取某一局的历史；``after_sequence_id`` 用于增量拉取。
+
+    传入 ``viewer`` 时只返回他可见的事件（全房可见 + 专属他的）。
+    """
     db = SessionLocal()
     try:
-        rows = (
-            db.query(SessionMessageDB)
-            .filter(
-                SessionMessageDB.user_name == user_name,
-                SessionMessageDB.sequence_id > after_sequence_id,
-            )
-            .order_by(SessionMessageDB.sequence_id.asc())
-            .limit(limit)
-            .all()
+        query = db.query(SessionMessageDB).filter(
+            SessionMessageDB.room_id == room_id,
+            SessionMessageDB.sequence_id > after_sequence_id,
         )
+        if viewer is not None:
+            query = query.filter(
+                (SessionMessageDB.user_name.is_(None))
+                | (SessionMessageDB.user_name == viewer)
+            )
+        rows = query.order_by(SessionMessageDB.sequence_id.asc()).limit(limit).all()
         return [_to_model(row) for row in rows]
     finally:
         db.close()
 
 
 ###############################################################################
-def max_session_sequence(user_name: str) -> int:
-    """该用户已分配的最大序号；没有历史时返回 0。"""
+def max_session_sequence(room_id: str) -> int:
+    """该局已分配的最大序号；没有历史时返回 0。"""
     db = SessionLocal()
     try:
         row: Optional[int] = (
             db.query(SessionMessageDB.sequence_id)
-            .filter(SessionMessageDB.user_name == user_name)
+            .filter(SessionMessageDB.room_id == room_id)
             .order_by(SessionMessageDB.sequence_id.desc())
             .limit(1)
             .scalar()

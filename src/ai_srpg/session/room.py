@@ -1,15 +1,12 @@
-"""玩家房间：一个用户在进程内的游戏席位。
+"""一局游戏在进程内的席位容器：持有游戏、各席位会话游标与房间锁。
 
-一房 = 一用户 = 最多一局游戏，房间之间不共享任何状态，只承担三件事：持有当前
-游戏与用户级会话、把写操作串行化、按空闲时间被回收。
-
-并发约定：写经 ``transaction()`` 串行；读不加锁，直接取 ``game`` / ``session``。
+写经 ``transaction()`` 串行；读不加锁。
 """
 
 import asyncio
 import time
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Final, Optional
+from typing import AsyncGenerator, Dict, Final, List, Optional, final
 
 from ..game.context import SRPGGame
 from ..game.lifecycle import exit_game
@@ -18,29 +15,55 @@ from .player_session import PlayerSession
 
 
 ###############################################################################################################################################
-class Room:
-    """一个用户在当前进程内的游戏席位（持有游戏、会话与房间锁）。"""
+@final
+class Seat:
+    """房间里的一个席位：谁在玩、控制哪个角色（未分配时 ``actor`` 为 None）。"""
 
     def __init__(self, user_name: str) -> None:
-        self._user_name: Final[str] = user_name
-        self._srpg_game: Optional[SRPGGame] = None  # SRPGGame 游戏实例
-        self._session: Optional[PlayerSession] = None
-        self._lock: asyncio.Lock = asyncio.Lock()  # 每玩家锁，防止并发状态竞争
+        self.user_name: Final[str] = user_name
+        self.actor: Optional[str] = None
+
+
+###############################################################################################################################################
+class Room:
+    """一局游戏的运行时容器；写操作经 ``transaction()`` 串行。"""
+
+    def __init__(self, room_id: str, owner: str) -> None:
+        self._room_id: Final[str] = room_id
+        self._owner: Final[str] = owner
+        # 房主排第一，其后按进入顺序
+        self._seats: Dict[str, Seat] = {owner: Seat(owner)}
+        self._sessions: Dict[str, PlayerSession] = {}
+        self._srpg_game: Optional[SRPGGame] = None
+        self._lock: asyncio.Lock = asyncio.Lock()
         self._closed: bool = False
         self._last_active_at: float = time.monotonic()
+        self._event_sequence: int = 0  # 局级流头，跨席位共享
 
     ###############################################################################################################################################
     @property
-    def user_name(self) -> str:
-        return self._user_name
+    def room_id(self) -> str:
+        return self._room_id
+
+    @property
+    def owner(self) -> str:
+        return self._owner
+
+    @property
+    def seats(self) -> List[Seat]:
+        return list(self._seats.values())
+
+    @property
+    def is_empty(self) -> bool:
+        return not self._seats
 
     @property
     def game(self) -> Optional[SRPGGame]:
         return self._srpg_game
 
     @property
-    def session(self) -> Optional[PlayerSession]:
-        return self._session
+    def sessions(self) -> Dict[str, PlayerSession]:
+        return dict(self._sessions)
 
     @property
     def is_closed(self) -> bool:
@@ -56,29 +79,70 @@ class Room:
         self._last_active_at = time.monotonic()
 
     ###############################################################################################################################################
+    def seat(self, user_name: str) -> Optional[Seat]:
+        """某用户的席位；不在房里时返回 ``None``。"""
+        return self._seats.get(user_name)
+
+    def join(self, user_name: str) -> Seat:
+        """加入房间（幂等）；房间已关闭时抛 ``RoomClosedError``。"""
+        if self._closed:
+            raise RoomClosedError(self._room_id)
+        seat = self._seats.get(user_name)
+        if seat is None:
+            seat = Seat(user_name)
+            self._seats[user_name] = seat
+        return seat
+
+    def leave(self, user_name: str) -> bool:
+        """离开房间：移除席位与该席位的会话游标；返回是否确实移除了。"""
+        self._sessions.pop(user_name, None)
+        return self._seats.pop(user_name, None) is not None
+
+    ###############################################################################################################################################
+    def session_of(self, user_name: str) -> Optional[PlayerSession]:
+        """该席位在当前局会话流上的游标。"""
+        return self._sessions.get(user_name)
+
+    def attach_session(self, session: PlayerSession) -> None:
+        """绑定某席位的会话（席位必须已在房里）。"""
+        if self._closed:
+            raise RoomClosedError(self._room_id)
+        assert session.user_name in self._seats, "会话必须属于房间内的席位"
+        self._sessions[session.user_name] = session
+
+    ###############################################################################################################################################
+    def start_game(self, *, game: SRPGGame) -> None:
+        """绑定游戏实例，应在 ``transaction()`` 内调用。"""
+        if self._closed:
+            raise RoomClosedError(self._room_id)
+        self._srpg_game = game
+
+    ###############################################################################################################################################
+    def bind_seat_actor(self, user_name: str, actor: str) -> None:
+        """记录某席位控制的角色全名。"""
+        seat = self._seats.get(user_name)
+        assert seat is not None, f"席位不存在: {user_name}"
+        seat.actor = actor
+
+    ###############################################################################################################################################
+    def seed_event_sequence(self, head: int) -> None:
+        """用存储里的流头初始化序号（开局或恢复时调用）。"""
+        self._event_sequence = max(self._event_sequence, head)
+
+    def next_event_sequence(self) -> int:
+        """分配局级会话流的下一个序号；仅在 ``transaction()`` 内调用。"""
+        self._event_sequence += 1
+        return self._event_sequence
+
+    ###############################################################################################################################################
     @asynccontextmanager
     async def transaction(self) -> AsyncGenerator["Room", None]:
-        """进入房间临界区，仅用于写变更。"""
+        """进入房间临界区（写变更）。"""
         self.touch()
         async with self._lock:
             if self._closed:
-                raise RoomClosedError(self._user_name)
+                raise RoomClosedError(self._room_id)
             yield self
-
-    ###############################################################################################################################################
-    def set_session(self, session: PlayerSession) -> None:
-        """绑定用户级会话；不依赖当前是否已有游戏。"""
-        if self._closed:
-            raise RoomClosedError(self._user_name)
-        self._session = session
-
-    ###############################################################################################################################################
-    def start_game(self, *, game: SRPGGame, session: PlayerSession) -> None:
-        """绑定游戏与会话实例，应在 ``transaction()`` 内调用。"""
-        if self._closed:
-            raise RoomClosedError(self._user_name)
-        self._srpg_game = game
-        self._session = session
 
     ###############################################################################################################################################
     def _teardown(self) -> None:
@@ -87,7 +151,7 @@ class Room:
             exit_game(self._srpg_game)
         self._closed = True
         self._srpg_game = None
-        self._session = None
+        self._sessions.clear()
 
     ###############################################################################################################################################
     async def close(self) -> None:
@@ -102,12 +166,9 @@ class Room:
             return False
 
         async with self._lock:
-
-            # 检查房间是否已关闭或仍然活跃
             if self._closed or self._last_active_at > deadline:
                 return False
 
-            # 退出游戏并关闭房间
             self._teardown()
             return True
 

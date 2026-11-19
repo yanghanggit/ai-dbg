@@ -1,10 +1,6 @@
 """客户端 CLI：通过 HTTP 驱动游戏服务器。
 
-与 ``ai-srpg-agent-game``（离线、进程内直接读写快照）平级：这里是「远程」那条
-路径。每条子命令只发一次请求，进程内不保持状态；对局状态以服务端快照为准。
-
-约定：路径里的 ``user_name`` 就是身份（无鉴权阶段），`enter` 等价于登录，
-之后才 `open` 开局、`advance` 推进。
+每条子命令只发一次请求、进程内不保持状态；路径里的 ``user_name`` 就是身份。
 """
 
 from contextlib import contextmanager
@@ -94,8 +90,11 @@ def _print_state(options: Options, state: RoomStateResponse) -> None:
         _dump(options, state)
         return
     click.echo(f"user:     {state.user_name}")
+    click.echo(f"room:     {state.room_id} (owner: {state.owner})")
     click.echo(f"game:     {state.game or '-'}")
     click.echo(f"messages: {state.session_event_sequence}")
+    for seat in state.seats:
+        click.echo(f"seat:     {seat.user_name} -> {seat.actor or '-'}")
 
 
 def _print_job(options: Options, detail: JobDetail) -> None:

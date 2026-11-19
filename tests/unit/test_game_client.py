@@ -21,7 +21,14 @@ def _client(handler: Handler) -> GameClient:
 
 
 def _state(user_name: str, game: str | None = None) -> dict[str, Any]:
-    return {"user_name": user_name, "game": game, "session_event_sequence": 0}
+    return {
+        "user_name": user_name,
+        "room_id": user_name,
+        "owner": user_name,
+        "game": game,
+        "session_event_sequence": 0,
+        "seats": [{"user_name": user_name, "actor": None}],
+    }
 
 
 def _job(job_id: int, status: JobStatus) -> dict[str, Any]:

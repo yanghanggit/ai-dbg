@@ -91,6 +91,8 @@ uv run ai-srpg-client leave alice                  # 离开房间（快照保留
 约定与注意：
 
 - 房间与游戏是两个生命周期：先 `enter` 再 `open`；`leave` 不影响已落库的快照。
+- 一房 = 一局：状态响应里的 `room_id` / `owner` / `seats` 描述这一局本身；当前一人一房，
+  `room_id` 就是房主用户名，多人席位的基础设施已就位但玩法仍按单人推进。
 - `advance` 默认等 job 终态；`--no-wait` 只返回 job id，进度用 `job` 子命令看。
 - 房间级 queueing_lock 只挡「排队中」的重复派发（409）；已出队执行时可再次派发，
   执行期由房间锁串行。

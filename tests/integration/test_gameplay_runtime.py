@@ -53,15 +53,16 @@ def user_name() -> Iterator[str]:
     yield name
     db = SessionLocal()
     try:
-        db.query(GameSnapshotDB).filter(GameSnapshotDB.user_name == name).delete()
+        db.query(GameSnapshotDB).filter(GameSnapshotDB.room_id == name).delete()
         db.commit()
     finally:
         db.close()
 
 
-def _room_with(game: SRPGGame, user_name: str) -> Room:
-    room = Room(user_name)
-    room.start_game(game=game, session=PlayerSession(user_name=user_name))
+def _room_with(game: SRPGGame, room_id: str) -> Room:
+    room = Room(room_id=room_id, owner=room_id)
+    room.attach_session(PlayerSession(user_name=room_id, room_id=room_id))
+    room.start_game(game=game)
     return room
 
 
@@ -101,7 +102,8 @@ async def test_run_game_pass_acquires_room(user_name: str) -> None:
 
     server = RoomRegistry()
     room = await server.create_room(user_name)
-    room.start_game(game=game, session=PlayerSession(user_name=user_name))
+    room.attach_session(PlayerSession(user_name=user_name, room_id=room.room_id))
+    room.start_game(game=game)
     bind_runtime_room_registry(server)
 
     result = await run_game_pass(user_name)
@@ -120,7 +122,8 @@ async def test_run_game_pass_failure_keeps_only_pre_run_snapshot(
 
     server = RoomRegistry()
     room = await server.create_room(user_name)
-    room.start_game(game=game, session=PlayerSession(user_name=user_name))
+    room.attach_session(PlayerSession(user_name=user_name, room_id=room.room_id))
+    room.start_game(game=game)
     bind_runtime_room_registry(server)
 
     with pytest.raises(RuntimeError, match="boom"):

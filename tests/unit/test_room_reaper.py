@@ -91,7 +91,7 @@ async def test_get_room_touches_activity() -> None:
 
 async def test_close_exits_game_and_clears_state() -> None:
     """关房与空闲回收必须走同一条拆房路径：都要退出游戏。"""
-    room = Room("alice")
+    room = Room(room_id="alice", owner="alice")
     game = _FakeGame()
     room._srpg_game = cast(SRPGGame, game)
 
@@ -100,11 +100,11 @@ async def test_close_exits_game_and_clears_state() -> None:
     assert game.pipeline.shutdown_called
     assert room.is_closed
     assert room.game is None
-    assert room.session is None
+    assert room.sessions == {}
 
 
 async def test_close_is_idempotent() -> None:
-    room = Room("alice")
+    room = Room(room_id="alice", owner="alice")
     room._srpg_game = cast(SRPGGame, _FakeGame())
 
     await room.close()

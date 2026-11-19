@@ -1,9 +1,4 @@
-"""用户会话历史持久化模型（append-only）。
-
-一行 = 一条 ``SessionMessage``。``sequence_id`` 按用户全局递增，与内存里的
-``PlayerSession`` 游标一致；``(user_name, sequence_id)`` 唯一，保证重放时不会
-出现重复序号。
-"""
+"""局级会话流（append-only）：一行一条，``(room_id, sequence_id)`` 唯一。"""
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -16,20 +11,27 @@ from .base import Base
 
 
 class SessionMessageDB(Base):
-    """用户级会话中的一条历史事件；只追加，不更新。"""
+    """一局游戏会话流中的一条历史事件；只追加，不更新。"""
 
     __tablename__ = "session_messages"
     __table_args__ = (
         UniqueConstraint(
-            "user_name", "sequence_id", name="uq_session_messages_user_sequence"
+            "room_id", "sequence_id", name="uq_session_messages_room_sequence"
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
-    #: 用户级递增序号（增量读取的游标，等于 PlayerSession 分配的值）
+    #: 所属局（房间）；会话流按它划分
+    room_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    #: 局内递增序号（增量读取的游标，由 Room 分配）
     sequence_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    #: 可见者：NULL = 全房可见；非 NULL = 只对该玩家可见
+    user_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
 
     #: 产生该事件时的 job；与 job_events 通过它关联
     job_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)

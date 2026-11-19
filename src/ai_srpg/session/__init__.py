@@ -1,4 +1,4 @@
-"""进程内运行时：玩家房间注册表、房间锁与当前 job 上下文。"""
+"""进程内运行时：房间（一局一房、房内多席位）、房间锁与当前 job 上下文。"""
 
 from .errors import (
     GameNameMismatchError,
@@ -10,8 +10,7 @@ from .errors import (
     RoomNotFoundError,
 )
 from .player_session import PlayerSession
-from .registry import RoomRegistry
-from .room import Room
+from .room import Room, Seat
 
 __all__ = [
     "GameNameMismatchError",
@@ -19,9 +18,9 @@ __all__ = [
     "GameStateError",
     "PlayerSession",
     "Room",
-    "RoomRegistry",
     "RoomAlreadyExistsError",
     "RoomClosedError",
     "RoomJobBusyError",
     "RoomNotFoundError",
+    "Seat",
 ]

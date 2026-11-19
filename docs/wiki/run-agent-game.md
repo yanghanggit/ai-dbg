@@ -4,7 +4,7 @@
 
 `ai-srpg-agent-game` 是离线、快照驱动的游戏开发辅助入口：一次调用只完成一个动作，世界状态由 PostgreSQL 的 `game_snapshots` 承载，命令之间不保持进程内状态。它用于规则回归、问题复现与逐步观察 ECS 状态；需要走真实 HTTP 契约时改用与服务端同契约的客户端。
 
-→ 参见：[用户会话历史（PlayerSession）](session-history.md)
+→ 参见：[会话历史（Session History）](session-history.md)
 → 参见：[服务端客户端（ai-srpg-client）](run-game-client.md)
 
 ## 状态模型

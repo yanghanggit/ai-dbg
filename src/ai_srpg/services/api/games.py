@@ -1,8 +1,4 @@
-"""游戏局接口：开局、推进、快照。
-
-「局」不是独立路由资源，而是房间里的游戏实例——先 ``POST /api/rooms/v1/{user}``
-进入房间，再在这里开局。对局状态本身以快照为准，内存实例只是当前工作副本。
-"""
+"""游戏局接口：开局、推进、快照；状态以快照为准，内存实例只是工作副本。"""
 
 from fastapi import APIRouter, Query, status
 
@@ -12,7 +8,7 @@ from ...gameplay.jobs import advance_game_job
 from ...gameplay.offline import load_or_create_game
 from ...gameplay.session_history import SessionEventSink, open_session
 from ...pgsql import list_game_snapshots
-from ...session.access import require_game, require_room
+from ...session.access import require_room_of_user, require_room_with_game
 from ..dependencies import CurrentRoomRegistry
 from .rooms import room_state
 from .schemas import DispatchJobResponse, RoomStateResponse, SnapshotListResponse
@@ -32,22 +28,28 @@ async def open_game(
 ) -> RoomStateResponse:
     """把一局游戏绑定到房间；已绑定同名游戏时直接返回当前状态（幂等）。"""
 
-    room = require_room(room_registry, user_name)
+    room = require_room_of_user(room_registry, user_name)
     if room.game is not None and room.game.name == game_name:
-        return room_state(room)
+        return room_state(room, user_name)
 
-    # 会话先就位，游戏才能把领域事件写进历史
-    session = room.session or open_session(user_name)
-    sink = SessionEventSink(session)
+    # 会话先就位，游戏才能把领域事件写进局级历史流
+    session = room.session_of(user_name) or open_session(room.room_id, user_name)
+    sink = SessionEventSink(room, session)
 
     # 读快照/建蓝图都要访问数据库，放在房间锁外，避免阻塞同房间的其他请求
-    game = await load_or_create_game(user_name, game_name, events=sink)
-    session.set_context(actor=get_player_actor_name(game), game=game_name)
+    game = await load_or_create_game(
+        room.room_id, game_name, user_name=user_name, events=sink
+    )
+    actor = get_player_actor_name(game)
+    session.set_context(actor=actor, game=game_name)
 
     async with room.transaction():
-        room.start_game(game=game, session=session)
+        room.attach_session(session)
+        room.start_game(game=game)
+        if actor is not None:
+            room.bind_seat_actor(user_name, actor)
 
-    return room_state(room)
+    return room_state(room, user_name)
 
 
 ################################################################################################################
@@ -60,13 +62,10 @@ async def open_game(
 async def advance_game(
     room_registry: CurrentRoomRegistry, user_name: str, game_name: str
 ) -> DispatchJobResponse:
-    """派发一次推进，立即返回 job id；执行进度走 ``/api/jobs/v1`` 查询。
+    """派发一次推进并返回 job id；同一房间只允许一个 job 排队（重复派发 409）。"""
 
-    同一房间同时只允许一个 job 排队，重复派发返回 409。
-    """
-
-    require_game(room_registry, user_name, game_name)
-    job_id = await defer_room_job(advance_game_job, user_name=user_name)
+    room = require_room_with_game(room_registry, user_name, game_name)
+    job_id = await defer_room_job(advance_game_job, room_id=room.room_id)
     return DispatchJobResponse(job_id=job_id)
 
 
@@ -84,7 +83,7 @@ async def list_snapshots(
 ) -> SnapshotListResponse:
     """快照是持久化真相：每次 pass 前追加一条，回滚与恢复都以它为准。"""
 
-    require_room(room_registry, user_name)
+    room = require_room_of_user(room_registry, user_name)
     return SnapshotListResponse(
-        snapshots=list_game_snapshots(user_name, game_name, limit=limit)
+        snapshots=list_game_snapshots(room.room_id, game_name, limit=limit)
     )

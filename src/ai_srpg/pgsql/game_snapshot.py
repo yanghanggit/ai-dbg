@@ -13,17 +13,14 @@ from .base import Base
 class GameSnapshotDB(Base):
     """一次游戏运行的整块快照；只追加，不更新。
 
-    行按 ``id`` 递增即为时间顺序：最新状态 = 最大 id，回滚 = 读取更早的 id。
-    哪个用户/哪局游戏由 ``user_name`` + ``game_name`` 标识。
+    最新状态 = 最大 ``id``；一局由 ``room_id`` + ``game_name`` 标识。
     """
 
     __tablename__ = "game_snapshots"
-    __table_args__ = (
-        Index("ix_game_snapshots_lookup", "user_name", "game_name", "id"),
-    )
+    __table_args__ = (Index("ix_game_snapshots_lookup", "room_id", "game_name", "id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    room_id: Mapped[str] = mapped_column(String(255), nullable=False)
     game_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     #: 与 GameSnapshot.format_version 一致，便于不解包 JSON 就能筛查旧格式。

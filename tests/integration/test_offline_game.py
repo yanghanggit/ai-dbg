@@ -68,7 +68,7 @@ def user_name() -> Iterator[str]:
     yield name
     db = SessionLocal()
     try:
-        db.query(GameSnapshotDB).filter(GameSnapshotDB.user_name == name).delete()
+        db.query(GameSnapshotDB).filter(GameSnapshotDB.room_id == name).delete()
         db.commit()
     finally:
         db.close()
@@ -114,7 +114,7 @@ async def test_load_latest_restores_state(blueprint_dir: Path, user_name: str) -
     assert list_game_snapshot_ids(user_name, "Game1")
 
 
-async def test_explicit_snapshot_id_is_scoped_to_user(
+async def test_explicit_snapshot_id_is_scoped_to_room(
     blueprint_dir: Path, user_name: str
 ) -> None:
     await load_or_create_game(user_name, "Game1")

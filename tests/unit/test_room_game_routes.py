@@ -11,18 +11,37 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ai_srpg.game.assembly import create_srpg_game
+from ai_srpg.gameplay import session_history
 from ai_srpg.gameplay.jobs import advance_game_job
+from ai_srpg.models import SessionMessage
 from ai_srpg.services.api import games as games_module
-from ai_srpg.services.api import rooms as rooms_module
 from ai_srpg.services.api.games import games_api_router
 from ai_srpg.services.api.rooms import rooms_api_router
 from ai_srpg.services.http_errors import register_room_error_handlers
 from ai_srpg.session.errors import RoomJobBusyError
-from ai_srpg.session.player_session import PlayerSession
 from ai_srpg.session.registry import RoomRegistry
 
 ROOMS = "/api/rooms/v1"
 GAMES = "/api/games/v1"
+
+
+###############################################################################
+class _MemoryStore:
+    """内存版会话存储：只记游标，落库留给集成测试。"""
+
+    def __init__(self) -> None:
+        self.messages: List[SessionMessage] = []
+
+    def latest_sequence(self, room_id: str) -> int:
+        return max((m.sequence_id for m in self.messages), default=0)
+
+    def append(self, room_id: str, message: SessionMessage) -> None:
+        self.messages.append(message)
+
+    def messages_since(
+        self, room_id: str, after_sequence_id: int, **kwargs: Any
+    ) -> List[SessionMessage]:
+        return [m for m in self.messages if m.sequence_id > after_sequence_id]
 
 
 ###############################################################################
@@ -44,9 +63,7 @@ def client(app: FastAPI) -> TestClient:
 @pytest.fixture(autouse=True)
 def _memory_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
     """会话游标来自存储层；单元测试一律换成内存实现，避免读开发库。"""
-    fresh = lambda user_name: PlayerSession(user_name=user_name)  # noqa: E731
-    monkeypatch.setattr(rooms_module, "open_session", fresh)
-    monkeypatch.setattr(games_module, "open_session", fresh)
+    monkeypatch.setattr(session_history, "session_store", _MemoryStore)
 
 
 @pytest.fixture
@@ -54,12 +71,12 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Dict[str, List[Any]]:
     """替换开局与派发：记录调用参数，避免访问数据库与队列。"""
     recorded: Dict[str, List[Any]] = {"load": [], "defer": []}
 
-    async def fake_load(user_name: str, game_name: str, **kwargs: Any) -> Any:
-        recorded["load"].append((user_name, game_name))
+    async def fake_load(room_id: str, game_name: str, **kwargs: Any) -> Any:
+        recorded["load"].append((room_id, game_name))
         return create_srpg_game(name=game_name)
 
-    async def fake_defer(job_func: Any, *, user_name: str) -> int:
-        recorded["defer"].append((job_func, user_name))
+    async def fake_defer(job_func: Any, *, room_id: str) -> int:
+        recorded["defer"].append((job_func, room_id))
         return 42
 
     monkeypatch.setattr(games_module, "load_or_create_game", fake_load)
@@ -75,8 +92,11 @@ def test_enter_creates_room_and_session(client: TestClient) -> None:
     assert response.status_code == 201
     assert response.json() == {
         "user_name": "alice",
+        "room_id": "alice",
+        "owner": "alice",
         "game": None,
         "session_event_sequence": 0,
+        "seats": [{"user_name": "alice", "actor": None}],
     }
 
 
@@ -199,8 +219,8 @@ def test_advance_returns_409_when_room_job_busy(
     client.post(f"{ROOMS}/alice")
     client.post(f"{GAMES}/alice/Game1")
 
-    async def busy(job_func: Any, *, user_name: str) -> int:
-        raise RoomJobBusyError(user_name)
+    async def busy(job_func: Any, *, room_id: str) -> int:
+        raise RoomJobBusyError(room_id)
 
     monkeypatch.setattr(games_module, "defer_room_job", busy)
 

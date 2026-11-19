@@ -17,6 +17,7 @@ from ai_srpg.gameplay.session_history import SessionEventSink
 from ai_srpg.models import ActorComponent, SessionMessage, StageComponent
 from ai_srpg.session.job_context import reset_current_job, set_current_job
 from ai_srpg.session.player_session import PlayerSession
+from ai_srpg.session.room import Room
 
 
 ###############################################################################
@@ -36,14 +37,19 @@ class _FakeStore:
     def __init__(self) -> None:
         self.appended: List[SessionMessage] = []
 
-    def latest_sequence(self, user_name: str) -> int:
-        return 0
+    def latest_sequence(self, room_id: str) -> int:
+        return max((m.sequence_id for m in self.appended), default=0)
 
-    def append(self, user_name: str, message: SessionMessage) -> None:
+    def append(self, room_id: str, message: SessionMessage) -> None:
         self.appended.append(message)
 
     def messages_since(
-        self, user_name: str, after_sequence_id: int, *, limit: int = 500
+        self,
+        room_id: str,
+        after_sequence_id: int,
+        *,
+        viewer: str | None = None,
+        limit: int = 500,
     ) -> List[SessionMessage]:
         return []
 
@@ -105,8 +111,12 @@ async def test_empty_game_publishes_nothing() -> None:
 async def test_pipeline_writes_session_history_with_job_id() -> None:
     """闭环：pipeline → 事件出口 → 会话历史，消息带当前 job 与游戏上下文。"""
     store = _FakeStore()
-    session = PlayerSession(user_name="alice")
-    game = create_srpg_game(name="Game1", events=SessionEventSink(session, store=store))
+    room = Room(room_id="alice", owner="alice")
+    session = PlayerSession(user_name="alice", room_id="alice")
+    room.attach_session(session)
+    game = create_srpg_game(
+        name="Game1", events=SessionEventSink(room, session, store=store)
+    )
     _make_stage(game, "舞台.营地")
     _make_actor(game, "角色.无名", "舞台.营地")
     session.set_context(actor="角色.无名", game="Game1")

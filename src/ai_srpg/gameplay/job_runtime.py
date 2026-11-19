@@ -1,8 +1,4 @@
-"""Job 执行记录与 pipeline 观测。
-
-这里把后台 job 的技术过程写成 ``job_events``；它不替代用户级
-``PlayerSession`` 历史，只记录一次执行走到哪、哪个 system 失败。
-"""
+"""把 job 的执行技术过程写成 ``job_events``（不承载领域历史）。"""
 
 from functools import wraps
 from typing import Any, Callable, Optional, Protocol, TypeVar, cast
@@ -41,12 +37,12 @@ class JobRecorder:
         job_id: int,
         *,
         action: str = "",
-        user_name: str = "",
+        room_id: str = "",
         store: Optional[JobEventStore] = None,
     ) -> None:
         self.job_id: int = job_id
         self.action: str = action
-        self.user_name: str = user_name
+        self.room_id: str = room_id
         self.store: JobEventStore = store or DatabaseJobEventStore()
         self.current_system: Optional[str] = None
 
@@ -79,7 +75,7 @@ class JobRecorder:
         self.record(
             "job_started",
             message=f"job started: {self.action}",
-            payload={"action": self.action, "user_name": self.user_name},
+            payload={"action": self.action, "room_id": self.room_id},
         )
 
     def succeeded(self) -> None:
@@ -131,14 +127,14 @@ class JobRun(CurrentJob):
         job_id: int,
         *,
         action: str = "",
-        user_name: str = "",
+        room_id: str = "",
         store: Optional[JobEventStore] = None,
     ) -> None:
         self.job_id: int = job_id
         self.recorder: JobRecorder = JobRecorder(
             job_id,
             action=action,
-            user_name=user_name,
+            room_id=room_id,
             store=store,
         )
         self._room: Optional[Room] = None
@@ -202,8 +198,8 @@ def job_task(action: str) -> Callable[[F], F]:
         async def wrapper(context: JobContext, *args: Any, **kwargs: Any) -> Any:
             job_id = context.job.id
             assert job_id is not None, "运行中的 job 必然有 job id"
-            user_name = str(kwargs.get("user_name", ""))
-            job = JobRun(job_id, action=action, user_name=user_name)
+            room_id = str(kwargs.get("room_id", ""))
+            job = JobRun(job_id, action=action, room_id=room_id)
             token = set_current_job(job)
             try:
                 async with job:

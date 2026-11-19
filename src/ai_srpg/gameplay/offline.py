@@ -1,7 +1,6 @@
-"""离线一局：从蓝图或数据库快照构造可运行的游戏实例。
+"""离线一局：按快照读取 / 创建 / 保存游戏，没有房间与锁。
 
-CLI 没有房间与锁，因此这里只处理「读取 / 创建 / 保存」，不涉及 session。
-运行 pass 复用 ``gameplay.runtime.run_pass``，与后台 job 共享快照与回滚语义。
+快照归属键是 ``room_id``；离线没有房间，调用方传入的标识即当局的键。
 """
 
 from dataclasses import dataclass
@@ -30,9 +29,9 @@ from .runtime import run_pass
 class GameAlreadyExistsError(RuntimeError):
     """``new`` 遇到已有快照且没有要求重建。"""
 
-    def __init__(self, user_name: str, game_name: str, snapshot_count: int) -> None:
+    def __init__(self, room_id: str, game_name: str, snapshot_count: int) -> None:
         super().__init__(
-            f"用户 {user_name!r} 的游戏 {game_name!r} 已有 {snapshot_count} 个快照；如需从蓝图重建，请加 --reset（旧快照会保留）"
+            f"房间 {room_id!r} 的游戏 {game_name!r} 已有 {snapshot_count} 个快照；如需从蓝图重建，请加 --reset（旧快照会保留）"
         )
 
 
@@ -58,37 +57,39 @@ class OfflinePassFailed(RuntimeError):
 
 ###############################################################################
 async def create_new_game(
-    user_name: str,
+    room_id: str,
     game_name: str,
     *,
+    user_name: Optional[str] = None,
     player_actor: Optional[str] = None,
     reset: bool = False,
     events: Optional[DomainEventSink] = None,
 ) -> NewGameOutcome:
     """从蓝图新建一局并写入基线快照；``reset`` 允许覆盖已有对局语义。"""
-    if not reset and load_latest_game_snapshot(user_name, game_name) is not None:
+    if not reset and load_latest_game_snapshot(room_id, game_name) is not None:
         raise GameAlreadyExistsError(
-            user_name,
+            room_id,
             game_name,
-            len(list_game_snapshot_ids(user_name, game_name)),
+            len(list_game_snapshot_ids(room_id, game_name)),
         )
 
     game = create_game_from_blueprint(
-        user_name,
+        user_name if user_name is not None else room_id,
         game_name,
         player_actor=player_actor,
         events=events,
     )
     await initialize_pipeline(game)
-    snapshot_id = append_game_snapshot(user_name, snapshot_game(game))
+    snapshot_id = append_game_snapshot(room_id, snapshot_game(game))
     return NewGameOutcome(game=game, snapshot_id=snapshot_id)
 
 
 ###############################################################################
 async def load_or_create_game(
-    user_name: str,
+    room_id: str,
     game_name: str,
     *,
+    user_name: Optional[str] = None,
     snapshot_id: Optional[int] = None,
     player_actor: Optional[str] = None,
     events: Optional[DomainEventSink] = None,
@@ -97,7 +98,7 @@ async def load_or_create_game(
 
     ``events`` 会注入到构造出的游戏实例，用于把领域事件接入会话历史等出口。
     """
-    snapshot = _load_snapshot(user_name, game_name, snapshot_id)
+    snapshot = _load_snapshot(room_id, game_name, snapshot_id)
     if snapshot is not None:
         game = restore_game_from_snapshot(game_name, snapshot, events=events)
         await rebuild_pipeline(game)
@@ -105,12 +106,13 @@ async def load_or_create_game(
 
     if snapshot_id is not None:
         raise LookupError(
-            f"找不到快照: user={user_name!r}, game={game_name!r}, id={snapshot_id}"
+            f"找不到快照: room={room_id!r}, game={game_name!r}, id={snapshot_id}"
         )
 
     outcome = await create_new_game(
-        user_name,
+        room_id,
         game_name,
+        user_name=user_name,
         player_actor=player_actor,
         events=events,
     )
@@ -118,45 +120,45 @@ async def load_or_create_game(
 
 
 ###############################################################################
-def save_game_snapshot(user_name: str, game: SRPGGame) -> int:
+def save_game_snapshot(room_id: str, game: SRPGGame) -> int:
     """保存当前游戏状态，返回新快照 id。"""
-    return append_game_snapshot(user_name, snapshot_game(game))
+    return append_game_snapshot(room_id, snapshot_game(game))
 
 
 ###############################################################################
 async def run_offline_pass(
     game: SRPGGame,
-    user_name: str,
+    room_id: str,
     observer: Optional[ProcessorObserver] = None,
 ) -> OfflinePassOutcome:
     """执行一次 pass；成功后追加结果快照，保证 CLI 进程退出后状态仍可恢复。"""
     try:
-        result = await run_pass(game, user_name, observer)
+        result = await run_pass(game, room_id, observer)
     except Exception as exc:
         raise OfflinePassFailed(exc) from exc
-    snapshot_id = save_game_snapshot(user_name, game)
+    snapshot_id = save_game_snapshot(room_id, game)
     return OfflinePassOutcome(result=result, snapshot_id=snapshot_id)
 
 
 ###############################################################################
 def list_snapshots(
-    user_name: str, game_name: str, *, limit: int = 20
+    room_id: str, game_name: str, *, limit: int = 20
 ) -> List[GameSnapshotInfo]:
     """列出快照元数据（时间倒序）。"""
-    return list_game_snapshots(user_name, game_name, limit=limit)
+    return list_game_snapshots(room_id, game_name, limit=limit)
 
 
 ###############################################################################
 def _load_snapshot(
-    user_name: str,
+    room_id: str,
     game_name: str,
     snapshot_id: Optional[int],
 ) -> Optional[GameSnapshot]:
     if snapshot_id is None:
-        return load_latest_game_snapshot(user_name, game_name)
+        return load_latest_game_snapshot(room_id, game_name)
     return load_game_snapshot(
         snapshot_id,
-        user_name=user_name,
+        room_id=room_id,
         game_name=game_name,
     )
 

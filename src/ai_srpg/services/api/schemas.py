@@ -1,8 +1,4 @@
-"""HTTP 响应契约（服务端与客户端之间唯一的传输 DTO）。
-
-只做序列化与 OpenAPI 描述，不含领域行为、不参与持久化；领域数据与快照格式见
-``models``。请求参数校验就地留在各路由里，不进这里。
-"""
+"""HTTP 传输契约：只做序列化与 OpenAPI 描述，不含领域行为、不参与持久化。"""
 
 from datetime import datetime
 from typing import List, Optional, final
@@ -39,12 +35,28 @@ class EntitiesDetailsResponse(BaseModel):
 
 ################################################################################################################
 @final
-class RoomStateResponse(BaseModel):
-    """房间当前状态；``session_event_sequence`` 可作会话增量读取的游标。"""
+class SeatResponse(BaseModel):
+    """房间里的一个席位：谁在玩、控制哪个角色（未分配角色时为 ``None``）。"""
 
     user_name: str
+    actor: Optional[str] = None
+
+
+################################################################################################################
+@final
+class RoomStateResponse(BaseModel):
+    """房间当前状态。
+
+    ``user_name`` 是发起请求的身份，``room_id`` / ``owner`` / ``seats`` 描述这一局；
+    ``session_event_sequence`` 是该席位在局级流上的已读游标（可直接用于增量读取）。
+    """
+
+    user_name: str
+    room_id: str
+    owner: str
     game: Optional[str] = None
     session_event_sequence: int = 0
+    seats: List[SeatResponse] = Field(default_factory=list)
 
 
 ################################################################################################################

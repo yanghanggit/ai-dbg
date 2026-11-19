@@ -27,11 +27,15 @@ class _FakeClient:
     def enter_room(self, user_name: str) -> RoomStateResponse:
         self.calls.append(("enter", user_name))
         self._maybe_fail("enter")
-        return RoomStateResponse(user_name=user_name)
+        return RoomStateResponse(
+            user_name=user_name, room_id=user_name, owner=user_name
+        )
 
     def open_game(self, user_name: str, game_name: str) -> RoomStateResponse:
         self.calls.append(("open", user_name, game_name))
-        return RoomStateResponse(user_name=user_name, game=game_name)
+        return RoomStateResponse(
+            user_name=user_name, room_id=user_name, owner=user_name, game=game_name
+        )
 
     def advance(self, user_name: str, game_name: str) -> int:
         self.calls.append(("advance", user_name, game_name))

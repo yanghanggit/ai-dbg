@@ -1,8 +1,4 @@
-"""实体详情查询接口。
-
-两种读法共用同一条前置校验：房间存在 → 游戏存在 → 游戏名匹配；校验失败以
-领域异常抛出，由 ``services.http_errors`` 统一映射为响应。
-"""
+"""实体详情查询接口；前置校验失败时抛领域异常，由 ``services.http_errors`` 映射。"""
 
 from typing import List, Set, Type
 
@@ -11,7 +7,7 @@ from loguru import logger
 
 from ...entitas import Component, Entity, Matcher
 from ...models import COMPONENT_TYPES
-from ...session.access import require_game
+from ...session.access import require_game_of_user
 from ..dependencies import CurrentRoomRegistry
 from .schemas import EntitiesDetailsResponse
 
@@ -64,7 +60,7 @@ async def get_entities_details(
             detail="请提供至少一个实体名称",
         )
 
-    game = require_game(room_registry, user_name, game_name)
+    game = require_game_of_user(room_registry, user_name, game_name)
 
     entities: Set[Entity] = set()
     for entity_name in entity_names:
@@ -106,7 +102,7 @@ async def get_entities_group(
             detail="请至少提供一个组件条件",
         )
 
-    game = require_game(room_registry, user_name, game_name)
+    game = require_game_of_user(room_registry, user_name, game_name)
 
     matcher = Matcher(
         all_of=_resolve_component_types(all_of) or None,
