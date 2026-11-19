@@ -9,9 +9,13 @@ from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.game.prompt_dump import dump_blueprint_prompts
 from ai_srpg.models import (
     ActorBlueprint,
+    ActorComponent,
     Blueprint,
+    GlobalStageComponent,
     StageBlueprint,
+    StageComponent,
     WorldBlueprint,
+    WorldComponent,
 )
 
 
@@ -25,22 +29,22 @@ def _blueprint() -> Blueprint:
             name="舞台.营",
             system_message="# 舞台.营\n\n舞台 prompt",
             components={
-                "StageComponent": {},
-                "GlobalStageComponent": {"width": 5, "height": 5},
+                StageComponent.__name__: {},
+                GlobalStageComponent.__name__: {"width": 5, "height": 5},
             },
         ),
         actors=[
             ActorBlueprint(
                 name="角色.甲",
                 system_message="# 角色.甲\n\n角色 prompt",
-                components={"ActorComponent": {"current_stage": "舞台.营"}},
+                components={ActorComponent.__name__: {"current_stage": "舞台.营"}},
             )
         ],
         worlds=[
             WorldBlueprint(
                 name="世界.主",
                 system_message="# 世界.主\n\n世界 prompt",
-                components={"WorldComponent": {}},
+                components={WorldComponent.__name__: {}},
             )
         ],
     )

@@ -21,6 +21,7 @@ from ai_srpg.models import (
     COMPONENT_TYPES,
     AgentMemoryStore,
     Blueprint,
+    GlobalStageComponent,
     IdentityComponent,
     Position,
     StageBlueprint,
@@ -48,7 +49,7 @@ def _make_stage_model(name: str, component_name: str) -> StageBlueprint:
         name=name,
         system_message=f"{name} 的系统消息",
         components={
-            "StageComponent": {},
+            StageComponent.__name__: {},
             component_name: {"name": name},
         },
     )
@@ -61,8 +62,8 @@ def _build(game: Any, *stages: StageBlueprint) -> None:
         name="舞台.战场",
         system_message="# 舞台.战场",
         components={
-            "StageComponent": {},
-            "GlobalStageComponent": {"width": 5, "height": 5},
+            StageComponent.__name__: {},
+            GlobalStageComponent.__name__: {"width": 5, "height": 5},
         },
         children=[
             stage.model_copy(update={"position": Position(x=index, y=0)})

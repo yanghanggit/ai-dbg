@@ -102,7 +102,7 @@ def _create_stage_tree(srpg_game: SRPGGame, root: StageBlueprint) -> None:
             stage,
             StageComponent,
             "舞台",
-            derived={"StageComponent": {"parent_stage": parent_name}},
+            derived={StageComponent.__name__: {"parent_stage": parent_name}},
         )
         if stage.position is not None:
             entity.set(

@@ -181,7 +181,7 @@ class TestContextSnapshotContract:
         data = manager.serialize()
 
         assert "Unregistered" not in data["probe"]
-        assert "IdentityComponent" in data["probe"]
+        assert IdentityComponent.__name__ in data["probe"]
 
     def test_restore_context_requires_empty_context(self) -> None:
         manager = _new_game()

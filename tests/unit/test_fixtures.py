@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from ai_srpg.models import ActorComponent
+
 
 def test_sample_game_fixture(sample_game: Any) -> None:
     """Test that the sample_game fixture creates a valid game instance."""
@@ -16,5 +18,8 @@ def test_sample_actor_fixture(sample_actor: Any) -> None:
     assert sample_actor is not None
     assert sample_actor.name == "test_actor"
     assert sample_actor.system_message == "test system message"
-    assert sample_actor.components["ActorComponent"]["current_stage"] == "test_stage"
+    assert (
+        sample_actor.components[ActorComponent.__name__]["current_stage"]
+        == "test_stage"
+    )
     assert sample_actor.assets["portrait"] == ".assets/image/test.meta"

@@ -19,10 +19,14 @@ from ai_srpg.game.entities import (
 )
 from ai_srpg.models import (
     ActorBlueprint,
+    ActorComponent,
     Blueprint,
+    GlobalStageComponent,
     Position,
     StageBlueprint,
+    StageComponent,
     WorldBlueprint,
+    WorldComponent,
 )
 
 
@@ -31,7 +35,7 @@ def _stage(name: str, *, position: Position = Position(x=0, y=0)) -> StageBluepr
     return StageBlueprint(
         name=name,
         system_message=f"{name} 的设定",
-        components={"StageComponent": {}},
+        components={StageComponent.__name__: {}},
         position=position,
     )
 
@@ -43,15 +47,15 @@ def _blueprint(world_count: int = 1) -> Blueprint:
         StageBlueprint(
             name="舞台.铁匠铺",
             system_message="舞台.铁匠铺 的设定",
-            components={"StageComponent": {}},
+            components={StageComponent.__name__: {}},
         )
     ]
     root = StageBlueprint(
         name="舞台.战场",
         system_message="舞台.战场 的设定",
         components={
-            "StageComponent": {},
-            "GlobalStageComponent": {"width": 5, "height": 5},
+            StageComponent.__name__: {},
+            GlobalStageComponent.__name__: {"width": 5, "height": 5},
         },
         children=[camp, _stage("舞台.哨站", position=Position(x=2, y=2))],
     )
@@ -64,19 +68,19 @@ def _blueprint(world_count: int = 1) -> Blueprint:
             ActorBlueprint(
                 name="角色.游荡者",
                 system_message="角色.游荡者",
-                components={"ActorComponent": {"current_stage": "舞台.战场"}},
+                components={ActorComponent.__name__: {"current_stage": "舞台.战场"}},
             ),
             ActorBlueprint(
                 name="角色.铁匠",
                 system_message="角色.铁匠",
-                components={"ActorComponent": {"current_stage": "舞台.铁匠铺"}},
+                components={ActorComponent.__name__: {"current_stage": "舞台.铁匠铺"}},
             ),
         ],
         worlds=[
             WorldBlueprint(
                 name=f"世界.{index}",
                 system_message=f"世界.{index}",
-                components={"WorldComponent": {}},
+                components={WorldComponent.__name__: {}},
             )
             for index in range(world_count)
         ],

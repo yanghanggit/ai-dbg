@@ -16,12 +16,15 @@ from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.game.systems.stage_broadcast_mixin import StageBroadcastMixin
 from ai_srpg.models import (
     ActorBlueprint,
+    ActorComponent,
     Blueprint,
+    GlobalStageComponent,
     NoneEvent,
     Position,
     StageBlueprint,
     StageComponent,
     WorldBlueprint,
+    WorldComponent,
 )
 
 ###############################################################################
@@ -44,7 +47,7 @@ def _stage(
     return StageBlueprint(
         name=name,
         system_message=f"{name} 的设定",
-        components={"StageComponent": {}},
+        components={StageComponent.__name__: {}},
         position=position,
         children=children or [],
     )
@@ -54,7 +57,7 @@ def _entity(name: str, stage_name: str) -> ActorBlueprint:
     return ActorBlueprint(
         name=name,
         system_message=f"{name} 的设定",
-        components={"ActorComponent": {"current_stage": stage_name}},
+        components={ActorComponent.__name__: {"current_stage": stage_name}},
     )
 
 
@@ -63,8 +66,8 @@ def _blueprint() -> Blueprint:
         name="舞台.战场",
         system_message="舞台.战场 的设定",
         components={
-            "StageComponent": {},
-            "GlobalStageComponent": {"width": 5, "height": 5},
+            StageComponent.__name__: {},
+            GlobalStageComponent.__name__: {"width": 5, "height": 5},
         },
         children=[
             _stage(CAMP, position=Position(x=0, y=0), children=[_stage(FORGE)]),
@@ -87,7 +90,7 @@ def _blueprint() -> Blueprint:
             WorldBlueprint(
                 name="世界.甲",
                 system_message="世界.甲",
-                components={"WorldComponent": {}},
+                components={WorldComponent.__name__: {}},
             )
         ],
     )

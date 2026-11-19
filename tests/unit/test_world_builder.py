@@ -26,6 +26,7 @@ from ai_srpg.models import (
     StageBlueprint,
     StageComponent,
     WorldBlueprint,
+    WorldComponent,
 )
 
 GRID = {"width": 5, "height": 5}
@@ -36,7 +37,7 @@ def _world() -> WorldBlueprint:
     return WorldBlueprint(
         name="世界.甲",
         system_message="世界.甲 的设定",
-        components={"WorldComponent": {}},
+        components={WorldComponent.__name__: {}},
     )
 
 
@@ -49,7 +50,7 @@ def _battlefield(
         name="舞台.战场",
         system_message="舞台.战场 的设定",
         components=(
-            {"StageComponent": {}, "GlobalStageComponent": dict(GRID)}
+            {StageComponent.__name__: {}, GlobalStageComponent.__name__: dict(GRID)}
             if components is None
             else components
         ),
@@ -63,7 +64,7 @@ def _camp(
     return StageBlueprint(
         name=name,
         system_message=f"{name} 的设定",
-        components={"StageComponent": {}},
+        components={StageComponent.__name__: {}},
         position=position,
     )
 
@@ -93,7 +94,7 @@ def _blueprint(
                     name="角色.甲",
                     system_message="角色.甲 的设定",
                     components=(
-                        {"ActorComponent": {"current_stage": actor_stage}}
+                        {ActorComponent.__name__: {"current_stage": actor_stage}}
                         if actor_components is None
                         else actor_components
                     ),
@@ -110,8 +111,8 @@ def test_components_land_on_the_entity_verbatim() -> None:
     game = create_srpg_game(name="BuildTest")
     blueprint = _blueprint(
         actor_components={
-            "ActorComponent": {"current_stage": "舞台.营地"},
-            "AppearanceComponent": {"base_body": "瘦削"},
+            ActorComponent.__name__: {"current_stage": "舞台.营地"},
+            AppearanceComponent.__name__: {"base_body": "瘦削"},
         }
     )
 
@@ -130,8 +131,8 @@ def test_appearance_defaults_to_base_body() -> None:
         game,
         _blueprint(
             actor_components={
-                "ActorComponent": {"current_stage": "舞台.营地"},
-                "AppearanceComponent": {"base_body": "瘦削"},
+                ActorComponent.__name__: {"current_stage": "舞台.营地"},
+                AppearanceComponent.__name__: {"base_body": "瘦削"},
             }
         ),
     )
@@ -166,7 +167,9 @@ def test_missing_actor_marker_is_rejected() -> None:
     with pytest.raises(AssertionError, match="缺少标记组件 ActorComponent"):
         build_from_blueprint(
             game,
-            _blueprint(actor_components={"AppearanceComponent": {"base_body": "瘦削"}}),
+            _blueprint(
+                actor_components={AppearanceComponent.__name__: {"base_body": "瘦削"}}
+            ),
         )
 
 
@@ -179,7 +182,9 @@ def test_missing_stage_marker_is_rejected() -> None:
         build_from_blueprint(
             game,
             _blueprint(
-                root=_battlefield(components={"GlobalStageComponent": dict(GRID)})
+                root=_battlefield(
+                    components={GlobalStageComponent.__name__: dict(GRID)}
+                )
             ),
         )
 
@@ -191,7 +196,7 @@ def test_root_stage_must_be_global() -> None:
     root = StageBlueprint(
         name="舞台.战场",
         system_message="舞台.战场 的设定",
-        components={"StageComponent": {}},
+        components={StageComponent.__name__: {}},
     )
 
     with pytest.raises(AssertionError, match="根舞台必须是全局舞台"):
@@ -205,7 +210,10 @@ def test_only_the_root_stage_may_be_global() -> None:
     child = StageBlueprint(
         name="舞台.营地",
         system_message="舞台.营地 的设定",
-        components={"StageComponent": {}, "GlobalStageComponent": dict(GRID)},
+        components={
+            StageComponent.__name__: {},
+            GlobalStageComponent.__name__: dict(GRID),
+        },
         position=Position(x=0, y=0),
     )
 
@@ -278,12 +286,12 @@ def test_duplicate_names_are_rejected() -> None:
             ActorBlueprint(
                 name="角色.甲",
                 system_message="角色.甲 的设定",
-                components={"ActorComponent": {"current_stage": "舞台.营地"}},
+                components={ActorComponent.__name__: {"current_stage": "舞台.营地"}},
             ),
             ActorBlueprint(
                 name="角色.甲",
                 system_message="角色.甲 的设定",
-                components={"ActorComponent": {"current_stage": "舞台.营地"}},
+                components={ActorComponent.__name__: {"current_stage": "舞台.营地"}},
             ),
         ]
     )

@@ -20,8 +20,10 @@ from ai_srpg.models import (
     ActorBlueprint,
     ActorComponent,
     Blueprint,
+    GlobalStageComponent,
     PlayerComponent,
     StageBlueprint,
+    StageComponent,
 )
 
 
@@ -139,14 +141,14 @@ def _blueprint() -> Blueprint:
     actor = ActorBlueprint(
         name="角色.甲",
         system_message="# 角色.甲",
-        components={"ActorComponent": {"current_stage": "舞台.甲"}},
+        components={ActorComponent.__name__: {"current_stage": "舞台.甲"}},
     )
     stage = StageBlueprint(
         name="舞台.甲",
         system_message="# 舞台.甲",
         components={
-            "StageComponent": {},
-            "GlobalStageComponent": {"width": 5, "height": 5},
+            StageComponent.__name__: {},
+            GlobalStageComponent.__name__: {"width": 5, "height": 5},
         },
     )
     return Blueprint(

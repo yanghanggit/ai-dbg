@@ -4,24 +4,33 @@
 世界职责）在 ``story`` 模块共用；这里只放本剧本专属的实体数据，状态一律写成组件数据。
 """
 
+from typing import Dict, Final
+
 from ai_srpg.game.prompt_composer import compose_actor, compose_stage, compose_world
 from ai_srpg.models import (
     ActorBlueprint,
+    ActorComponent,
+    AppearanceComponent,
     Blueprint,
+    GlobalStageComponent,
     Position,
     StageBlueprint,
+    StageComponent,
     WorldBlueprint,
+    WorldComponent,
 )
 
 from .story import CAMPAIGN_SETTING, GLOBAL_RULES, WORLD_ROLE_RULES
 
-BATTLEFIELD_NAME = "舞台.战场"
-STAGE_NAME = "舞台.营地"
-BATTLEFIELD_GRID = {"width": 5, "height": 5}
+BATTLEFIELD_NAME: Final[str] = "舞台.战场"
+STAGE_NAME: Final[str] = "舞台.营地"
+BATTLEFIELD_GRID: Dict[str, int] = {"width": 5, "height": 5}
 
 #######################################################################################################################################
 # 无名的体型：既进 prompt 的「基础体型」段，也是角色的初始外观
-BASE_BODY = "年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。"
+BASE_BODY: Final[str] = (
+    "年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。"
+)
 
 
 def create_nameless() -> ActorBlueprint:
@@ -38,8 +47,8 @@ def create_nameless() -> ActorBlueprint:
         global_rules=GLOBAL_RULES,
     )
     actor.components = {
-        "ActorComponent": {"current_stage": STAGE_NAME},
-        "AppearanceComponent": {"base_body": BASE_BODY},
+        ActorComponent.__name__: {"current_stage": STAGE_NAME},
+        AppearanceComponent.__name__: {"base_body": BASE_BODY},
     }
     return actor
 
@@ -55,7 +64,7 @@ def create_camp_stage() -> StageBlueprint:
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
     )
-    stage.components = {"StageComponent": {}}
+    stage.components = {StageComponent.__name__: {}}
     stage.position = Position(x=2, y=2)
     return stage
 
@@ -72,8 +81,8 @@ def create_battlefield() -> StageBlueprint:
         global_rules=GLOBAL_RULES,
     )
     stage.components = {
-        "StageComponent": {},
-        "GlobalStageComponent": dict(BATTLEFIELD_GRID),
+        StageComponent.__name__: {},
+        GlobalStageComponent.__name__: dict(BATTLEFIELD_GRID),
     }
     stage.children = [create_camp_stage()]
     return stage
@@ -89,7 +98,7 @@ def create_starless_world() -> WorldBlueprint:
         global_rules=GLOBAL_RULES,
         role_rules=WORLD_ROLE_RULES,
     )
-    world.components = {"WorldComponent": {}}
+    world.components = {WorldComponent.__name__: {}}
     return world
 
 
