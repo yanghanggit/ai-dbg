@@ -8,11 +8,11 @@ from typing import Callable, Dict, Final
 
 from ai_srpg.models import Blueprint
 
-from . import nameless_camp
+from . import mercenary_camp
 
 #: 剧本名 → 该剧本的蓝图构建入口
 SCENARIOS: Final[Dict[str, Callable[[str], Blueprint]]] = {
-    "nameless_camp": nameless_camp.create_blueprint,
+    "mercenary_camp": mercenary_camp.create_blueprint,
 }
 
 ###############################################################################

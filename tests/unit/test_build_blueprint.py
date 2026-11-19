@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from ai_srpg.models import Blueprint
 from scripts.build_blueprint import build_blueprint_artifacts, main
 
-SOURCE = "dark_fantasy/nameless_camp"
+SOURCE = "dark_fantasy/mercenary_camp"
 
 
 @pytest.fixture()
@@ -51,5 +51,5 @@ def test_missing_source_is_a_usage_error() -> None:
 ###############################################################################
 def test_unknown_source_is_rejected(output_dirs: Path) -> None:
     """未知内容源列出可选项，而不是静默产出别的内容。"""
-    with pytest.raises(KeyError, match="dark_fantasy/nameless_camp"):
+    with pytest.raises(KeyError, match="dark_fantasy/mercenary_camp"):
         build_blueprint_artifacts("dark_fantasy/space_marine", "Check")

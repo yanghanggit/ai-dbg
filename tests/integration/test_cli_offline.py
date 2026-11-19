@@ -1,13 +1,15 @@
 """CLI 端到端：list → new → bind → stages → advance → compact → snapshots。"""
 
+import json
 import uuid
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Dict, Iterator, List
 
 import pytest
 from click.testing import CliRunner
 
 from ai_srpg.cli.srpg_agent_game import main
+from ai_srpg.models import ActorComponent, Blueprint, walk_stages
 from ai_srpg.pgsql import pgsql_ensure_database_tables
 from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
@@ -20,13 +22,37 @@ def _ensure_schema() -> None:
 
 
 @pytest.fixture
-def blueprint_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    blueprint = create_blueprint("dark_fantasy/nameless_camp", "Game1")
+def blueprint() -> Blueprint:
+    """默认剧本：断言里的实体名与舞台名都从这里取，不手抄内容。"""
+    return create_blueprint("dark_fantasy/mercenary_camp", "Game1")
+
+
+@pytest.fixture
+def blueprint_dir(
+    blueprint: Blueprint, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
     (tmp_path / "Game1.json").write_text(
         blueprint.model_dump_json(indent=2), encoding="utf-8"
     )
     monkeypatch.setattr("ai_srpg.game.offline.BLUEPRINTS_DIR", tmp_path)
     return tmp_path
+
+
+def _expected_stages(blueprint: Blueprint) -> Dict[str, List[str]]:
+    """由蓝图推出「舞台 → 在场角色」：舞台按树先序，角色按名字排序。"""
+    expected: Dict[str, List[str]] = {
+        stage.name: [] for stage, _ in walk_stages(blueprint.stage_tree)
+    }
+    for candidate in blueprint.actors:
+        current_stage = candidate.components[ActorComponent.__name__]["current_stage"]
+        expected[current_stage].append(candidate.name)
+    return {name: sorted(actors) for name, actors in expected.items()}
+
+
+def _json_output(output: str) -> Any:
+    """CLI 输出里混着日志行，取第一段完整 JSON。"""
+    payload, _ = json.JSONDecoder().raw_decode(output[output.index("{") :])
+    return payload
 
 
 @pytest.fixture
@@ -41,8 +67,12 @@ def user_name() -> Iterator[str]:
         db.close()
 
 
-def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
+def test_cli_offline_flow(
+    blueprint_dir: Path, blueprint: Blueprint, user_name: str
+) -> None:
     runner = CliRunner()
+    actor = blueprint.actors[0].name
+    missing_actor = f"角色.{uuid.uuid4().hex}"
 
     created = runner.invoke(main, ["new", "--user", user_name, "--game", "Game1"])
     assert created.exit_code == 0, created.output
@@ -60,35 +90,34 @@ def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
 
     unknown = runner.invoke(
         main,
-        ["bind", "--user", user_name, "--game", "NoSuchGame", "--actor", "角色.无名"],
+        ["bind", "--user", user_name, "--game", "NoSuchGame", "--actor", actor],
     )
     assert unknown.exit_code == 1
     assert "先用 new 建局" in unknown.output
 
     bound = runner.invoke(
-        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.无名"]
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", actor]
     )
     assert bound.exit_code == 0, bound.output
-    assert "actor:     角色.无名" in bound.output
+    assert f"actor:     {actor}" in bound.output
     assert "snapshot:" in bound.output
 
     rebound_to_same = runner.invoke(
-        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.无名"]
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", actor]
     )
     assert rebound_to_same.exit_code == 0, rebound_to_same.output
 
-    missing_actor = runner.invoke(
-        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.不存在"]
+    unknown_actor = runner.invoke(
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", missing_actor]
     )
-    assert missing_actor.exit_code == 1
-    assert "找不到角色实体" in missing_actor.output
+    assert unknown_actor.exit_code == 1
+    assert "找不到角色实体" in unknown_actor.output
 
     stages = runner.invoke(
         main, ["stages", "--user", user_name, "--game", "Game1", "--json"]
     )
     assert stages.exit_code == 0, stages.output
-    assert "舞台.营地" in stages.output
-    assert "角色.无名" in stages.output
+    assert _json_output(stages.output) == _expected_stages(blueprint)
 
     advanced = runner.invoke(main, ["advance", "--user", user_name, "--game", "Game1"])
     assert advanced.exit_code == 0, advanced.output
@@ -104,7 +133,7 @@ def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
             "--game",
             "Game1",
             "--target",
-            "角色.无名",
+            actor,
         ],
     )
     assert compacted.exit_code == 0, compacted.output

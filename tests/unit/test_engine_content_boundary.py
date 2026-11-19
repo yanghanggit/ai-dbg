@@ -45,7 +45,7 @@ def test_engine_source_contains_no_blueprint_entity_names(tmp_path: Path) -> Non
     from seeds import create_blueprint
 
     blueprint = create_blueprint(
-        "dark_fantasy/nameless_camp", "BoundaryCheck", trace_dir=tmp_path
+        "dark_fantasy/mercenary_camp", "BoundaryCheck", trace_dir=tmp_path
     )
     names = [world.name for world in blueprint.worlds]
     names.extend(stage.name for stage, _ in walk_stages(blueprint.stage_tree))

@@ -79,6 +79,13 @@ class EnvironmentComponent(Component):
 ############################################################################################################
 @final
 @register_component_type
+class NPCComponent(Component):
+    """标记角色是 NPC：先只做类型记录，行为差异等真正需要时再补。"""
+
+
+############################################################################################################
+@final
+@register_component_type
 class PlayerComponent(Component):
     """标记角色由某玩家控制；一个玩家控制一个角色。"""
 
@@ -116,6 +123,7 @@ __all__ = [
     "EnvironmentComponent",
     "GlobalStageComponent",
     "IdentityComponent",
+    "NPCComponent",
     "PlayerComponent",
     "PositionComponent",
     "StageComponent",

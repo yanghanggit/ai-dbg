@@ -20,7 +20,7 @@
 
 数据流单向：蓝图进入构建期，之后以快照为真相，事件只往会话历史与 job 事件走，没有一步回写蓝图。所以同一份蓝图可以反复开局，每一局的差异留在自己的快照序列里。
 
-重建蓝图产物用 `uv run python -m scripts.build_blueprint --source dark_fantasy/nameless_camp --game Game1`：只写蓝图与留痕，不碰数据库，因此换故事换剧本都不必清库，已有快照的局仍按快照恢复。
+重建蓝图产物用 `uv run python -m scripts.build_blueprint --source dark_fantasy/mercenary_camp --game Game1`：只写蓝图与留痕，不碰数据库，因此换故事换剧本都不必清库，已有快照的局仍按快照恢复。
 
 蓝图在出厂时导出各实体的提示词，设定是否跑偏在开局前就能看见。
 

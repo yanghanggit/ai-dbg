@@ -18,6 +18,7 @@ from ai_srpg.gameplay.offline import (
     save_game_snapshot,
 )
 from ai_srpg.gameplay.runtime import run_pass
+from ai_srpg.models import Blueprint, walk_stages
 from ai_srpg.pgsql import pgsql_ensure_database_tables
 from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
@@ -53,8 +54,15 @@ def _ensure_schema() -> None:
 
 
 @pytest.fixture
-def blueprint_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    blueprint = create_blueprint("dark_fantasy/nameless_camp", "Game1")
+def blueprint() -> Blueprint:
+    """默认剧本：断言里的实体名从这里取，不手抄内容。"""
+    return create_blueprint("dark_fantasy/mercenary_camp", "Game1")
+
+
+@pytest.fixture
+def blueprint_dir(
+    blueprint: Blueprint, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
     (tmp_path / "Game1.json").write_text(
         blueprint.model_dump_json(indent=2), encoding="utf-8"
     )
@@ -75,13 +83,15 @@ def user_name() -> Iterator[str]:
 
 
 async def test_create_from_blueprint_writes_baseline_snapshot(
-    blueprint_dir: Path, user_name: str
+    blueprint_dir: Path, blueprint: Blueprint, user_name: str
 ) -> None:
     game = await load_or_create_game(user_name, "Game1")
 
     assert game.entity_count > 0
-    assert game.get_entity_by_name("舞台.营地") is not None
-    assert game.get_entity_by_name("角色.无名") is not None
+    for stage, _ in walk_stages(blueprint.stage_tree):
+        assert game.get_entity_by_name(stage.name) is not None
+    for actor in blueprint.actors:
+        assert game.get_entity_by_name(actor.name) is not None
     assert len(list_game_snapshot_ids(user_name, "Game1")) == 1
 
     infos = list_snapshots(user_name, "Game1")

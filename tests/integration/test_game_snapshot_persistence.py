@@ -45,7 +45,7 @@ def _build_game() -> SRPGGame:
     game = create_srpg_game(name=GAME_NAME)
     build_from_blueprint(
         game,
-        create_blueprint("dark_fantasy/nameless_camp", GAME_NAME),
+        create_blueprint("dark_fantasy/mercenary_camp", GAME_NAME),
     )
     return game
 

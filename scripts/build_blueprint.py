@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """重建蓝图产物：把某个内容源的蓝图写进 ``.blueprints/``，并导出提示词留痕。
 
-    uv run python -m scripts.build_blueprint --source dark_fantasy/nameless_camp --game Game1
+    uv run python -m scripts.build_blueprint --source dark_fantasy/mercenary_camp --game Game1
     uv run python -m scripts.build_blueprint --list
 
 产物是 ``.blueprints/<game>.json`` 与 ``logs/blueprints/<game>/``。换故事换剧本、

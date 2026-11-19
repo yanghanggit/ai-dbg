@@ -48,7 +48,7 @@ class UserAccount(BaseModel):
 
 
 #: 本次重建用的内容源与游戏名
-SOURCE: Final[str] = "dark_fantasy/nameless_camp"
+SOURCE: Final[str] = "dark_fantasy/mercenary_camp"
 GAME_NAME: Final[str] = "Game1"
 
 TEST_USER: Final[UserAccount] = UserAccount(
