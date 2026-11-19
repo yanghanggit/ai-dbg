@@ -34,6 +34,7 @@
 | 文档 | 简介 |
 | ------ | ------ |
 | [内容无关引擎（Content-Agnostic Engine）](wiki/content-agnostic-engine.md) | 蓝图是输入、引擎是机制执行器：结构词汇与题材词汇、机制与值、骨架与内容三条分界线；换故事的边界与防线 |
+| [角色行为（Actor Actions）](wiki/actor-actions.md) | 计划的下半场：说话与等待都要广播、移动以战场格为单位、一次移动说给三处听 |
 | [角色计划（Actor Plan）](wiki/actor-plan.md) | 角色一轮里的「想」：由谁点名、看什么上下文、行为如何以工具表达、失败即轮空 |
 | [描述刷新（Description Refresh）](wiki/description-refresh.md) | 外观与环境两对「底稿/当前」：收集端的幂等守卫、主动强制重写、两种描述的尺度差异与失败出口 |
 | [System 错误处理与回滚边界](wiki/system-error-handling.md) | system 何时可自行处理失败、何时必须上抛；整次 pass 的回滚粒度与 `StopPipeline` 的区别 |

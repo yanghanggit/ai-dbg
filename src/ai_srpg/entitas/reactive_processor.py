@@ -22,6 +22,13 @@ class ReactiveProcessor(ExecuteProcessor):
     Reactive processors automatically collect entities that have changed
     according to specified triggers, filter them, and process the
     collected entities in batches.
+
+    Trigger semantics: ``GroupEvent.ADDED`` means the entity *entered* the
+    matcher's set, not that every component of the matcher was just added.
+    Gaining the last missing component fires it; replacing any component of an
+    entity that already matches fires it again (groups re-dispatch removed +
+    added on update). Consumers must therefore re-check their own precondition
+    in :meth:`filter`.
     """
 
     def __init__(self, context: Context) -> None:

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from ...entitas import Entity
 from ...models import (
+    ActorComponent,
     AnyAgentEvent,
     GlobalStageComponent,
     PositionComponent,
@@ -49,6 +50,26 @@ class StageBroadcastMixin(SystemMixin):
         )
         notify_entities(
             self._game, targets, agent_event, broadcast_stage=stage_entity.name
+        )
+
+    ############################################################################################################
+    def broadcast_from_actor(
+        self,
+        entity: Entity,
+        agent_event: AnyAgentEvent,
+        *,
+        exclude_entities: Optional[Set[Entity]] = None,
+    ) -> None:
+        """从角色所在处发出一句话：据点里发给在场者，站在空地上按一格距离扩散。"""
+        stage_entity = resolve_stage_entity(self._game, entity)
+        assert stage_entity is not None, f"{entity.name} 无所在舞台，无法广播"
+        if stage_entity.has(GlobalStageComponent):
+            self.broadcast_to_global_stage(
+                entity, agent_event, radius=1, exclude_entities=exclude_entities
+            )
+            return
+        self.broadcast_to_local_stage(
+            entity, agent_event, exclude_entities=exclude_entities
         )
 
     ############################################################################################################
@@ -97,12 +118,13 @@ class StageBroadcastMixin(SystemMixin):
         assert stage_entity is not None, f"{entity.name} 无所在舞台，无法广播"
         global_stage = self._global_stage_of(stage_entity)
 
-        node: Optional[Entity] = stage_entity
+        # 从实体自己开始上溯：站在战场上的角色自带坐标，据点的坐标在舞台身上
+        node: Optional[Entity] = entity
         while node is not None and node is not global_stage:
             if node.has(PositionComponent):
                 position = node.get(PositionComponent)
                 return global_stage, (position.x, position.y)
-            node = self._parent_of(node)
+            node = self._up(node)
 
         assert (
             radius is None
@@ -134,9 +156,28 @@ class StageBroadcastMixin(SystemMixin):
             group.add(stage_entity)
             group.update(get_actors_in_stage(self._game, stage_entity))
 
+        targets.update(self._field_actors_in_range(global_stage, cell, radius))
+
         for entities in targets.values():
             entities.difference_update(excluded)
         return {name: entities for name, entities in targets.items() if entities}
+
+    ############################################################################################################
+    def _field_actors_in_range(
+        self, global_stage: Entity, cell: Tuple[int, int], radius: Optional[int]
+    ) -> Dict[str, Set[Entity]]:
+        """站在空地上的角色：他们不在任何据点里，只能按自己的格子算距离。"""
+        found: Set[Entity] = set()
+        for actor in get_actors_in_stage(self._game, global_stage):
+            if not actor.has(PositionComponent):
+                continue
+            position = actor.get(PositionComponent)
+            if radius is not None and _distance(actor, cell) > radius:
+                continue
+            found.add(actor)
+        if not found:
+            return {}
+        return {global_stage.name: found | {global_stage}}
 
     ############################################################################################################
     def _stages_in_range(
@@ -164,6 +205,15 @@ class StageBroadcastMixin(SystemMixin):
         return found
 
     ############################################################################################################
+    def _up(self, entity: Entity) -> Optional[Entity]:
+        """上一层：角色上到所在舞台，舞台上到父舞台。"""
+        if entity.has(ActorComponent):
+            return get_stage_entity(
+                self._game, entity.get(ActorComponent).current_stage
+            )
+        return self._parent_of(entity)
+
+    ############################################################################################################
     def _parent_of(self, stage_entity: Entity) -> Optional[Entity]:
         """父舞台实体；根舞台返回 ``None``。"""
         parent_name = stage_entity.get(StageComponent).parent_stage
@@ -175,9 +225,9 @@ class StageBroadcastMixin(SystemMixin):
 
 
 ###############################################################################
-def _distance(stage_entity: Entity, cell: Tuple[int, int]) -> int:
+def _distance(entity: Entity, cell: Tuple[int, int]) -> int:
     """切比雪夫距离：斜向相邻也算一格。"""
-    position = stage_entity.get(PositionComponent)
+    position = entity.get(PositionComponent)
     return max(abs(position.x - cell[0]), abs(position.y - cell[1]))
 
 

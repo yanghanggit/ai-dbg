@@ -22,6 +22,8 @@ from ai_srpg.models import (
     ActorBlueprint,
     ActorComponent,
     ActorPlanAction,
+    ActorSpeakAction,
+    ActorWaitAction,
     AppearanceComponent,
     Blueprint,
     EnvironmentComponent,
@@ -183,6 +185,9 @@ async def test_prompt_has_environment_and_every_actor(
     assert BASE_ENVIRONMENT in message
     assert ACTOR in message and BASE_BODY in message
     assert OTHER_ACTOR in message and OTHER_BODY in message
+    assert "一次只做一件事" in message
+    # 营地在 (2,2)，相邻格 (3,2) 上是另一个据点
+    assert "(3,2)" in message
 
 
 async def test_prompt_builder_is_registered() -> None:
@@ -193,7 +198,10 @@ async def test_prompt_builder_is_registered() -> None:
 ###############################################################################
 # 只留痕，不改世界
 ###############################################################################
-async def test_tools_are_speak_and_move(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_tools_are_speak_move_and_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """三个工具都是终止工具：一次计划只落一个行动。"""
     game = _game()
     calls = _capture(monkeypatch)
     system = _activate(game, ACTOR)
@@ -201,10 +209,16 @@ async def test_tools_are_speak_and_move(monkeypatch: pytest.MonkeyPatch) -> None
     await system.execute()
 
     (call,) = calls
-    assert [tool.function.name for tool in call["tools"]] == ["speak", "move"]
+    assert [tool.function.name for tool in call["tools"]] == ["speak", "move", "wait"]
+    assert [tool.function.name for tool in call["terminal_tools"]] == [
+        "speak",
+        "move",
+        "wait",
+    ]
 
 
-async def test_handlers_only_acknowledge(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handlers_mount_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """三个工具各自挂一个动作；一轮只落一个，后到的被忽略。"""
     game = _game()
     calls = _capture(monkeypatch)
     system = _activate(game, ACTOR)
@@ -212,9 +226,13 @@ async def test_handlers_only_acknowledge(monkeypatch: pytest.MonkeyPatch) -> Non
     await system.execute()
 
     (call,) = calls
+    actor = _entity(game, ACTOR)
     handlers = call["handlers"]
-    assert "尚未生效" in str(handlers["speak"](content="谁在那儿？"))
-    assert "尚未生效" in str(handlers["move"](target="水边"))
+
+    assert handlers["speak"](content="谁在那儿？") == "（已记下）"
+    assert actor.get(ActorSpeakAction).content == "谁在那儿？"
+    assert "忽略" in str(handlers["wait"]())
+    assert not actor.has(ActorWaitAction)
 
 
 async def test_plan_is_written_to_actor_memory(

@@ -8,7 +8,10 @@ from ai_srpg.entitas.components import Component
 from ai_srpg.models import (
     ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
+    ActorMoveAction,
     ActorPlanAction,
+    ActorSpeakAction,
+    ActorWaitAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
@@ -30,6 +33,25 @@ def isolated_registries() -> Iterator[None]:
             del ACTION_COMPONENT_TYPES[name]
 
 
+#: 全部动作；新增动作只改这一处
+PRODUCTION_ACTIONS = [
+    ActorPlanAction,
+    ActorSpeakAction,
+    ActorMoveAction,
+    ActorWaitAction,
+    RefreshAppearanceAction,
+    RefreshEnvironmentAction,
+]
+
+#: 不带参数的动作：只声明「这轮做这件事」
+FIELDLESS_ACTIONS = [
+    ActorPlanAction,
+    ActorWaitAction,
+    RefreshAppearanceAction,
+    RefreshEnvironmentAction,
+]
+
+
 class JumpAction(Component):
     """测试用动作组件：只带高度。"""
 
@@ -39,19 +61,13 @@ class JumpAction(Component):
 class TestProductionActions:
     """``actions.py`` 里真实登记的动作组件。"""
 
-    @pytest.mark.parametrize(
-        "action",
-        [ActorPlanAction, RefreshAppearanceAction, RefreshEnvironmentAction],
-    )
+    @pytest.mark.parametrize("action", PRODUCTION_ACTIONS)
     def test_is_registered_in_both_tables(self, action: type) -> None:
         """动作同时是组件与动作组件——装饰器叠放的产物。"""
         assert COMPONENT_TYPES[action.__name__] is action
         assert ACTION_COMPONENT_TYPES[action.__name__] is action
 
-    @pytest.mark.parametrize(
-        "action",
-        [ActorPlanAction, RefreshAppearanceAction, RefreshEnvironmentAction],
-    )
+    @pytest.mark.parametrize("action", FIELDLESS_ACTIONS)
     def test_is_a_fieldless_component(self, action: type) -> None:
         """动作本身不带状态：它只说「这轮要做这件事」。"""
         assert issubclass(action, Component)

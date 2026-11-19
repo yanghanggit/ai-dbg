@@ -7,11 +7,21 @@
 → 参见：docs/wiki/content-agnostic-engine.md
 """
 
+import re
 from pathlib import Path
-from typing import List
+from typing import Any, Iterator, List
 
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_DIR = ROOT / "src" / "ai_srpg"
+
+#: 短句（标题、组件键、逗号分隔的短语）本来就是模板的一部分，只查成句的散文
+MIN_PROSE_LENGTH = 16
+
+#: 散文按句子切：抄半句也算抄，不必整段照搬才报警
+_SENTENCE_END = re.compile(r"[。；！？]")
+
+#: 比对片段的长度：短于此的巧合太多，长于此的只能是照搬
+COPY_WINDOW = 14
 
 
 def _engine_sources() -> List[Path]:
@@ -61,3 +71,61 @@ def test_engine_source_contains_no_blueprint_entity_names(tmp_path: Path) -> Non
     assert (
         offenders == []
     ), "引擎源码出现了蓝图里的实体名（故事内容混进了引擎）：" + "；".join(offenders)
+
+
+###############################################################################
+def test_engine_prompts_do_not_embed_story_prose(tmp_path: Path) -> None:
+    """故事散文只能留在内容侧：引擎里出现蓝图的原句，等于把故事焊进机制。
+
+    实体名挡得住「某个角色」，挡不住「某段设定」——抄一句舞台设定进引擎提示词，
+    换故事时这段文字就成了写死在引擎里的场景。按句子的定长片段比对，抄半句也算。
+    """
+    from seeds import create_blueprint
+
+    blueprint = create_blueprint(
+        "dark_fantasy/mercenary_camp", "BoundaryProse", trace_dir=tmp_path
+    )
+    prose = [
+        line.strip()
+        for line in _iter_strings(blueprint.model_dump())
+        if len(line.strip()) >= MIN_PROSE_LENGTH
+    ]
+
+    offenders: List[str] = []
+    for path in _engine_sources():
+        text = path.read_text(encoding="utf-8")
+        for sentence in prose:
+            window = _copied_window(sentence, text)
+            if window is not None:
+                offenders.append(f"{_relative(path)} → {window}…")
+                break
+
+    assert (
+        offenders == []
+    ), "引擎源码抄进了内容侧的故事散文（提示词应当只讲结构与机制）：" + "；".join(
+        offenders
+    )
+
+
+###############################################################################
+def _copied_window(sentence: str, text: str) -> str | None:
+    """返回这句散文里被抄进引擎的片段；没有抄就返回 ``None``。"""
+    for start in range(0, len(sentence) - COPY_WINDOW + 1):
+        window = sentence[start : start + COPY_WINDOW]
+        if window in text:
+            return window
+    return None
+
+
+###############################################################################
+def _iter_strings(value: Any) -> Iterator[str]:
+    """展开蓝图里的每一段文本：设定、system message、组件里的底稿与体型。"""
+    if isinstance(value, str):
+        for line in value.splitlines():
+            yield from _SENTENCE_END.split(line)
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _iter_strings(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _iter_strings(item)

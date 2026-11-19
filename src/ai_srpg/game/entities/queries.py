@@ -1,13 +1,15 @@
 """实体查询：按名称/组件定位实体、舞台分组与归属判定。"""
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 from ...entitas import Entity, Matcher
 from ...models import (
     ActorComponent,
     ActorSummary,
     AppearanceComponent,
+    GlobalStageComponent,
     PlayerComponent,
+    PositionComponent,
     StageComponent,
     WorldComponent,
 )
@@ -95,6 +97,76 @@ def list_actor_summaries(srpg_game: SRPGGame) -> List[ActorSummary]:
             )
         )
     return summaries
+
+
+class Exit(NamedTuple):
+    """战场上的相邻一格：坐标，以及那一格上有没有据点。"""
+
+    x: int
+    y: int
+    stage: Optional[str] = None
+
+
+def get_global_stage(srpg_game: SRPGGame, stage_name: str) -> Entity:
+    """沿父链上溯到全局舞台（舞台树的根，自带网格）。"""
+    entity = get_stage_entity(srpg_game, stage_name)
+    assert entity is not None, f"找不到舞台实体: {stage_name}"
+    while not entity.has(GlobalStageComponent):
+        parent_name = entity.get(StageComponent).parent_stage
+        assert parent_name is not None, f"{entity.name} 不在任何全局舞台之下"
+        parent = get_stage_entity(srpg_game, parent_name)
+        assert parent is not None, f"{entity.name} 的父舞台不存在: {parent_name}"
+        entity = parent
+    return entity
+
+
+def get_cell(srpg_game: SRPGGame, entity: Entity) -> Tuple[Entity, Tuple[int, int]]:
+    """实体在战场上的位置：站在空地上用自己的坐标，在据点里用据点所在的格子。"""
+    if entity.has(PositionComponent):
+        position = entity.get(PositionComponent)
+        return _global_stage_of_entity(srpg_game, entity), (position.x, position.y)
+
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    global_stage = get_global_stage(srpg_game, stage_entity.name)
+    assert (
+        stage_entity is not global_stage
+    ), f"{entity.name} 站在全局舞台上，却没有格子坐标"
+    position = stage_entity.get(PositionComponent)
+    return global_stage, (position.x, position.y)
+
+
+def get_exits(srpg_game: SRPGGame, entity: Entity) -> List[Exit]:
+    """相邻且在图内的格子；斜向也算相邻，与广播的距离口径一致。
+
+    目标格上有据点时带上据点名：走过去就是进那个据点，空地上则只是站在格上。
+    """
+    global_stage, (x, y) = get_cell(srpg_game, entity)
+    grid = global_stage.get(GlobalStageComponent)
+    occupied: Dict[Tuple[int, int], str] = {}
+    for child in get_child_stages(srpg_game, global_stage.name):
+        if not child.has(PositionComponent):
+            continue
+        position = child.get(PositionComponent)
+        occupied[(position.x, position.y)] = child.name
+
+    exits: List[Exit] = []
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            nx, ny = x + dx, y + dy
+            if not (0 <= nx < grid.width and 0 <= ny < grid.height):
+                continue
+            exits.append(Exit(x=nx, y=ny, stage=occupied.get((nx, ny))))
+    return sorted(exits)
+
+
+def _global_stage_of_entity(srpg_game: SRPGGame, entity: Entity) -> Entity:
+    """实体所在的全局舞台（角色站在空地上时，它的所在舞台就是全局舞台）。"""
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    return get_global_stage(srpg_game, stage_entity.name)
 
 
 def get_child_stages(srpg_game: SRPGGame, stage_name: str) -> List[Entity]:

@@ -69,9 +69,41 @@ class ActorPlanAction(Component):
 
 
 ############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorSpeakAction(Component):
+    """动作：本轮该角色开口说话。"""
+
+    content: str
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorMoveAction(Component):
+    """动作：本轮该角色移动到战场上的相邻一格。"""
+
+    cell_x: int
+    cell_y: int
+
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorWaitAction(Component):
+    """动作：本轮该角色留在原地。"""
+
+
+############################################################################################################
 __all__ = [
     "ACTION_COMPONENT_TYPES",
+    "ActorMoveAction",
     "ActorPlanAction",
+    "ActorSpeakAction",
+    "ActorWaitAction",
     "RefreshAppearanceAction",
     "RefreshEnvironmentAction",
     "register_action_component_type",

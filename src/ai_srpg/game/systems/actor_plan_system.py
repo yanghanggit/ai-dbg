@@ -5,22 +5,37 @@ loop 的对话。谁能被计划由调用方决定——挂上 ``ActorPlanAction
 角色本轮轮空，不抛给 pipeline。
 """
 
-from typing import Awaitable, Callable, Dict, Final, List, Union, final, override
+from typing import (
+    Awaitable,
+    Callable,
+    Dict,
+    Final,
+    List,
+    Tuple,
+    Type,
+    Union,
+    final,
+    override,
+)
 
 from loguru import logger
 
-from ...deepseek import agent_loop
+from ...deepseek import AgentLoopResult, agent_loop
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
+from ...entitas.components import Component
 from ...llm import ToolDefinition, ToolFunction
 from ...models import (
     ActorComponent,
+    ActorMoveAction,
     ActorPlanAction,
+    ActorSpeakAction,
+    ActorWaitAction,
     AppearanceComponent,
     EnvironmentComponent,
 )
 from ...utils import prompt_builder
 from ..context import SRPGGame
-from ..entities.queries import get_actors_in_stage, get_stage_entity
+from ..entities.queries import Exit, get_actors_in_stage, get_exits, get_stage_entity
 from ..memory import get_agent_memory
 from .system_mixin import SystemMixin
 
@@ -60,16 +75,41 @@ _MOVE_TOOL: Final[ToolDefinition] = ToolDefinition(
     )
 )
 
-_PLAN_TOOLS: Final[List[ToolDefinition]] = [_SPEAK_TOOL, _MOVE_TOOL]
+_WAIT_TOOL: Final[ToolDefinition] = ToolDefinition(
+    function=ToolFunction(
+        name="wait",
+        description="这一轮什么都不做，留在原地。",
+        parameters={"type": "object", "properties": {}},
+    )
+)
+
+#: 三个工具都是终止工具：一次计划只落一个行动，说完、走完或不动就结束本轮
+_PLAN_TOOLS: Final[List[ToolDefinition]] = [_SPEAK_TOOL, _MOVE_TOOL, _WAIT_TOOL]
+
+#: 一轮只能落一个行动：模型在同一条回复里多调时，只有第一个生效
+_BEHAVIOUR_ACTIONS: Final[Tuple[Type[Component], ...]] = (
+    ActorSpeakAction,
+    ActorMoveAction,
+    ActorWaitAction,
+)
 
 
 ############################################################################################################
 @prompt_builder
-def actor_plan_prompt(*, stage_name: str, environment: str, actors: List[str]) -> str:
-    """计划任务说明：这一刻的舞台环境与在场角色。"""
+def actor_plan_prompt(
+    *, stage_name: str, environment: str, actors: List[str], exits: List[str]
+) -> str:
+    """计划任务说明：这一刻的位置、环境、在场角色与可去之处。"""
     lines = [f"当前舞台：{stage_name}", f"环境：{environment}", "", "在场角色："]
     lines.extend(f"- {actor}" for actor in actors)
-    lines.extend(["", "用工具表达你这一轮要做的行动；没有想做的事就直接结束。"])
+    lines.extend(["", "可去之处："])
+    lines.extend(f"- {item}" for item in exits)
+    lines.extend(
+        [
+            "",
+            "用工具表达你这一轮的行动：说话、移动，或者原地不动。一次只做一件事。",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -108,8 +148,9 @@ class ActorPlanSystem(ReactiveProcessor, SystemMixin):
                 input_message=self._input_message(entity),
                 messages=get_agent_memory(self._game, entity).messages,
                 tools=_PLAN_TOOLS,
-                handlers=_plan_handlers(entity.name),
+                handlers=_plan_handlers(entity),
                 max_rounds=_PLAN_ROUNDS,
+                terminal_tools=_PLAN_TOOLS,
                 loop_id=f"plan:{entity.name}",
             )
         except Exception as e:
@@ -120,7 +161,14 @@ class ActorPlanSystem(ReactiveProcessor, SystemMixin):
             return
 
         logger.info(
-            f"[plan:{entity.name}] success={result.success} rounds={len(result.rounds)}"
+            " ".join(
+                [
+                    f"[plan:{entity.name}]",
+                    f"success={result.success}",
+                    f"rounds={len(result.rounds)}",
+                    f"tools={_called_tools(result)}",
+                ]
+            )
         )
 
     ##########################################################################################
@@ -140,24 +188,48 @@ class ActorPlanSystem(ReactiveProcessor, SystemMixin):
                     key=lambda item: item.index,
                 )
             ],
+            exits=[_describe_exit(exit_) for exit_ in get_exits(self._game, entity)],
         )
 
 
 ############################################################################################################
 def _plan_handlers(
-    actor_name: str,
+    actor: Entity,
 ) -> Dict[str, Callable[..., Union[str, Awaitable[str]]]]:
-    """本轮的「行为」表；回执告诉模型已记下，免得它为同一件事反复调用。"""
+    """本轮的「行为」表：每个工具都是往角色身上挂一个动作。"""
 
     def speak(content: str) -> str:
-        logger.info(f"[plan:{actor_name}] speak: {content}")
-        return "（已记下，尚未生效）"
+        return _mount(actor, ActorSpeakAction, content)
 
-    def move(target: str) -> str:
-        logger.info(f"[plan:{actor_name}] move: {target}")
-        return "（已记下，尚未生效）"
+    def move(x: int, y: int) -> str:
+        return _mount(actor, ActorMoveAction, x, y)
 
-    return {"speak": speak, "move": move}
+    def wait() -> str:
+        return _mount(actor, ActorWaitAction)
+
+    return {"speak": speak, "move": move, "wait": wait}
+
+
+############################################################################################################
+def _mount(actor: Entity, action_type: Type[Component], *args: object) -> str:
+    """把动作挂到角色身上；本轮已经有行动时忽略后到的，回执里说明。"""
+    if any(actor.has(item) for item in _BEHAVIOUR_ACTIONS):
+        logger.warning(f"[plan:{actor.name}] 本轮已有行动，忽略 {action_type.__name__}")
+        return "（本轮已经有行动了，这次忽略）"
+    actor.replace(action_type, *args)
+    logger.info(f"[plan:{actor.name}] {action_type.__name__}{args}")
+    return "（已记下）"
+
+
+############################################################################################################
+def _called_tools(result: AgentLoopResult) -> str:
+    """本次计划实际调用了哪些工具；一个都没有时明说，免得和「调了一个」混在一起。"""
+    names = [
+        call.function.name
+        for one_round in result.rounds
+        for call in (one_round.completion.tool_calls or [])
+    ]
+    return ",".join(names) if names else "无"
 
 
 ############################################################################################################
@@ -165,6 +237,13 @@ def _environment_of(stage_entity: Entity) -> str:
     if not stage_entity.has(EnvironmentComponent):
         return _NO_ENVIRONMENT
     return stage_entity.get(EnvironmentComponent).narrative
+
+
+############################################################################################################
+def _describe_exit(exit_: Exit) -> str:
+    """一格一行：坐标，以及那格上是空地还是某个据点。"""
+    where = exit_.stage if exit_.stage is not None else "空地"
+    return f"({exit_.x},{exit_.y}) {where}"
 
 
 ############################################################################################################

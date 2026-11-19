@@ -6,7 +6,10 @@
 
 from .actions import (
     ACTION_COMPONENT_TYPES,
+    ActorMoveAction,
     ActorPlanAction,
+    ActorSpeakAction,
+    ActorWaitAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
@@ -89,7 +92,11 @@ __all__ = [
     "ASSET_META_SUFFIX",
     "ActorBlueprint",
     "ActorComponent",
+    "ActorMoveAction",
+    "ActorPlanAction",
+    "ActorSpeakAction",
     "ActorSummary",
+    "ActorWaitAction",
     "AgentEvent",
     "AgentMemory",
     "AgentMemorySnapshot",
