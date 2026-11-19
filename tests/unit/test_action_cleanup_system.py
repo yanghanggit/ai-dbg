@@ -16,7 +16,7 @@ from ai_srpg.game.systems.action_cleanup_system import ActionCleanupSystem
 from ai_srpg.models import (
     ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
-    NoneAction,
+    RefreshAppearanceAction,
     register_action_component_type,
     register_component_type,
 )
@@ -154,17 +154,19 @@ class TestActionCleanupSystem:
         assert not entity.has(WhisperAction)
         assert not entity.has(AnnounceAction)
 
-    def test_clears_placeholder_action(
+    def test_clears_production_action(
         self, context: ECSContext, system: ActionCleanupSystem
     ) -> None:
-        """生产注册表里的占位动作 ``NoneAction`` 同样在清理范围内。"""
-        assert ACTION_COMPONENT_TYPES["NoneAction"] is NoneAction
+        """生产注册表里的动作组件同样在清理范围内。"""
+        assert (
+            ACTION_COMPONENT_TYPES["RefreshAppearanceAction"] is RefreshAppearanceAction
+        )
         entity = context.create_entity()
-        entity.add(NoneAction)
+        entity.add(RefreshAppearanceAction)
 
         system.cleanup()
 
-        assert not entity.has(NoneAction)
+        assert not entity.has(RefreshAppearanceAction)
 
     def test_cleanup_preserves_non_action_components(
         self, context: ECSContext, system: ActionCleanupSystem

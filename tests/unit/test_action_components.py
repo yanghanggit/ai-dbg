@@ -8,7 +8,8 @@ from ai_srpg.entitas.components import Component
 from ai_srpg.models import (
     ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
-    NoneAction,
+    RefreshAppearanceAction,
+    RefreshEnvironmentAction,
     register_action_component_type,
     register_component_type,
 )
@@ -34,18 +35,26 @@ class JumpAction(Component):
     height: int
 
 
-class TestPlaceholderAction:
-    """``actions.py`` 里的占位动作 ``NoneAction``。"""
+class TestProductionActions:
+    """``actions.py`` 里真实登记的动作组件。"""
 
-    def test_is_registered_in_both_tables(self) -> None:
-        """占位动作同时是组件与动作组件——装饰器叠放的产物。"""
-        assert COMPONENT_TYPES["NoneAction"] is NoneAction
-        assert ACTION_COMPONENT_TYPES["NoneAction"] is NoneAction
+    @pytest.mark.parametrize(
+        "action",
+        [RefreshAppearanceAction, RefreshEnvironmentAction],
+    )
+    def test_is_registered_in_both_tables(self, action: type) -> None:
+        """动作同时是组件与动作组件——装饰器叠放的产物。"""
+        assert COMPONENT_TYPES[action.__name__] is action
+        assert ACTION_COMPONENT_TYPES[action.__name__] is action
 
-    def test_is_a_component(self) -> None:
-        """能作为组件挂到实体上（无字段，可直接实例化）。"""
-        assert issubclass(NoneAction, Component)
-        assert NoneAction().model_dump() == {}
+    @pytest.mark.parametrize(
+        "action",
+        [RefreshAppearanceAction, RefreshEnvironmentAction],
+    )
+    def test_is_a_fieldless_component(self, action: type) -> None:
+        """动作本身不带状态：它只说「这轮要做这件事」。"""
+        assert issubclass(action, Component)
+        assert action().model_dump() == {}
 
 
 class TestRegisterActionComponentType:

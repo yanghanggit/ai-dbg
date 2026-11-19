@@ -6,7 +6,8 @@
 
 from .actions import (
     ACTION_COMPONENT_TYPES,
-    NoneAction,
+    RefreshAppearanceAction,
+    RefreshEnvironmentAction,
     register_action_component_type,
 )
 from .agent_event import AgentEvent, AnyAgentEvent, NoneEvent
@@ -118,11 +119,12 @@ __all__ = [
     "MEMORY_TAGS",
     "MessageSpan",
     "MsgT",
-    "NoneAction",
     "NoneEvent",
     "NPCComponent",
     "PlayerComponent",
     "PositionComponent",
+    "RefreshAppearanceAction",
+    "RefreshEnvironmentAction",
     "SNAPSHOT_FORMAT_VERSION",
     "SessionMessage",
     "StageBlueprint",

@@ -48,17 +48,22 @@ def register_action_component_type(cls: Type[ComponentT]) -> Type[ComponentT]:
 @final
 @register_action_component_type
 @register_component_type
-class NoneAction(Component):
-    """空动作：不产生任何效果。
+class RefreshAppearanceAction(Component):
+    """动作：本轮用 LLM 重写该角色的当前外观。"""
 
-    目前没有真实玩法动作，它只用来占住动作链路的入口（注册、收集、每轮清除），
-    第一个真实动作落地后可删除。
-    """
+
+############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class RefreshEnvironmentAction(Component):
+    """动作：本轮用 LLM 重写该舞台的当前环境叙述。"""
 
 
 ############################################################################################################
 __all__ = [
     "ACTION_COMPONENT_TYPES",
-    "NoneAction",
+    "RefreshAppearanceAction",
+    "RefreshEnvironmentAction",
     "register_action_component_type",
 ]
