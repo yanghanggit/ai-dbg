@@ -40,7 +40,7 @@ from .types import ChatCompletionRequest, ChatCompletionResult
 ENV_CALL_LOG_SWITCH: str = "AI_SRPG_LLM_CALL_LOG_ENABLED"
 
 #: 记录结构版本；字段变化时递增
-SCHEMA_VERSION: int = 1
+SCHEMA_VERSION: int = 2
 
 _FALSE_VALUES: frozenset[str] = frozenset({"0", "false", "no", "off"})
 _UNSAFE_PATH_CHARS: re.Pattern[str] = re.compile(r"[^A-Za-z0-9_.-]")
@@ -61,6 +61,8 @@ class LlmCallRecord(BaseModel):
     label: str
     model: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
+    #: 本轮问模型的指令（历史之外那一条）；空串表示纯续写（带工具的后续轮次）
+    input_message: str = ""
     context_digest: str
     message_count: int
     messages: List[Dict[str, Any]] = Field(default_factory=list)
@@ -143,6 +145,7 @@ def build_llm_call_record(
             "timeout": request.timeout,
             "tools": [tool.model_dump(mode="json") for tool in request.tools],
         },
+        input_message=request.input_message,
         context_digest=_context_digest(messages),
         message_count=len(messages),
         messages=messages,

@@ -14,15 +14,15 @@ from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.entities import build_from_blueprint
 from ai_srpg.game.lifecycle import initialize_pipeline
-from ai_srpg.game.memory import get_agent_memory
+from ai_srpg.game.memory import add_human_message, get_agent_memory
 from ai_srpg.game.pipelines import process_pipeline
 from ai_srpg.game.systems.appearance_refresh_system import (
-    APPEARANCE_INSTRUCTION,
     AppearanceRefreshSystem,
+    appearance_prompt,
 )
 from ai_srpg.game.systems.environment_refresh_system import (
-    ENVIRONMENT_INSTRUCTION,
     EnvironmentRefreshSystem,
+    environment_prompt,
 )
 from ai_srpg.game.systems.stale_description_system import StaleDescriptionSystem
 from ai_srpg.llm import ChatCompletionRequest, ChatCompletionResult
@@ -33,12 +33,14 @@ from ai_srpg.models import (
     Blueprint,
     EnvironmentComponent,
     GlobalStageComponent,
+    HumanMessage,
     Position,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     StageBlueprint,
     StageComponent,
 )
+from ai_srpg.utils import get_prompt_builders
 from fake_llm import FAKE_DESCRIPTION_PREFIX, failed_completion, fake_completion
 
 STAGE = "舞台.营地"
@@ -250,13 +252,48 @@ async def test_requests_carry_own_memory_and_instruction(
     await process_pipeline(game.pipeline, None)
 
     instructions = {request.label: request.input_message for request in captured}
-    assert instructions[f"appearance:{ACTOR}"] == APPEARANCE_INSTRUCTION
-    assert instructions[f"environment:{STAGE}"] == ENVIRONMENT_INSTRUCTION
+    assert instructions[f"appearance:{ACTOR}"] == appearance_prompt()
+    assert instructions[f"environment:{STAGE}"] == environment_prompt()
 
     for request in captured:
         name = request.label.split(":", 1)[1]
         memory = get_agent_memory(game, _entity(game, name))
         assert request.messages[0].content == memory.messages[0].content
+
+
+###############################################################################
+def test_both_prompts_are_registered_builders() -> None:
+    """两条任务说明都登记在提示词注册表里，可被枚举出来审查或预演。"""
+    builders = get_prompt_builders()
+
+    for builder in (appearance_prompt, environment_prompt):
+        key = f"{builder.__module__}.{builder.__qualname__}"
+        assert builders[key] is builder
+        assert builder().strip() != ""
+
+
+async def test_environment_history_skips_event_broadcasts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """事件广播只说明谁在场、谁做了什么，环境刷新不该读到它。"""
+    game = _game()
+    stage = _entity(game, STAGE)
+    add_human_message(
+        game,
+        stage,
+        HumanMessage(content="舞台.营地：当前在场 角色.甲。", agent_event="none"),
+    )
+    captured = _record_requests(monkeypatch)
+
+    system = EnvironmentRefreshSystem(game)
+    system.activate()
+    stage.replace(RefreshEnvironmentAction)
+    await system.execute()
+
+    (request,) = captured
+    contents = [message.content for message in request.messages]
+    assert contents[0] == get_agent_memory(game, stage).messages[0].content
+    assert not any("当前在场" in content for content in contents)
 
 
 ###############################################################################

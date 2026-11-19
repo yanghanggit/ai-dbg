@@ -30,12 +30,9 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     pipeline.add(PrologueSystem(srpg_game))
 
     # ---------------------------------------------------------------------
-    # 业务：舞台心跳，以及「当前描述」的刷新（收集动作 → 两个反应式处理器）。
-    # 它们可以发布领域事件，事件由游戏的事件出口交给订阅者（如会话历史）。
+    # 业务：舞台心跳，以及「当前描述」的刷新（先判定过期，再由两个反应式处理器重写）。
     # ---------------------------------------------------------------------
     pipeline.add(StagePulseSystem(srpg_game))
-
-    # 守卫在收集端：只有描述仍等于底稿才挂动作；已经改写过的不会每轮重写。
     pipeline.add(StaleDescriptionSystem(srpg_game))
     pipeline.add(AppearanceRefreshSystem(srpg_game))
     pipeline.add(EnvironmentRefreshSystem(srpg_game))

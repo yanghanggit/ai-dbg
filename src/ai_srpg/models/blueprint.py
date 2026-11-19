@@ -78,11 +78,8 @@ class Blueprint(BaseModel):
     global_rules: (
         str  # 所有实体共同遵守的纯机制规则（扮演契约、实体类型与全名、舞台移动等）
     )
-    # 世界：高于所有舞台但不出场，只给因果
     worlds: List[WorldBlueprint]
-    # 舞台：一棵树，根是全局舞台（自带网格），孩子按父舞台的格子摆放
     stage_tree: StageBlueprint
-    # 角色：只属于某一个舞台节点，归属写在 ActorComponent.current_stage
     actors: List[ActorBlueprint]
 
 

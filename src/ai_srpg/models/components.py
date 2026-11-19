@@ -71,15 +71,13 @@ class ActorComponent(Component):
 @final
 @register_component_type
 class EnvironmentComponent(Component):
-    """舞台环境：``base_environment`` 是内容侧写定的底稿，``narrative`` 是当前叙述。
+    """舞台环境：底稿 + 当前叙述，``narrative`` 缺省时等于 ``base_environment``。
 
-    未给出 ``narrative`` 时与 ``base_environment`` 相同（与外观的派生同一套路）。
-    叙述只写舞台自身的物理状态——光、声、气味、地形，不写谁来过、留下了什么；
-    在场者属于角色自己的状态，不该从环境里推断出来。
+    叙述只写舞台自身，不写在场者：角色状态不该从环境里推断出来。
     """
 
-    base_environment: str  # 内容侧写定的环境底稿
-    narrative: str = ""  # 当前环境叙述，之后由系统按状态更新
+    base_environment: str
+    narrative: str = ""
 
     @model_validator(mode="after")
     def _fill_narrative(self) -> "EnvironmentComponent":
@@ -92,7 +90,7 @@ class EnvironmentComponent(Component):
 @final
 @register_component_type
 class NPCComponent(Component):
-    """标记角色是 NPC：先只做类型记录，行为差异等真正需要时再补。"""
+    """标记角色是 NPC；目前只是类型记录。"""
 
 
 ############################################################################################################

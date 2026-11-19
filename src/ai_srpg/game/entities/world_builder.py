@@ -35,8 +35,7 @@ BlueprintEntity = Union[ActorBlueprint, StageBlueprint, WorldBlueprint]
 def build_from_blueprint(srpg_game: SRPGGame, blueprint: Blueprint) -> None:
     """按蓝图装配游戏世界：世界、舞台树、角色。
 
-    ``blueprint`` 是构建期输入，不写进任何运行时容器。装配不涉及玩家——谁能控制哪个
-    角色由 ``bind_player_actor`` 在进场时决定，蓝图本身不声明。
+    只装配世界，不涉及玩家：谁能控制哪个角色由 ``bind_player_actor`` 在进场时决定。
     """
     assert srpg_game.entity_count == 0, "游戏中有实体，不能创建新的游戏"
 

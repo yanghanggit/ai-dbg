@@ -132,6 +132,7 @@ def test_records_messages_response_and_usage(calls_dir: Path) -> None:
     assert record.label == "舞台.测试"
     assert [m["type"] for m in record.messages] == ["system", "human"]
     assert record.messages[1]["content"] == "请描述环境"
+    assert record.input_message == "请描述环境"
     assert record.response["ai_message"]["content"] == "洞顶低矮"
     assert record.response["finish_reason"] == "stop"
     assert record.usage is not None
@@ -148,6 +149,7 @@ def test_continuation_request_has_no_phantom_human_message(calls_dir: Path) -> N
 
     record = next(_load_all(calls_dir))
     assert [m["type"] for m in record.messages] == ["system"]
+    assert record.input_message == ""
     tool_calls = record.response["ai_message"]["additional_kwargs"]["tool_calls"]
     assert tool_calls[0]["function"]["name"] == "get_entity_stats"
 

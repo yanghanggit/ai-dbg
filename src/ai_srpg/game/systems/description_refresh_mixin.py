@@ -1,28 +1,23 @@
 """用 LLM 重写「当前描述」的 mixin：问模型、写回记忆。
 
-这两件事只在 system 内部有意义，所以挂在 mixin 上而不是模块级函数——能被任意代码
-调用的全局函数等于没有边界。
+只在 system 内部有意义，因此不做成模块级函数：全局函数等于没有边界。
 """
 
-from typing import Dict, Sequence
+from typing import Dict, List, Sequence
 
 from loguru import logger
 
 from ...deepseek import batch_complete
 from ...entitas import Entity
 from ...llm import ChatCompletionRequest
-from ...models import HumanMessage
+from ...models import ChatMessage, HumanMessage
 from ..memory import add_human_message, get_agent_memory
 from .system_mixin import SystemMixin
 
 
 ###############################################################################
 class DescriptionRefreshMixin(SystemMixin):
-    """用 LLM 重写「当前描述」的能力：问模型、写回记忆。
-
-    这两件事只在 system 内部有意义，所以挂在 mixin 上而不是模块级函数——能被任意代码
-    调用的全局函数等于没有边界。
-    """
+    """给描述类 system 提供「问模型 / 写记忆」两个动作。"""
 
     ###########################################################################
     async def complete_descriptions(
@@ -31,8 +26,12 @@ class DescriptionRefreshMixin(SystemMixin):
         *,
         label: str,
         instruction: str,
+        include_events: bool = True,
     ) -> Dict[str, str]:
-        """按实体记忆批量补全描述，返回「实体名 → 文本」；失败的实体不出现。"""
+        """返回「实体名 → 文本」；失败的实体不出现。
+
+        ``include_events=False`` 滤掉领域事件广播——它们天生是「谁在场、谁做了什么」。
+        """
         if not entities:
             return {}
 
@@ -40,7 +39,7 @@ class DescriptionRefreshMixin(SystemMixin):
             ChatCompletionRequest(
                 label=f"{label}:{entity.name}",
                 input_message=instruction,
-                messages=list(get_agent_memory(self._game, entity).messages),
+                messages=self._history_for(entity, include_events=include_events),
             )
             for entity in entities
         ]
@@ -61,6 +60,20 @@ class DescriptionRefreshMixin(SystemMixin):
         return texts
 
     ###########################################################################
+    def _history_for(
+        self, entity: Entity, *, include_events: bool
+    ) -> List[ChatMessage]:
+        """取这个实体要发给模型的历史，事件广播按需滤掉。"""
+        messages = get_agent_memory(self._game, entity).messages
+        if include_events:
+            return list(messages)
+        return [
+            message
+            for message in messages
+            if getattr(message, "agent_event", None) is None
+        ]
+
+    ###########################################################################
     def record_description_update(
         self,
         entity: Entity,
@@ -70,7 +83,7 @@ class DescriptionRefreshMixin(SystemMixin):
         base_label: str,
         base: str,
     ) -> None:
-        """把这次更新写回实体记忆：名字、当前描述与底稿三者在同一条消息里对齐。"""
+        """把当前描述与底稿一起写回记忆，避免两者在后续推理里打架。"""
         add_human_message(
             self._game,
             entity,

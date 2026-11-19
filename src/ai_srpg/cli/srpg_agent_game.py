@@ -191,8 +191,15 @@ def llm_call(request_id: str, as_json: bool) -> None:
     if error:
         click.echo(f"error:      {json.dumps(error, ensure_ascii=False)}")
 
-    for message in record.messages:
-        click.echo(f"\n===== {message.get('type', '?')} =====")
+    last_index = len(record.messages) - 1
+    for index, message in enumerate(record.messages):
+        header = message.get("type", "?")
+        if (
+            index == last_index
+            and (message.get("content") or "") == record.input_message
+        ):
+            header = "prompt（本轮输入）"
+        click.echo(f"\n===== {header} =====")
         click.echo(message.get("content") or "")
         tool_calls = (message.get("additional_kwargs") or {}).get("tool_calls")
         if tool_calls:

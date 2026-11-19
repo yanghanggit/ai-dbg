@@ -1,25 +1,27 @@
 """消费 ``RefreshAppearanceAction``：用 LLM 重写角色的当前外观。
 
-外观是「旁人此刻看到的样子」，不是设定稿：设定只在被当下状态改变时才该出现。
-动作由 ``StaleDescriptionSystem`` 按状态守卫自动挂上，也可以由别处直接挂上来强制重写。
-生成失败时保留原样，``base_body`` 永远不动。
+外观是定格快照而非叙事片段；``base_body`` 永不改写。
 """
 
 from typing import Dict, List, final, override
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ...models import ActorComponent, AppearanceComponent, RefreshAppearanceAction
+from ...utils import prompt_builder
 from ..context import SRPGGame
 from .description_refresh_mixin import DescriptionRefreshMixin
 
-#: 交给模型的唯一任务说明；历史一律是该角色自己的 agent 记忆
-APPEARANCE_INSTRUCTION = """\
-依据你记忆里的设定与最近发生的事，写出「此刻」你的样子。
 
-- 用旁观视角、第三人称：只写可见的东西——衣着、装备、伤势、污渍、姿态与神情。
-- 写这一刻的状态，不写履历；设定里写过的容貌，只在被当下状态改变时才提起。
-- 不写心理活动，不做推断，不叙述经历，也不要解释你为什么这样写。
-- 只输出描述本身：一段话，120 字以内；不要加括号、引号、标题或任何标记。"""
+@prompt_builder
+def appearance_prompt() -> str:
+    """外观快照的任务说明。"""
+    return """\
+任务：写出该角色此刻的外观快照。
+
+只写定格照片里能看见的部分。
+不写动作、姿态、场景、在场者、心理、履历与解释。
+不出现名字，不用「你」「他」作主语。
+输出：一段话，120 字以内，只输出正文，不加任何标记。"""
 
 
 @final
@@ -43,18 +45,14 @@ class AppearanceRefreshSystem(ReactiveProcessor, DescriptionRefreshMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作的角色。
-
-        写回组件时 group 会同时派发「added」，实体因此重新进入收集器；这里连同动作
-        一起判断，把那次回声筛掉——否则每轮都会重复生成。动作已被清理也走这条。
-        """
+        """只处理仍挂着动作的角色：写回组件会再派发一次 added，靠动作是否还在筛掉回声。"""
         return entity.has(ActorComponent, RefreshAppearanceAction)
 
     ##########################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
         texts = await self.complete_descriptions(
-            entities, label="appearance", instruction=APPEARANCE_INSTRUCTION
+            entities, label="appearance", instruction=appearance_prompt()
         )
         for entity in entities:
             text = texts.get(entity.name)
@@ -72,4 +70,4 @@ class AppearanceRefreshSystem(ReactiveProcessor, DescriptionRefreshMixin):
 
 
 ###############################################################################
-__all__ = ["APPEARANCE_INSTRUCTION", "AppearanceRefreshSystem"]
+__all__ = ["AppearanceRefreshSystem", "appearance_prompt"]

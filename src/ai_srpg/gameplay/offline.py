@@ -149,7 +149,7 @@ async def bind_actor(
 ) -> BindActorOutcome:
     """让 ``user_name`` 接管 ``actor_name``，并把结果落成新快照。
 
-    接管只改 ECS 里的绑定关系，不推进时间；它是入场前的一次配置动作，不进 pipeline。
+    入场前的一次配置动作：不推进时间，不进 pipeline。
     """
     game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
     entity = bind_player_actor(game, user_name, actor_name)
