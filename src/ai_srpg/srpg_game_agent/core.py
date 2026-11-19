@@ -4,7 +4,8 @@
 两者可以任意组合。
 """
 
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence
 
 from loguru import logger
 
@@ -13,12 +14,14 @@ from ..game.entities.queries import get_actors_by_stage_as_names
 from ..gameplay.offline import (
     BindActorOutcome,
     CommandOutcome,
+    MemoryDumpOutcome,
     NewGameOutcome,
     OfflinePassOutcome,
     PlanOutcome,
     bind_actor,
     command_actor,
     create_new_game,
+    dump_game_memories,
     list_actors,
     list_games,
     list_snapshots,
@@ -127,6 +130,32 @@ async def plan_game(
     logger.info(
         "plan actors: user={}, game={}, actors={}, snapshot_id={}".format(
             user, game, ", ".join(outcome.actors), outcome.snapshot_id
+        )
+    )
+    return outcome
+
+
+###############################################################################
+async def memories_game(
+    user: str,
+    game: str,
+    names: Optional[Sequence[str]] = None,
+    *,
+    snapshot_id: Optional[int] = None,
+    directory: Optional[Path] = None,
+) -> MemoryDumpOutcome:
+    """导出记忆到 markdown；``names`` 为空导出全部实体。"""
+    outcome = await dump_game_memories(
+        user, game, names=names, snapshot_id=snapshot_id, directory=directory
+    )
+    logger.info(
+        "dump memories: user={}, game={}, names={}, directory={}, entities={}, messages={}".format(
+            user,
+            game,
+            ", ".join(names) if names else "全部",
+            outcome.directory,
+            outcome.entity_count,
+            outcome.message_count,
         )
     )
     return outcome

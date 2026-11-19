@@ -73,7 +73,7 @@ def user_name() -> Iterator[str]:
 
 
 def test_cli_offline_flow(
-    blueprint_dir: Path, blueprint: Blueprint, user_name: str
+    blueprint_dir: Path, blueprint: Blueprint, user_name: str, tmp_path: Path
 ) -> None:
     runner = CliRunner()
     actor = blueprint.actors[0].name
@@ -253,6 +253,32 @@ def test_cli_offline_flow(
     assert compacted.exit_code == 0, compacted.output
     assert "messages:" in compacted.output
     assert "snapshot:" in compacted.output
+
+    dumped = runner.invoke(
+        main,
+        [
+            "memories",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--entity",
+            actor,
+            "--dir",
+            str(tmp_path / "memories"),
+        ],
+    )
+    assert dumped.exit_code == 0, dumped.output
+    assert "entities:  1" in dumped.output
+    memory_file = Path(tmp_path / "memories" / f"{actor}.md")
+    assert memory_file.read_text(encoding="utf-8").startswith(f"# {actor}")
+
+    unknown_entity = runner.invoke(
+        main,
+        ["memories", "--user", user_name, "--game", "Game1", "--entity", missing_actor],
+    )
+    assert unknown_entity.exit_code == 1
+    assert "没有记忆" in unknown_entity.output
 
     history = runner.invoke(main, ["snapshots", "--user", user_name, "--game", "Game1"])
     assert history.exit_code == 0, history.output

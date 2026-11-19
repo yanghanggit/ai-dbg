@@ -10,6 +10,7 @@
   snapshots        列出快照历史
   stages           列出舞台-角色映射
   actors           列出角色名册（所在舞台、控制者、当前外观）
+  memories         把带记忆的实体导出成 markdown（可只导指定实体）
   plan             让一个或多个角色做本轮计划
   act              接管一个角色：直接下一条命令，跑一次 pass
   compact-context  手动压缩指定实体的 LLM 记忆并保存快照
@@ -49,6 +50,7 @@ from ai_srpg.srpg_game_agent.core import (
     command_actor_game,
     create_and_initialize_game,
     list_games_game,
+    memories_game,
     plan_game,
     snapshots_game,
     stages_game,
@@ -423,6 +425,52 @@ def actors(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None
             ]
         )
         click.echo(line)
+
+
+###############################################################################
+@main.command("memories")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option(
+    "--entity",
+    "entities",
+    multiple=True,
+    help="只导这个实体的记忆，可重复；缺省导出全部",
+)
+@click.option(
+    "--dir",
+    "out_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="输出目录（一实体一文件）；缺省写在 logs/memories/ 下",
+)
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+def memories(
+    user: str,
+    game: str,
+    entities: tuple[str, ...],
+    out_dir: Path | None,
+    snapshot_id: int | None,
+) -> None:
+    """把记忆导出成 markdown，一个实体一个文件。"""
+    _setup_logger()
+    try:
+        outcome = _run_game(
+            memories_game(
+                user, game, list(entities), snapshot_id=snapshot_id, directory=out_dir
+            ),
+            command="memories",
+            user=user,
+            game=game,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"entities:  {outcome.entity_count}")
+    click.echo(f"messages:  {outcome.message_count}")
+    click.echo(f"dir:       {outcome.directory}")
+    for path in outcome.files:
+        click.echo(f"  {path.name}")
 
 
 ###############################################################################

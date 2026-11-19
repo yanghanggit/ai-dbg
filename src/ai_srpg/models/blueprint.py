@@ -76,7 +76,7 @@ class Blueprint(BaseModel):
     name: str
     campaign_setting: str  # 组装 system_message 用，不进 ECS
     global_rules: (
-        str  # 所有实体共同遵守的纯机制规则（扮演契约、实体类型与全名、舞台移动等）
+        str  # 所有实体共同遵守的纯机制规则（扮演契约、实体、全名、位置与移动）
     )
     worlds: List[WorldBlueprint]
     stage_tree: StageBlueprint

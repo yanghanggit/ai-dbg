@@ -3,8 +3,10 @@
 快照归属键是 ``room_id``；离线没有房间，调用方传入的标识即当局的键。
 """
 
+import datetime
 from dataclasses import dataclass
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Sequence
 
 from ..entitas import Entity, PassResult, ProcessorObserver
 from ..entitas.components import Component
@@ -25,6 +27,7 @@ from ..game.lifecycle import (
     rebuild_pipeline,
     snapshot_game,
 )
+from ..game.memory_dump import dump_memories
 from ..game.offline import create_game_from_blueprint, restore_game_from_snapshot
 from ..models import (
     ActorComponent,
@@ -34,6 +37,7 @@ from ..models import (
     GameSnapshotInfo,
     GameSummary,
 )
+from ..paths import MEMORY_DUMPS_DIR
 from ..pgsql import (
     append_game_snapshot,
     list_game_snapshot_ids,
@@ -78,6 +82,16 @@ class CommandOutcome:
     command: str
     location: str
     snapshot_id: int
+
+
+@dataclass(frozen=True)
+class MemoryDumpOutcome:
+    """一次记忆导出的结果：写到哪儿，导出了多少。"""
+
+    directory: Path
+    files: List[Path]
+    entity_count: int
+    message_count: int
 
 
 @dataclass(frozen=True)
@@ -195,6 +209,42 @@ async def bind_actor(
         actor_name=entity.name,
         snapshot_id=new_snapshot_id,
     )
+
+
+###############################################################################
+async def dump_game_memories(
+    room_id: str,
+    game_name: str,
+    *,
+    names: Optional[Sequence[str]] = None,
+    snapshot_id: Optional[int] = None,
+    directory: Optional[Path] = None,
+) -> MemoryDumpOutcome:
+    """把这一局的记忆导出成 markdown，一个实体一个文件。"""
+    wanted = list(names) if names else None
+    game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
+    memories = game.agent_memory_store.snapshot()
+    target = directory or _default_memory_directory(room_id, game_name)
+    files = dump_memories(game, target, names=wanted)
+    return MemoryDumpOutcome(
+        directory=target,
+        files=files,
+        entity_count=len(files),
+        message_count=sum(len(memories[path.stem].messages) for path in files),
+    )
+
+
+###############################################################################
+def _default_memory_directory(room_id: str, game_name: str) -> Path:
+    """默认落在 ``logs/memories/<用户>-<游戏>-<时间>/``，一实体一文件。"""
+    safe = f"{_safe_name(room_id)}-{_safe_name(game_name)}"
+    return MEMORY_DUMPS_DIR / f"{safe}-{datetime.datetime.now():%Y%m%d-%H%M%S}"
+
+
+###############################################################################
+def _safe_name(name: str) -> str:
+    cleaned = name.replace("/", "_").replace("\\", "_").strip()
+    return cleaned or "unnamed"
 
 
 ###############################################################################
