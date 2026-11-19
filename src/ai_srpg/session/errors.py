@@ -27,9 +27,9 @@ class RoomAlreadyExistsError(Exception):
 class RoomClosedError(RuntimeError):
     """在已关闭的房间上进入事务时抛出。"""
 
-    def __init__(self, username: str) -> None:
-        super().__init__(f"room closed: {username}")
-        self.username: str = username
+    def __init__(self, user_name: str) -> None:
+        super().__init__(f"room closed: {user_name}")
+        self.user_name: str = user_name
 
 
 ###############################################################################

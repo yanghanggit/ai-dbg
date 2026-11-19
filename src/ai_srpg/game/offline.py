@@ -45,7 +45,7 @@ def create_game_from_blueprint(
     build_from_blueprint(
         game,
         blueprint,
-        player_name=user_name,
+        user_name=user_name,
         player_actor=player_actor,
     )
     return game

@@ -24,8 +24,8 @@ from ..llm.call_context import llm_call_trace
 from ..pgsql import append_game_snapshot
 from ..session.errors import GameNotFoundError
 from ..session.job_context import get_current_job
-from ..session.room import PlayerRoom
-from ..session.runtime import get_runtime_game_server
+from ..session.room import Room
+from ..session.runtime import get_runtime_room_registry
 
 
 ###############################################################################
@@ -34,14 +34,14 @@ async def run_game_pass(
 ) -> PassResult:
     """后台 job 的执行入口：进入房间锁并跑一次 pass。
 
-    必须从 job 体调用，不要嵌套在已持有 ``game_server.acquire`` 的代码里，
+    必须从 job 体调用，不要嵌套在已持有 ``room_registry.acquire`` 的代码里，
     否则会重复获取同一把非重入的房间锁。
 
     成功后追加一条**结果快照**：房间内存只是当前工作副本，进程重启或房间回收
     后由最新快照恢复，因此「最新快照 = 当前状态」必须在这里保证。失败路径不追加，
     只保留 ``run_pass`` 写入的执行前快照作为回滚基线。
     """
-    async with get_runtime_game_server().acquire(user_name) as room:
+    async with get_runtime_room_registry().acquire(user_name) as room:
         result = await run_room_pass(room, observer=observer)
 
         game = room.game
@@ -87,12 +87,12 @@ async def run_pass(
 
 ###############################################################################
 async def run_room_pass(
-    room: PlayerRoom, observer: Optional[ProcessorObserver] = None
+    room: Room, observer: Optional[ProcessorObserver] = None
 ) -> PassResult:
     """在已持有房间锁的前提下执行一次 pass。"""
     game = room.game
     if game is None:
-        raise GameNotFoundError(user_name=room.username)
+        raise GameNotFoundError(user_name=room.user_name)
 
     if observer is None:
         observer = get_current_job()
@@ -100,10 +100,10 @@ async def run_room_pass(
     current_job = get_current_job()
     with llm_call_trace(
         scope="room",
-        scope_id=room.username,
-        user=room.username,
+        scope_id=room.user_name,
+        user=room.user_name,
         game=game.name,
-        room=room.username,
+        room=room.user_name,
         job_id=current_job.job_id if current_job is not None else None,
     ):
-        return await run_pass(game, room.username, observer)
+        return await run_pass(game, room.user_name, observer)

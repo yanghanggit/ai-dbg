@@ -15,9 +15,9 @@ from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
 from ai_srpg.pgsql.game_snapshot_operations import list_game_snapshot_ids
 from ai_srpg.session.player_session import PlayerSession
-from ai_srpg.session.room import PlayerRoom
-from ai_srpg.session.runtime import bind_runtime_game_server
-from ai_srpg.session.server import GameServer
+from ai_srpg.session.registry import RoomRegistry
+from ai_srpg.session.room import Room
+from ai_srpg.session.runtime import bind_runtime_room_registry
 
 
 class _Noop(ExecuteProcessor):
@@ -59,9 +59,9 @@ def user_name() -> Iterator[str]:
         db.close()
 
 
-def _room_with(game: SRPGGame, user_name: str) -> PlayerRoom:
-    room = PlayerRoom(user_name)
-    room.bind(game=game, player_session=PlayerSession(name=user_name))
+def _room_with(game: SRPGGame, user_name: str) -> Room:
+    room = Room(user_name)
+    room.start_game(game=game, session=PlayerSession(user_name=user_name))
     return room
 
 
@@ -99,10 +99,10 @@ async def test_run_game_pass_acquires_room(user_name: str) -> None:
     game.pipeline = ProcessorPipeline()
     game.pipeline.add(_Noop())
 
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room(user_name)
-    room.bind(game=game, player_session=PlayerSession(name=user_name))
-    bind_runtime_game_server(server)
+    room.start_game(game=game, session=PlayerSession(user_name=user_name))
+    bind_runtime_room_registry(server)
 
     result = await run_game_pass(user_name)
 
@@ -118,10 +118,10 @@ async def test_run_game_pass_failure_keeps_only_pre_run_snapshot(
     game.pipeline = ProcessorPipeline()
     game.pipeline.add(_CreateThenFail(game))
 
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room(user_name)
-    room.bind(game=game, player_session=PlayerSession(name=user_name))
-    bind_runtime_game_server(server)
+    room.start_game(game=game, session=PlayerSession(user_name=user_name))
+    bind_runtime_room_registry(server)
 
     with pytest.raises(RuntimeError, match="boom"):
         await run_game_pass(user_name)

@@ -1,14 +1,12 @@
-"""游戏服务器模块。
-
-职责：进程内玩家房间注册表（``user_name -> PlayerRoom``）。
+"""房间注册表：进程内的 ``user_name -> Room`` 映射。
 
 并发模型
 --------
-* ``GameServer`` 只负责房间的**注册 / 注销**，用内部 ``asyncio.Lock`` 保证注册表
+* ``RoomRegistry`` 只负责房间的**注册 / 注销**，用内部 ``asyncio.Lock`` 保证注册表
   变更（create / remove）的原子性；``has_room`` / ``get_room`` / ``snapshot_rooms``
   是单事件循环下的原子只读操作。
-* 房间**内部状态**的一致性由 ``PlayerRoom`` 自己的锁负责，统一通过
-  ``async with game_server.acquire(user_name) as room:`` 进入。
+* 房间**内部状态**的一致性由 ``Room`` 自己的锁负责，统一通过
+  ``async with room_registry.acquire(user_name) as room:`` 进入。
 * 移除房间时 ``remove_room`` 会等待该房间进行中的事务结束再关闭，避免后台 job
   与登出并发写坏状态。
 
@@ -23,17 +21,17 @@ from typing import AsyncGenerator, Dict, List, Optional
 
 from .errors import RoomAlreadyExistsError, RoomNotFoundError
 from .job_context import get_current_job
-from .room import PlayerRoom
+from .room import Room
 
 
 ###############################################################################################################################################
-class GameServer:
-    """游戏服务器类（进程内房间注册表）。"""
+class RoomRegistry:
+    """进程内房间注册表：负责房间的注册 / 注销与空闲回收。"""
 
     def __init__(
         self,
     ) -> None:
-        self._rooms: Dict[str, PlayerRoom] = {}
+        self._rooms: Dict[str, Room] = {}
         self._lock: asyncio.Lock = asyncio.Lock()  # 保护 _rooms 注册表变更
 
     ###############################################################################################################################################
@@ -42,7 +40,7 @@ class GameServer:
         return user_name in self._rooms
 
     ###############################################################################################################################################
-    def get_room(self, user_name: str) -> Optional[PlayerRoom]:
+    def get_room(self, user_name: str) -> Optional[Room]:
         """获取指定玩家的房间（同时刷新其活跃时间）。"""
         room = self._rooms.get(user_name, None)
         if room is not None:
@@ -50,7 +48,7 @@ class GameServer:
         return room
 
     ###############################################################################################################################################
-    def snapshot_rooms(self) -> List[PlayerRoom]:
+    def snapshot_rooms(self) -> List[Room]:
         """返回当前房间的只读快照（不持锁、不刷新活跃时间、不复制游戏状态）。
 
         在无 ``await`` 的瞬间拷贝引用，得到某一时刻的一致视图，供定时器等遍历使用；
@@ -59,7 +57,7 @@ class GameServer:
         return list(self._rooms.values())
 
     ###############################################################################################################################################
-    async def create_room(self, user_name: str) -> PlayerRoom:
+    async def create_room(self, user_name: str) -> Room:
         """为指定玩家创建新房间；房间已存在时抛 ``RoomAlreadyExistsError``。"""
         async with self._lock:
 
@@ -68,12 +66,12 @@ class GameServer:
                 raise RoomAlreadyExistsError(user_name)
 
             # 创建新房间实例并注册到房间表
-            room = PlayerRoom(user_name)
+            room = Room(user_name)
             self._rooms[user_name] = room
             return room
 
     ###############################################################################################################################################
-    async def remove_room(self, user_name: str) -> Optional[PlayerRoom]:
+    async def remove_room(self, user_name: str) -> Optional[Room]:
         """移除并关闭指定玩家的房间。
 
         先从注册表摘除（后续 ``get_room`` 立即不可见），再等待该房间进行中的事务
@@ -108,18 +106,18 @@ class GameServer:
 
             # 从注册表中移除已回收的房间
             async with self._lock:
-                if self._rooms.get(room.username) is room:
-                    self._rooms.pop(room.username, None)
+                if self._rooms.get(room.user_name) is room:
+                    self._rooms.pop(room.user_name, None)
 
             # 将已回收的房间加入回收列表
-            reaped.append(room.username)
+            reaped.append(room.user_name)
 
         # 返回所有已回收的房间列表
         return reaped
 
     ###############################################################################################################################################
     @asynccontextmanager
-    async def acquire(self, user_name: str) -> AsyncGenerator[PlayerRoom, None]:
+    async def acquire(self, user_name: str) -> AsyncGenerator[Room, None]:
         """获取房间并在其事务锁内执行；房间不存在时抛 ``RoomNotFoundError``。
 
         这是进入房间临界区的**统一入口**，后台 job 应优先使用它，避免重复

@@ -2,28 +2,30 @@
 
 HTTP 层与定时器共用这一层，避免每个入口各自重复「查房间 → 取游戏 → 校验游戏名」
 的样板代码。只做读取与前置校验，不进入房间锁；需要写状态时仍用
-``GameServer.acquire``。
+``RoomRegistry.acquire``。
 """
 
 from ..game.context import SRPGGame
 from .errors import GameNameMismatchError, GameNotFoundError, RoomNotFoundError
-from .room import PlayerRoom
-from .server import GameServer
+from .registry import RoomRegistry
+from .room import Room
 
 
 ###############################################################################
-def require_room(game_server: GameServer, user_name: str) -> PlayerRoom:
+def require_room(room_registry: RoomRegistry, user_name: str) -> Room:
     """取房间；不存在时抛 ``RoomNotFoundError``（同时刷新房间活跃时间）。"""
-    room = game_server.get_room(user_name)
+    room = room_registry.get_room(user_name)
     if room is None:
         raise RoomNotFoundError(user_name)
     return room
 
 
 ###############################################################################
-def require_game(game_server: GameServer, user_name: str, game_name: str) -> SRPGGame:
+def require_game(
+    room_registry: RoomRegistry, user_name: str, game_name: str
+) -> SRPGGame:
     """取房间内当前游戏；无房间 / 无游戏 / 游戏名不符分别抛领域异常。"""
-    room = require_room(game_server, user_name)
+    room = require_room(room_registry, user_name)
 
     game = room.game
     if game is None:

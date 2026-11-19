@@ -18,8 +18,8 @@ from ..models import AnyAgentEvent, SessionMessage
 class PlayerSession(BaseModel):
     """用户级会话：脱离单局游戏的「上帝视角」。"""
 
-    # 玩家的唯一标识符(通常是用户名)
-    name: str
+    # 账号标识（与房间、会话历史、快照用同一个词）
+    user_name: str
 
     # 玩家当前控制的游戏角色名称（当前上下文，不是历史身份）
     actor: Optional[str] = None

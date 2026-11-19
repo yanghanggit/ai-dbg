@@ -103,7 +103,7 @@ def test_dumped_prompt_equals_first_memory(tmp_path: pathlib.Path) -> None:
     build_from_blueprint(
         game,
         blueprint,
-        player_name="tester",
+        user_name="tester",
         player_actor=blueprint.player_actor,
     )
 

@@ -43,7 +43,7 @@ def user_name() -> Iterator[str]:
 
 def _build_game() -> SRPGGame:
     game = create_srpg_game(name=GAME_NAME)
-    build_from_blueprint(game, create_seed_blueprint(GAME_NAME), player_name="alice")
+    build_from_blueprint(game, create_seed_blueprint(GAME_NAME), user_name="alice")
     return game
 
 

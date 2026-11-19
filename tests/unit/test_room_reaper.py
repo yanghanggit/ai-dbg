@@ -5,7 +5,8 @@ import time
 from typing import cast
 
 from ai_srpg.game.context import SRPGGame
-from ai_srpg.session.server import GameServer
+from ai_srpg.session.registry import RoomRegistry
+from ai_srpg.session.room import Room
 
 
 class _FakePipeline:
@@ -29,7 +30,7 @@ class _FakeGame:
 
 
 async def test_reap_expired_removes_idle_room() -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     game = _FakeGame()
     room._srpg_game = cast(SRPGGame, game)
@@ -43,7 +44,7 @@ async def test_reap_expired_removes_idle_room() -> None:
 
 
 async def test_reap_expired_keeps_active_room() -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     room._last_active_at = time.monotonic()
 
@@ -55,7 +56,7 @@ async def test_reap_expired_keeps_active_room() -> None:
 
 
 async def test_reap_expired_skips_busy_room() -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     started = asyncio.Event()
     release = asyncio.Event()
@@ -79,10 +80,34 @@ async def test_reap_expired_skips_busy_room() -> None:
 
 
 async def test_get_room_touches_activity() -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     room._last_active_at = 0.0
 
     server.get_room("alice")
 
     assert room._last_active_at > 0.0
+
+
+async def test_close_exits_game_and_clears_state() -> None:
+    """关房与空闲回收必须走同一条拆房路径：都要退出游戏。"""
+    room = Room("alice")
+    game = _FakeGame()
+    room._srpg_game = cast(SRPGGame, game)
+
+    await room.close()
+
+    assert game.pipeline.shutdown_called
+    assert room.is_closed
+    assert room.game is None
+    assert room.session is None
+
+
+async def test_close_is_idempotent() -> None:
+    room = Room("alice")
+    room._srpg_game = cast(SRPGGame, _FakeGame())
+
+    await room.close()
+    await room.close()
+
+    assert room.is_closed

@@ -61,7 +61,7 @@ class EnvironmentComponent(Component):
 class PlayerComponent(Component):
     """标记角色由玩家控制（全局唯一）。"""
 
-    player_name: str
+    user_name: str
 
 
 ############################################################################################################

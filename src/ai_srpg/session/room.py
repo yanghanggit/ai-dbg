@@ -1,6 +1,9 @@
-"""玩家房间模块。
+"""玩家房间：一个用户在进程内的游戏席位。
 
-并发约定：写经 ``transaction()`` 串行；读不加锁，直接取 ``game`` / ``player_session``。
+一房 = 一用户 = 最多一局游戏，房间之间不共享任何状态，只承担三件事：持有当前
+游戏与用户级会话、把写操作串行化、按空闲时间被回收。
+
+并发约定：写经 ``transaction()`` 串行；读不加锁，直接取 ``game`` / ``session``。
 """
 
 import asyncio
@@ -15,29 +18,29 @@ from .player_session import PlayerSession
 
 
 ###############################################################################################################################################
-class PlayerRoom:
-    """游戏房间类。"""
+class Room:
+    """一个用户在当前进程内的游戏席位（持有游戏、会话与房间锁）。"""
 
-    def __init__(self, username: str) -> None:
-        self._username: Final[str] = username
+    def __init__(self, user_name: str) -> None:
+        self._user_name: Final[str] = user_name
         self._srpg_game: Optional[SRPGGame] = None  # SRPGGame 游戏实例
-        self._player_session: Optional[PlayerSession] = None
+        self._session: Optional[PlayerSession] = None
         self._lock: asyncio.Lock = asyncio.Lock()  # 每玩家锁，防止并发状态竞争
         self._closed: bool = False
         self._last_active_at: float = time.monotonic()
 
     ###############################################################################################################################################
     @property
-    def username(self) -> str:
-        return self._username
+    def user_name(self) -> str:
+        return self._user_name
 
     @property
     def game(self) -> Optional[SRPGGame]:
         return self._srpg_game
 
     @property
-    def player_session(self) -> Optional[PlayerSession]:
-        return self._player_session
+    def session(self) -> Optional[PlayerSession]:
+        return self._session
 
     @property
     def is_closed(self) -> bool:
@@ -54,36 +57,43 @@ class PlayerRoom:
 
     ###############################################################################################################################################
     @asynccontextmanager
-    async def transaction(self) -> AsyncGenerator["PlayerRoom", None]:
+    async def transaction(self) -> AsyncGenerator["Room", None]:
         """进入房间临界区，仅用于写变更。"""
         self.touch()
         async with self._lock:
             if self._closed:
-                raise RoomClosedError(self._username)
+                raise RoomClosedError(self._user_name)
             yield self
 
     ###############################################################################################################################################
-    def attach_session(self, player_session: PlayerSession) -> None:
+    def set_session(self, session: PlayerSession) -> None:
         """绑定用户级会话；不依赖当前是否已有游戏。"""
         if self._closed:
-            raise RoomClosedError(self._username)
-        self._player_session = player_session
+            raise RoomClosedError(self._user_name)
+        self._session = session
 
     ###############################################################################################################################################
-    def bind(self, *, game: SRPGGame, player_session: PlayerSession) -> None:
+    def start_game(self, *, game: SRPGGame, session: PlayerSession) -> None:
         """绑定游戏与会话实例，应在 ``transaction()`` 内调用。"""
         if self._closed:
-            raise RoomClosedError(self._username)
+            raise RoomClosedError(self._user_name)
         self._srpg_game = game
-        self._player_session = player_session
+        self._session = session
+
+    ###############################################################################################################################################
+    def _teardown(self) -> None:
+        """退出游戏并清空状态；调用方必须已持有房间锁。"""
+        if self._srpg_game is not None:
+            exit_game(self._srpg_game)
+        self._closed = True
+        self._srpg_game = None
+        self._session = None
 
     ###############################################################################################################################################
     async def close(self) -> None:
-        """等待进行中的事务结束后清空状态并关闭房间。"""
+        """等待进行中的事务结束后退出游戏并关闭房间。"""
         async with self._lock:
-            self._closed = True
-            self._srpg_game = None
-            self._player_session = None
+            self._teardown()
 
     ###############################################################################################################################################
     async def evict_if_idle(self, deadline: float) -> bool:
@@ -98,13 +108,7 @@ class PlayerRoom:
                 return False
 
             # 退出游戏并关闭房间
-            if self._srpg_game is not None:
-                exit_game(self._srpg_game)
-
-            # 标记房间为已关闭并清理游戏与会话实例
-            self._closed = True
-            self._srpg_game = None
-            self._player_session = None
+            self._teardown()
             return True
 
     ###############################################################################################################################################

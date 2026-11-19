@@ -25,18 +25,20 @@ from ai_srpg.pgsql import procrastinate_app
 from ai_srpg.services.api.routes import API_ROUTERS
 from ai_srpg.services.api.schemas import ApiRouteInfo, ServerInfoResponse
 from ai_srpg.services.http_errors import register_room_error_handlers
-from ai_srpg.session.runtime import bind_runtime_game_server
-from ai_srpg.session.server import GameServer
+from ai_srpg.session.registry import RoomRegistry
+from ai_srpg.session.runtime import bind_runtime_room_registry
 
 load_dotenv()
 
 
-async def _room_reaper(game_server: GameServer, ttl: float, interval: float) -> None:
+async def _room_reaper(
+    room_registry: RoomRegistry, ttl: float, interval: float
+) -> None:
     """周期性回收空闲超时且不在忙的房间。"""
     while True:
         await asyncio.sleep(interval)
         try:
-            reaped = await game_server.reap_expired(ttl)
+            reaped = await room_registry.reap_expired(ttl)
         except Exception as e:
             logger.error(f"room reaper error: {e}")
             continue
@@ -46,11 +48,11 @@ async def _room_reaper(game_server: GameServer, ttl: float, interval: float) -> 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """在 FastAPI 生命周期内打开 Procrastinate 并嵌入运行 worker（与 GameServer 单例同进程/同事件循环）"""
+    """在 FastAPI 生命周期内打开 Procrastinate 并嵌入运行 worker（与 RoomRegistry 单例同进程/同事件循环）"""
     async with procrastinate_app.open_async():
-        game_server = GameServer()
-        app.state.game_server = game_server
-        bind_runtime_game_server(game_server)
+        room_registry = RoomRegistry()
+        app.state.room_registry = room_registry
+        bind_runtime_room_registry(room_registry)
         worker_task = asyncio.create_task(
             procrastinate_app.run_worker_async(install_signal_handlers=False)
         )
@@ -59,13 +61,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         reaper_task: Optional[asyncio.Task[None]] = None
         if room_ttl > 0:
             reaper_task = asyncio.create_task(
-                _room_reaper(game_server, room_ttl, reaper_interval)
+                _room_reaper(room_registry, room_ttl, reaper_interval)
             )
         tick_interval = float(os.environ.get("GAME_TICK_INTERVAL_SECONDS", "60"))
         scheduler_task: Optional[asyncio.Task[None]] = None
         if tick_interval > 0:
             scheduler_task = asyncio.create_task(
-                run_gameplay_scheduler(game_server, tick_interval)
+                run_gameplay_scheduler(room_registry, tick_interval)
             )
         try:
             yield

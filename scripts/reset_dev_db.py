@@ -43,7 +43,7 @@ from seeds import create_seed_blueprint
 class UserAccount(BaseModel):
     """初始化时写入的开发测试账号。"""
 
-    username: str
+    user_name: str
     hashed_password: str
     display_name: str
 
@@ -52,7 +52,7 @@ class UserAccount(BaseModel):
 GAME_NAME: Final[str] = "Game1"
 
 TEST_USER: Final[UserAccount] = UserAccount(
-    username="yanghangethan@gmail.com",
+    user_name="yanghangethan@gmail.com",
     hashed_password="$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",  # 明文是 secret
     display_name="yh",
 )
@@ -79,15 +79,15 @@ async def _apply_procrastinate_schema() -> None:
 def _seed_user() -> None:
     """检查并创建测试用户账号。"""
     logger.info("👤 检查测试用户...")
-    if has_user(TEST_USER.username):
-        logger.info(f"测试用户 {TEST_USER.username} 已存在，跳过")
+    if has_user(TEST_USER.user_name):
+        logger.info(f"测试用户 {TEST_USER.user_name} 已存在，跳过")
         return
     save_user(
-        username=TEST_USER.username,
+        user_name=TEST_USER.user_name,
         hashed_password=TEST_USER.hashed_password,
         display_name=TEST_USER.display_name,
     )
-    logger.success(f"✅ 测试用户 {TEST_USER.username} 已创建")
+    logger.success(f"✅ 测试用户 {TEST_USER.user_name} 已创建")
 
 
 ###########################################################################################################

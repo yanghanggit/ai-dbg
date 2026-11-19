@@ -6,19 +6,19 @@ from typing import List
 import pytest
 
 from ai_srpg.gameplay import scheduler
-from ai_srpg.session.room import PlayerRoom
-from ai_srpg.session.server import GameServer
+from ai_srpg.session.registry import RoomRegistry
+from ai_srpg.session.room import Room
 
 
 async def test_tick_calls_hook_under_lock(monkeypatch: pytest.MonkeyPatch) -> None:
-    server = GameServer()
+    server = RoomRegistry()
     await server.create_room("alice")
     seen: List[str] = []
     lock_held: List[bool] = []
 
-    async def hook(room: PlayerRoom) -> None:
+    async def hook(room: Room) -> None:
         lock_held.append(room.is_busy)  # 回调应在房间锁内执行
-        seen.append(room.username)
+        seen.append(room.user_name)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
@@ -29,7 +29,7 @@ async def test_tick_calls_hook_under_lock(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 async def test_tick_skips_busy_room(monkeypatch: pytest.MonkeyPatch) -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     seen: List[str] = []
     started = asyncio.Event()
@@ -43,8 +43,8 @@ async def test_tick_skips_busy_room(monkeypatch: pytest.MonkeyPatch) -> None:
     task = asyncio.create_task(hold())
     await started.wait()
 
-    async def hook(r: PlayerRoom) -> None:
-        seen.append(r.username)
+    async def hook(r: Room) -> None:
+        seen.append(r.user_name)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 
@@ -57,13 +57,13 @@ async def test_tick_skips_busy_room(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_tick_skips_closed_room(monkeypatch: pytest.MonkeyPatch) -> None:
-    server = GameServer()
+    server = RoomRegistry()
     room = await server.create_room("alice")
     await room.close()
     seen: List[str] = []
 
-    async def hook(r: PlayerRoom) -> None:
-        seen.append(r.username)
+    async def hook(r: Room) -> None:
+        seen.append(r.user_name)
 
     monkeypatch.setattr(scheduler, "on_room_tick", hook)
 

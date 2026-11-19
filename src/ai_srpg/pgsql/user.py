@@ -12,7 +12,7 @@ class UserDB(UUIDBase):
     __tablename__ = "users"
 
     # 用户名字段，唯一且不能为空
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    user_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
     # 密码字段，不能为空
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)

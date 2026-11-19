@@ -3,7 +3,7 @@ from .user import UserDB
 
 
 ############################################################################################################
-def save_user(username: str, hashed_password: str, display_name: str) -> UserDB:
+def save_user(user_name: str, hashed_password: str, display_name: str) -> UserDB:
     """
     保存用户到PostgreSQL数据库
     """
@@ -15,7 +15,7 @@ def save_user(username: str, hashed_password: str, display_name: str) -> UserDB:
 
         # 检查用户是否已存在
         user = UserDB(
-            username=username,
+            user_name=user_name,
             hashed_password=hashed_password,
             display_name=display_name,
             # created_at 和 updated_at 会自动处理
@@ -40,7 +40,7 @@ def save_user(username: str, hashed_password: str, display_name: str) -> UserDB:
 
 
 ############################################################################################################
-def has_user(username: str) -> bool:
+def has_user(user_name: str) -> bool:
     """
     检查用户是否存在于PostgreSQL数据库中
     """
@@ -50,7 +50,9 @@ def has_user(username: str) -> bool:
     try:
 
         # 使用参数化查询检查用户是否存在
-        user_exists = db.query(UserDB).filter_by(username=username).first() is not None
+        user_exists = (
+            db.query(UserDB).filter_by(user_name=user_name).first() is not None
+        )
         return user_exists
 
     finally:
@@ -58,7 +60,7 @@ def has_user(username: str) -> bool:
 
 
 ############################################################################################################
-def get_user(username: str) -> UserDB:
+def get_user(user_name: str) -> UserDB:
     """
     从PostgreSQL数据库获取用户
     """
@@ -68,9 +70,9 @@ def get_user(username: str) -> UserDB:
     try:
 
         # 使用参数化查询获取用户对象
-        user = db.query(UserDB).filter_by(username=username).first()
+        user = db.query(UserDB).filter_by(user_name=user_name).first()
         if not user:
-            raise ValueError(f"用户 '{username}' 不存在")
+            raise ValueError(f"用户 '{user_name}' 不存在")
 
         # 返回获取的用户对象
         return user

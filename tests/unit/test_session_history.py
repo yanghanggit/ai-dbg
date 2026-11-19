@@ -60,13 +60,13 @@ def test_open_session_restores_cursor_from_store() -> None:
 
     session = open_session("alice", store=store)
 
-    assert session.name == "alice"
+    assert session.user_name == "alice"
     assert session.event_sequence == 7
 
 
 def test_sink_appends_message_with_current_job_id() -> None:
     store = _FakeStore()
-    session = PlayerSession(name="alice", event_sequence=3)
+    session = PlayerSession(user_name="alice", event_sequence=3)
     sink = SessionEventSink(session, store=store)
 
     token = set_current_job(_FakeJob(job_id=42))
@@ -84,7 +84,7 @@ def test_sink_appends_message_with_current_job_id() -> None:
 
 def test_sink_without_job_context_writes_null_job_id() -> None:
     store = _FakeStore()
-    sink = SessionEventSink(PlayerSession(name="alice"), store=store)
+    sink = SessionEventSink(PlayerSession(user_name="alice"), store=store)
 
     sink.publish(NoneEvent(message="hello"))
 

@@ -19,7 +19,7 @@ from ai_srpg.services.api.rooms import rooms_api_router
 from ai_srpg.services.http_errors import register_room_error_handlers
 from ai_srpg.session.errors import RoomJobBusyError
 from ai_srpg.session.player_session import PlayerSession
-from ai_srpg.session.server import GameServer
+from ai_srpg.session.registry import RoomRegistry
 
 ROOMS = "/api/rooms/v1"
 GAMES = "/api/games/v1"
@@ -32,7 +32,7 @@ def app() -> FastAPI:
     register_room_error_handlers(app)
     app.include_router(rooms_api_router)
     app.include_router(games_api_router)
-    app.state.game_server = GameServer()
+    app.state.room_registry = RoomRegistry()
     return app
 
 
@@ -44,7 +44,7 @@ def client(app: FastAPI) -> TestClient:
 @pytest.fixture(autouse=True)
 def _memory_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
     """会话游标来自存储层；单元测试一律换成内存实现，避免读开发库。"""
-    fresh = lambda user_name: PlayerSession(name=user_name)  # noqa: E731
+    fresh = lambda user_name: PlayerSession(user_name=user_name)  # noqa: E731
     monkeypatch.setattr(rooms_module, "open_session", fresh)
     monkeypatch.setattr(games_module, "open_session", fresh)
 
@@ -86,7 +86,7 @@ def test_enter_is_idempotent(client: TestClient, app: FastAPI) -> None:
     response = client.post(f"{ROOMS}/alice")
 
     assert response.status_code == 200
-    assert len(app.state.game_server.snapshot_rooms()) == 1
+    assert len(app.state.room_registry.snapshot_rooms()) == 1
 
 
 def test_get_unknown_room_is_404(client: TestClient) -> None:
@@ -148,7 +148,7 @@ def test_open_game_does_not_need_room_lock_while_loading(
 
     client.post(f"{GAMES}/alice/Game1")
 
-    room = app.state.game_server.get_room("alice")
+    room = app.state.room_registry.get_room("alice")
     assert room is not None
     assert not room.is_busy
 

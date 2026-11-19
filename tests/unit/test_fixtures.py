@@ -10,7 +10,7 @@ def test_sample_game_fixture(sample_game: Any) -> None:
     assert sample_game is not None
     assert hasattr(sample_game, "name")
     assert sample_game.name == "test_blueprint"
-    assert not hasattr(sample_game, "player_session")
+    assert not hasattr(sample_game, "session")
 
 
 def test_sample_actor_fixture(sample_actor: Any) -> None:

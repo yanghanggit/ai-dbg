@@ -9,8 +9,8 @@ from fastapi import APIRouter, Response, status
 from ...gameplay.session_history import open_session
 from ...session.access import require_room
 from ...session.errors import RoomNotFoundError
-from ...session.room import PlayerRoom
-from ..dependencies import CurrentGameServer
+from ...session.room import Room
+from ..dependencies import CurrentRoomRegistry
 from .schemas import RoomStateResponse
 
 ################################################################################################################
@@ -18,11 +18,11 @@ rooms_api_router = APIRouter(prefix="/api/rooms/v1", tags=["rooms"])
 
 
 ################################################################################################################
-def room_state(room: PlayerRoom) -> RoomStateResponse:
+def room_state(room: Room) -> RoomStateResponse:
     """把房间内存态映射成传输契约。"""
-    session = room.player_session
+    session = room.session
     return RoomStateResponse(
-        user_name=room.username,
+        user_name=room.user_name,
         game=room.game.name if room.game is not None else None,
         session_event_sequence=session.event_sequence if session is not None else 0,
     )
@@ -36,20 +36,20 @@ def room_state(room: PlayerRoom) -> RoomStateResponse:
     summary="进入房间（不存在则创建）",
 )
 async def enter_room(
-    game_server: CurrentGameServer, user_name: str, response: Response
+    room_registry: CurrentRoomRegistry, user_name: str, response: Response
 ) -> RoomStateResponse:
     """进入房间，幂等；新建返回 201，复用已有房间返回 200。"""
 
-    room = game_server.get_room(user_name)
+    room = room_registry.get_room(user_name)
     if room is not None:
         response.status_code = status.HTTP_200_OK
     else:
-        room = await game_server.create_room(user_name)
+        room = await room_registry.create_room(user_name)
 
     # 会话与游戏互不依赖：先进入房间，之后再开局
     async with room.transaction():
-        if room.player_session is None:
-            room.attach_session(open_session(user_name))
+        if room.session is None:
+            room.set_session(open_session(user_name))
 
     return room_state(room)
 
@@ -60,10 +60,12 @@ async def enter_room(
     response_model=RoomStateResponse,
     summary="查询房间状态",
 )
-async def get_room(game_server: CurrentGameServer, user_name: str) -> RoomStateResponse:
+async def get_room(
+    room_registry: CurrentRoomRegistry, user_name: str
+) -> RoomStateResponse:
     """查询房间当前状态；房间不存在时抛 ``RoomNotFoundError``（404）。"""
 
-    return room_state(require_room(game_server, user_name))
+    return room_state(require_room(room_registry, user_name))
 
 
 ################################################################################################################
@@ -72,9 +74,9 @@ async def get_room(game_server: CurrentGameServer, user_name: str) -> RoomStateR
     status_code=status.HTTP_204_NO_CONTENT,
     summary="离开房间（等待进行中的事务结束）",
 )
-async def leave_room(game_server: CurrentGameServer, user_name: str) -> Response:
+async def leave_room(room_registry: CurrentRoomRegistry, user_name: str) -> Response:
     """移除并关闭房间；房间不存在时抛 ``RoomNotFoundError``（404）。"""
 
-    if await game_server.remove_room(user_name) is None:
+    if await room_registry.remove_room(user_name) is None:
         raise RoomNotFoundError(user_name)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -61,7 +61,7 @@ def open_session(
     """从存储恢复会话（只需游标；历史按需增量读取）。"""
     session_store = store or DatabaseSessionMessageStore()
     return PlayerSession(
-        name=user_name,
+        user_name=user_name,
         event_sequence=session_store.latest_sequence(user_name),
     )
 
@@ -85,4 +85,4 @@ class SessionEventSink(DomainEventSink):
             agent_event,
             job_id=current_job_id(),
         )
-        self._store.append(self._session.name, message)
+        self._store.append(self._session.user_name, message)

@@ -10,16 +10,16 @@ from .errors import (
     RoomNotFoundError,
 )
 from .player_session import PlayerSession
-from .room import PlayerRoom
-from .server import GameServer
+from .registry import RoomRegistry
+from .room import Room
 
 __all__ = [
     "GameNameMismatchError",
     "GameNotFoundError",
-    "GameServer",
     "GameStateError",
-    "PlayerRoom",
     "PlayerSession",
+    "Room",
+    "RoomRegistry",
     "RoomAlreadyExistsError",
     "RoomClosedError",
     "RoomJobBusyError",

@@ -13,7 +13,7 @@ from procrastinate import JobContext
 from ..models import JobEvent
 from ..pgsql import append_job_event
 from ..session.job_context import CurrentJob, reset_current_job, set_current_job
-from ..session.room import PlayerRoom
+from ..session.room import Room
 
 
 ###############################################################################
@@ -141,12 +141,12 @@ class JobRun(CurrentJob):
             user_name=user_name,
             store=store,
         )
-        self._room: Optional[PlayerRoom] = None
+        self._room: Optional[Room] = None
 
     ###############################################################################
     def bind_room(self, room: object) -> None:
-        """由 GameServer.acquire 在进入房间事务时调用。"""
-        if not isinstance(room, PlayerRoom):
+        """由 RoomRegistry.acquire 在进入房间事务时调用。"""
+        if not isinstance(room, Room):
             return
         if self._room is not None:
             return

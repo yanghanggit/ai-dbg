@@ -105,7 +105,7 @@ async def test_empty_game_publishes_nothing() -> None:
 async def test_pipeline_writes_session_history_with_job_id() -> None:
     """闭环：pipeline → 事件出口 → 会话历史，消息带当前 job 与游戏上下文。"""
     store = _FakeStore()
-    session = PlayerSession(name="alice")
+    session = PlayerSession(user_name="alice")
     game = create_srpg_game(name="Game1", events=SessionEventSink(session, store=store))
     _make_stage(game, "舞台.营地")
     _make_actor(game, "角色.无名", "舞台.营地")

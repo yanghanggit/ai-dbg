@@ -6,7 +6,7 @@ from ai_srpg.session.player_session import PlayerSession
 
 ###############################################################################
 def test_new_session_starts_at_zero() -> None:
-    session = PlayerSession(name="alice")
+    session = PlayerSession(user_name="alice")
 
     assert session.event_sequence == 0
     assert session.actor is None
@@ -15,7 +15,7 @@ def test_new_session_starts_at_zero() -> None:
 
 
 def test_add_agent_event_allocates_monotonic_sequence() -> None:
-    session = PlayerSession(name="alice")
+    session = PlayerSession(user_name="alice")
 
     first = session.add_agent_event(NoneEvent(message="a"))
     second = session.add_agent_event(NoneEvent(message="b"))
@@ -25,7 +25,7 @@ def test_add_agent_event_allocates_monotonic_sequence() -> None:
 
 
 def test_add_agent_event_uses_context_as_defaults() -> None:
-    session = PlayerSession(name="alice")
+    session = PlayerSession(user_name="alice")
     session.set_context(actor="角色.无名", game="Game1")
 
     message = session.add_agent_event(NoneEvent(message="a"), job_id=9)
@@ -35,7 +35,7 @@ def test_add_agent_event_uses_context_as_defaults() -> None:
 
 
 def test_explicit_values_override_context() -> None:
-    session = PlayerSession(name="alice")
+    session = PlayerSession(user_name="alice")
     session.set_context(actor="角色.无名", game="Game1")
 
     message = session.add_agent_event(
@@ -46,7 +46,7 @@ def test_explicit_values_override_context() -> None:
 
 
 def test_restored_session_continues_from_persisted_cursor() -> None:
-    session = PlayerSession(name="alice", event_sequence=41)
+    session = PlayerSession(user_name="alice", event_sequence=41)
 
     message = session.add_agent_event(NoneEvent(message="a"))
 

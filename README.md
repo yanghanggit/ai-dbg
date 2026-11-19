@@ -101,7 +101,7 @@ uv run ai-srpg-client leave alice                  # 离开房间（快照保留
 
 ### 后台定时任务
 
-服务器在 `lifespan` 内启动两个进程内定时循环（与 `GameServer` 同进程 / 同事件循环）：
+服务器在 `lifespan` 内启动两个进程内定时循环（与 `RoomRegistry` 同进程 / 同事件循环）：
 
 | 环境变量 | 默认 | 说明 |
 | --- | --- | --- |

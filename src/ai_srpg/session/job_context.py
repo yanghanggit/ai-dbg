@@ -18,7 +18,7 @@ class CurrentJob(Protocol):
     job_id: int
 
     def bind_room(self, room: object) -> None:
-        """绑定正在处理的房间；由 GameServer.acquire 调用。"""
+        """绑定正在处理的房间；由 RoomRegistry.acquire 调用。"""
 
     def on_processor_started(self, system: str) -> None:
         """pipeline 开始执行某个 system。"""

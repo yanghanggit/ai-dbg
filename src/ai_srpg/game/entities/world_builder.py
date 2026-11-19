@@ -30,12 +30,12 @@ def build_from_blueprint(
     srpg_game: SRPGGame,
     blueprint: Blueprint,
     *,
-    player_name: str,
+    user_name: str,
     player_actor: Optional[str] = None,
 ) -> None:
     """按蓝图创建并初始化新游戏世界，包括世界、角色和舞台。
 
-    ``blueprint`` 是构建期输入，不写进任何运行时容器；``player_name`` 是玩家身份
+    ``blueprint`` 是构建期输入，不写进任何运行时容器；``user_name`` 是玩家身份
     （来自会话/房间），``player_actor`` 缺省时取蓝图声明的受控角色。两者只在构建期
     使用，之后以 ECS 的 ``PlayerComponent`` 为准。
     """
@@ -49,13 +49,13 @@ def build_from_blueprint(
     create_stage_entities(srpg_game, blueprint.stages)
 
     actor_name = player_actor or blueprint.player_actor
-    assert player_name.strip() != "", "玩家名字不能为空"
+    assert user_name.strip() != "", "玩家名字不能为空"
     assert actor_name.strip() != "", "玩家角色不能为空"
     player_actor_entity = get_actor_entity(srpg_game, actor_name)
     assert player_actor_entity is not None, f"找不到玩家角色实体: {actor_name}"
     assert not player_actor_entity.has(PlayerComponent)
-    player_actor_entity.replace(PlayerComponent, player_name)
-    logger.info(f"玩家: {player_name} 选择控制: {actor_name}")
+    player_actor_entity.replace(PlayerComponent, user_name)
+    logger.info(f"玩家: {user_name} 选择控制: {actor_name}")
 
 
 def _create_world_entities(
