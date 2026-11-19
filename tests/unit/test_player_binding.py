@@ -8,9 +8,23 @@ from typing import Any
 
 import pytest
 
+from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.ecs_context import ECSContext
-from ai_srpg.game.entities import bind_player_actor, get_player_actor_name
-from ai_srpg.models import ActorComponent, PlayerComponent
+from ai_srpg.game.entities import (
+    bind_player_actor,
+    build_from_blueprint,
+    get_player_actor_name,
+    get_player_entity,
+)
+from ai_srpg.models import (
+    Actor,
+    ActorComponent,
+    ActorType,
+    Blueprint,
+    PlayerComponent,
+    Stage,
+    StageType,
+)
 
 
 @pytest.fixture()
@@ -119,3 +133,50 @@ class TestBindPlayerActor:
         """角色名为空白时报错。"""
         with pytest.raises(ValueError, match="角色名不能为空"):
             bind_player_actor(game, "alice", "  ")
+
+
+############################################################################################################
+def _blueprint() -> Blueprint:
+    """单舞台单角色的最小蓝图：谁会玩不写在蓝图里。"""
+    actor = Actor(
+        name="角色.甲",
+        type=ActorType.NONE,
+        profile="角色设定",
+        base_body="体型",
+        system_message="# 角色.甲",
+    )
+    stage = Stage(
+        name="舞台.甲",
+        type=StageType.NONE,
+        profile="舞台设定",
+        system_message="# 舞台.甲",
+        actors=[actor],
+    )
+    return Blueprint(
+        name="TestGame",
+        campaign_setting="设定",
+        global_rules="规则",
+        stages=[stage],
+        world_entities=[],
+    )
+
+
+############################################################################################################
+class TestBuildFromBlueprintBinding:
+    def test_binds_nobody_when_no_actor_is_chosen(self) -> None:
+        """蓝图不声明谁可玩：不指定就不绑定，进场后再认领。"""
+        game = create_srpg_game(name="TestGame")
+
+        build_from_blueprint(game, _blueprint(), user_name="alice")
+
+        assert get_player_entity(game, "alice") is None
+
+    def test_binds_the_chosen_actor(self) -> None:
+        """任意角色都能被接管，不需要蓝图先声明「可玩」。"""
+        game = create_srpg_game(name="TestGame")
+
+        build_from_blueprint(
+            game, _blueprint(), user_name="alice", player_actor="角色.甲"
+        )
+
+        assert get_player_actor_name(game, "alice") == "角色.甲"

@@ -8,9 +8,9 @@
 
 - ``x = entity.get(Xxx)`` / ``x = entity.get(Xxx).attr`` 后对 ``x`` 做
   字段赋值、切片赋值、``append/extend/clear/pop/remove/...``、``shuffle`` 等；
-- 直接链式 ``entity.get(Xxx).cards.append(...)``；
-- 通过「返回组件内部活引用」的模块内辅助函数（如 ``_pile_cards``、
-  ``read_pile_cards``）拿到的列表再做同样的事。
+- 直接链式 ``entity.get(Xxx).slots.append(...)``；
+- 通过「返回组件内部活引用」的模块内辅助函数（如 ``_pile_slots``、
+  ``read_pile_slots``）拿到的列表再做同样的事。
 
 ``tests/`` 整体豁免：测试需要直接构造与篡改组件状态。
 现有运行期违规登记在 :data:`GRANDFATHERED`（按 ``(文件, 函数)`` 记录），
@@ -136,7 +136,7 @@ def _is_live_value(node: ast.expr, providers: Dict[str, int]) -> bool:
 def _plain_root_name(node: ast.expr) -> Optional[str]:
     """只沿属性 / 下标回溯到名字；遇到函数调用就放弃。
 
-    别名传播必须走这条路径：``cards = deck.cards.copy()`` 得到的是新列表，
+    别名传播必须走这条路径：``slots = loadout.slots.copy()`` 得到的是新列表，
     不应被视为组件内部活引用的别名。
     """
     current = node
@@ -150,7 +150,7 @@ def _plain_root_name(node: ast.expr) -> Optional[str]:
 def _tracked_names(fn: ast.AST, providers: Dict[str, int]) -> Dict[str, str]:
     """收集函数内「当前持有组件活引用」的局部名字。
 
-    按行号顺序模拟赋值：``x = entity.get(X)`` 记为活引用；``x = y.cards``
+    按行号顺序模拟赋值：``x = entity.get(X)`` 记为活引用；``x = y.slots``
     继承别名；``x = y.model_copy()`` 这类会脱离活引用的赋值则把 ``x`` 取消跟踪。
     ``for x in <活引用>`` 的循环变量也按元素活引用处理。
     """
@@ -237,7 +237,7 @@ def _iter_is_live(
 
 
 def _module_providers(tree: ast.AST) -> Dict[str, int]:
-    """找出「返回组件内部活引用」的模块内函数（如 ``_pile_cards``）。"""
+    """找出「返回组件内部活引用」的模块内函数（如 ``_pile_slots``）。"""
     functions = [
         node
         for node in ast.walk(tree)
@@ -411,8 +411,8 @@ def test_grandfathered_violations_are_all_fixed_or_listed() -> None:
 def test_checker_flags_assigned_component_mutation() -> None:
     source = """
 def react(self, entity):
-    comp = entity.get(HandComponent)
-    comp.cards = []
+    comp = entity.get(InventoryComponent)
+    comp.slots = []
 """
     violations = _check_source(source, "src/ai_srpg/game/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 4)]
@@ -430,9 +430,9 @@ def react(self, entity):
 def test_checker_flags_list_mutation_via_alias() -> None:
     source = """
 def react(self, entity):
-    hand = entity.get(HandComponent)
-    cards = hand.cards
-    cards.pop(0)
+    inventory = entity.get(InventoryComponent)
+    slots = inventory.slots
+    slots.pop(0)
 """
     violations = _check_source(source, "src/ai_srpg/game/systems/fake.py")
     assert [(v.function, v.line) for v in violations] == [("react", 5)]
@@ -450,12 +450,12 @@ def react(self, entity):
 
 def test_checker_flags_provider_helper_mutation() -> None:
     source = """
-def _pile_cards(entity, pile):
-    return entity.get(HandComponent).cards
+def _pile_slots(entity, pile):
+    return entity.get(InventoryComponent).slots
 
 def react(self, entity):
-    _pile_cards(entity, "hand").append(card)
-    target = _pile_cards(entity, "hand")
+    _pile_slots(entity, "inventory").append(slot)
+    target = _pile_slots(entity, "inventory")
     target.clear()
 """
     violations = _check_source(source, "src/ai_srpg/game/systems/fake.py")
@@ -468,9 +468,9 @@ def react(self, entity):
 def test_checker_allows_readonly_get_and_replace() -> None:
     source = """
 def react(self, entity):
-    comp = entity.get(HandComponent)
-    count = len(comp.cards)
-    entity.replace(HandComponent, comp.name, list(comp.cards))
+    comp = entity.get(InventoryComponent)
+    count = len(comp.slots)
+    entity.replace(InventoryComponent, comp.name, list(comp.slots))
     entity.get(PlayerComponent)
 """
     assert _check_source(source, "src/ai_srpg/game/systems/fake.py") == []
@@ -489,8 +489,8 @@ def build(processors, seen, db):
 def test_checker_exempts_tests_directory() -> None:
     source = """
 def make(entity):
-    comp = entity.get(HandComponent)
-    comp.cards = []
+    comp = entity.get(InventoryComponent)
+    comp.slots = []
 """
     path = ROOT / "tests" / "unit" / "fake_test.py"
     assert _check_file(path) == []

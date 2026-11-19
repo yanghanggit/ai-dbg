@@ -50,7 +50,7 @@ def _kinds(store: MemoryStore) -> List[str]:
 
 def test_recorder_records_system_lifecycle() -> None:
     store = MemoryStore()
-    recorder = JobRecorder(7, action="play_cards", store=store)
+    recorder = JobRecorder(7, action="advance_game", store=store)
 
     recorder.started()
     recorder.on_processor_started("A")
@@ -63,7 +63,7 @@ def test_recorder_records_system_lifecycle() -> None:
         "system_finished",
         "job_succeeded",
     ]
-    assert store.events[0].payload["action"] == "play_cards"
+    assert store.events[0].payload["action"] == "advance_game"
     assert store.events[2].payload["duration_ms"] == 1.25
 
 

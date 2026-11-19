@@ -65,8 +65,8 @@ def _root_name(node: ast.expr) -> Optional[str]:
 def _looks_like_component_type(node: ast.expr) -> bool:
     """判断首个位置参数是否「像一个组件类」。
 
-    只认首字母大写的名字、属性访问链或它们的下标（例如 ``CardComponent``、
-    ``models.CardComponent``）。容器类的 add 通常传实例、字符串或小写变量，
+    只认首字母大写的名字、属性访问链或它们的下标（例如 ``ActorComponent``、
+    ``models.ActorComponent``）。容器类的 add 通常传实例、字符串或小写变量，
     因此不会命中。
     """
     if isinstance(node, ast.Subscript):

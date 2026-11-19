@@ -17,9 +17,9 @@
 ```python
 entity.get(Comp).field = value          # 字段赋值
 entity.get(Comp).items.append(x)        # 容器原地增删
-entity.get(Comp).cards[:] = []          # 切片赋值
+entity.get(Comp).slots[:] = []          # 切片赋值
 entity.get(Comp).stats.hp = 1           # 改嵌套模型
-random.shuffle(entity.get(Comp).cards)  # 交给原地修改的函数
+random.shuffle(entity.get(Comp).slots)  # 交给原地修改的函数
 ```
 
 需要改嵌套数据时，先构造新值，再整体写回：
@@ -80,7 +80,7 @@ context.destroy_entity(hero)
 - `remove()`：移除组件。
 
 `get()` 是**只读**的：拿到组件后不要直接改它的字段，也不要改它内部持有的列表、
-字典或嵌套模型（`component.cards.append(...)`、`component.stats.hp = ...` 都属于隐式
+字典或嵌套模型（`component.slots.append(...)`、`component.stats.hp = ...` 都属于隐式
 写入）。这类修改不经过 `replace`，不会触发事件，也不会被分组 / 反应式系统观察到。
 
 `Component` 默认 `frozen=True`：直接给字段赋值会被 Pydantic 拒绝，因此字段级写入

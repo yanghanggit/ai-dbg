@@ -21,7 +21,6 @@ from ai_srpg.models import (
 def _blueprint() -> Blueprint:
     return Blueprint(
         name="TestGame",
-        player_actor="角色.甲",
         campaign_setting="设定",
         global_rules="规则",
         stages=[
@@ -104,7 +103,7 @@ def test_dumped_prompt_equals_first_memory(tmp_path: pathlib.Path) -> None:
         game,
         blueprint,
         user_name="tester",
-        player_actor=blueprint.player_actor,
+        player_actor="角色.甲",
     )
 
     stage = get_stage_entity(game, "舞台.营")

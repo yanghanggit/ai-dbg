@@ -36,8 +36,9 @@ def build_from_blueprint(
     """按蓝图创建并初始化新游戏世界，包括世界、角色和舞台。
 
     ``blueprint`` 是构建期输入，不写进任何运行时容器；``user_name`` 是玩家身份
-    （来自会话/房间），``player_actor`` 缺省时取蓝图声明的受控角色。两者只在构建期
-    使用，之后以 ECS 的 ``PlayerComponent`` 为准。
+    （来自会话/房间）。``player_actor`` 指定本局该玩家控制哪个角色——蓝图不声明谁可玩，
+    任何角色都能被接管；不指定则不绑定，进场后再认领。两者只在构建期使用，之后以 ECS
+    的 ``PlayerComponent`` 为准。
     """
     assert srpg_game.entity_count == 0, "游戏中有实体，不能创建新的游戏"
 
@@ -48,9 +49,9 @@ def build_from_blueprint(
     )
     create_stage_entities(srpg_game, blueprint.stages)
 
-    actor_name = player_actor or blueprint.player_actor
-    bind_player_actor(srpg_game, user_name, actor_name)
-    logger.info(f"玩家: {user_name} 选择控制: {actor_name}")
+    if player_actor is not None:
+        bind_player_actor(srpg_game, user_name, player_actor)
+        logger.info(f"玩家: {user_name} 选择控制: {player_actor}")
 
 
 def _create_world_entities(
