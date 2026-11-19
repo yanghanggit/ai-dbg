@@ -5,10 +5,11 @@ from typing import Final, FrozenSet, Iterable, Type, final, override
 from ...entitas import CleanupProcessor, ExecuteProcessor, Matcher
 from ...entitas.components import Component
 from ..context import SRPGGame
+from .system_mixin import SystemMixin
 
 
 @final
-class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
+class ActionCleanupSystem(SystemMixin, ExecuteProcessor, CleanupProcessor):
     """在 execute 尾部与 cleanup 兜底两个阶段清理动作组件。
 
     execute 是正常运行时的清理点；cleanup 是 execute 提前失败后的兜底。
@@ -21,7 +22,7 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
         game: SRPGGame,
         action_component_types: Iterable[Type[Component]],
     ) -> None:
-        self._game: Final[SRPGGame] = game
+        super().__init__(game)
         self._registered_actions: Final[FrozenSet[Type[Component]]] = frozenset(
             action_component_types
         )

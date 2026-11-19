@@ -1,7 +1,7 @@
 """舞台心跳 system：发布链路与「第一段业务」的接线。
 
-覆盖三件事：每个有角色的舞台只广播一次、广播同时进入 agent 记忆、以及事件经
-``SessionEventSink`` 落进会话历史并带上当前 job 标识。
+覆盖四件事：每个有角色的局部舞台只广播一次、广播同时进入 agent 记忆、全局舞台
+不参与、以及事件经 ``SessionEventSink`` 落进会话历史并带上当前 job 标识。
 """
 
 from typing import Any, List
@@ -14,7 +14,12 @@ from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.game.pipelines.runner import process_pipeline
 from ai_srpg.game.systems.stage_pulse_system import StagePulseSystem
 from ai_srpg.gameplay.session_history import SessionEventSink
-from ai_srpg.models import ActorComponent, SessionMessage, StageComponent
+from ai_srpg.models import (
+    ActorComponent,
+    GlobalStageComponent,
+    SessionMessage,
+    StageComponent,
+)
 from ai_srpg.session.job_context import reset_current_job, set_current_job
 from ai_srpg.session.player_session import PlayerSession
 from ai_srpg.session.room import Room
@@ -99,6 +104,20 @@ async def test_broadcast_reaches_stage_and_actors_memory() -> None:
     assert get_agent_memory(game, actor).messages[-1].content.startswith("舞台.营地：")
 
 
+async def test_global_stage_is_never_broadcast() -> None:
+    """全局舞台没有「在场者」，即使站着角色也不发局部广播。"""
+    game = create_srpg_game(name="Game1", events=RecordingEventSink())
+    battlefield = _make_stage(game, "舞台.战场")
+    battlefield.add(GlobalStageComponent, 5, 5)
+    _make_actor(game, "角色.游荡者", "舞台.战场")
+
+    await StagePulseSystem(game).execute()
+
+    assert game.events.events == []  # type: ignore[attr-defined]
+    assert get_agent_memory(game, battlefield).messages == []
+
+
+###############################################################################
 async def test_empty_game_publishes_nothing() -> None:
     game = create_srpg_game(name="Game1", events=RecordingEventSink())
 

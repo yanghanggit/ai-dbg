@@ -1,22 +1,18 @@
 """Pipeline 首端：每轮开跑前检查全局不变量，第一项是「角色都在舞台上」。"""
 
-from typing import Final, final, override
+from typing import final, override
 
 from loguru import logger
 
 from ...entitas import ExecuteProcessor, Matcher
 from ...models import ActorComponent
-from ..context import SRPGGame
 from ..entities import get_stage_entity
+from .system_mixin import SystemMixin
 
 
 @final
-class PrologueSystem(ExecuteProcessor):
+class PrologueSystem(SystemMixin, ExecuteProcessor):
     """Pipeline 首端占位系统：只做不变量检查，其余前置操作留待将来扩展。"""
-
-    ############################################################################################################
-    def __init__(self, game: SRPGGame) -> None:
-        self._game: Final[SRPGGame] = game
 
     ############################################################################################################
     @override

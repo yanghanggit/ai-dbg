@@ -1,8 +1,7 @@
-"""舞台广播与定向通知。
+"""事件投递原语：把一条事件写进指定实体的记忆，并发布到游戏的事件出口。
 
-两条投递路径只差「目标集合怎么来」与「是否标记广播范围」：投递与发布事件本身是
-同一件事，因此统一由 ``notify_entities`` 完成，``broadcast_to_stage`` 只负责解析
-目标。
+「向哪个范围投递」属于系统层，由 ``game/systems`` 里的 mixin 负责解析；这里只管
+投递本身，不认识舞台、角色与广播范围。
 """
 
 from typing import Any, Dict, Optional, Set
@@ -10,24 +9,7 @@ from typing import Any, Dict, Optional, Set
 from ...entitas import Entity
 from ...models import AnyAgentEvent, HumanMessage
 from ..context import SRPGGame
-from ..entities import get_actors_in_stage, resolve_stage_entity
 from ..memory.access import add_human_message
-
-
-#################################################################################################################################################
-def broadcast_to_stage(
-    srpg_game: SRPGGame,
-    entity: Entity,
-    agent_event: AnyAgentEvent,
-    exclude_entities: Optional[Set[Entity]] = None,
-) -> None:
-    """向舞台内所有角色与舞台实体广播事件。"""
-    stage_entity = resolve_stage_entity(srpg_game, entity)
-    assert stage_entity is not None, f"{entity.name} 无所在舞台，无法广播"
-
-    excluded = exclude_entities or set()
-    targets = (get_actors_in_stage(srpg_game, stage_entity) | {stage_entity}) - excluded
-    notify_entities(srpg_game, targets, agent_event, broadcast_stage=stage_entity.name)
 
 
 #################################################################################################################################################

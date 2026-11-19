@@ -6,7 +6,7 @@ Unit tests for game lifecycle/entity/memory/broadcast functions
   - destroy_entity（含 agent 记忆清理）
   - add_system_message
   - notify_entities
-  - broadcast_to_stage
+  - StageBroadcastMixin.broadcast_to_local_stage
   - exit / initialize（冒烟测试）
 """
 
@@ -17,10 +17,7 @@ import pytest
 
 from ai_srpg.entitas.entity import Entity
 from ai_srpg.game.context import SRPGGame
-from ai_srpg.game.events.publish import (
-    broadcast_to_stage,
-    notify_entities,
-)
+from ai_srpg.game.events.publish import notify_entities
 from ai_srpg.game.lifecycle import (
     exit_game,
     initialize_game,
@@ -30,8 +27,10 @@ from ai_srpg.game.memory import (
     add_system_message,
     get_agent_memory,
 )
+from ai_srpg.game.systems.stage_broadcast_mixin import StageBroadcastMixin
 from ai_srpg.models import (
     ActorComponent,
+    GlobalStageComponent,
     HumanMessage,
     IdentityComponent,
     NoneEvent,
@@ -217,7 +216,7 @@ class TestNotifyEntities:
 
 
 # ---------------------------------------------------------------------------
-# broadcast_to_stage
+# broadcast_to_local_stage
 # ---------------------------------------------------------------------------
 
 
@@ -228,7 +227,9 @@ class TestBroadcastToStage:
         a1 = _make_actor(game, "NPC_1", "Stage_1")
         a2 = _make_actor(game, "NPC_2", "Stage_1")
 
-        broadcast_to_stage(game, stage, _agent_event("stage msg"))
+        StageBroadcastMixin(game).broadcast_to_local_stage(
+            stage, _agent_event("stage msg")
+        )
 
         assert get_agent_memory(game, stage).messages[-1].content == "stage msg"
         assert get_agent_memory(game, a1).messages[-1].content == "stage msg"
@@ -240,8 +241,8 @@ class TestBroadcastToStage:
         a1 = _make_actor(game, "NPC_3", "Stage_2")
         a2 = _make_actor(game, "NPC_4", "Stage_2")
 
-        broadcast_to_stage(
-            game, stage, _agent_event("exclusive"), exclude_entities={a2}
+        StageBroadcastMixin(game).broadcast_to_local_stage(
+            stage, _agent_event("exclusive"), exclude_entities={a2}
         )
 
         # a1 and stage get it, a2 is excluded
@@ -255,7 +256,9 @@ class TestBroadcastToStage:
         other_stage = _make_stage(game, "Stage_other")  # must exist for actor resolve
         unrelated_actor = _make_actor(game, "NPC_5", "Stage_other")
 
-        broadcast_to_stage(game, stage, _agent_event("empty stage msg"))
+        StageBroadcastMixin(game).broadcast_to_local_stage(
+            stage, _agent_event("empty stage msg")
+        )
 
         assert get_agent_memory(game, stage).messages[-1].content == "empty stage msg"
         assert len(get_agent_memory(game, unrelated_actor).messages) == 0
@@ -266,7 +269,7 @@ class TestBroadcastToStage:
         actor = _make_actor(game, "NPC_6", "Stage_4")
         event = NoneEvent(message="喊了一声")
 
-        broadcast_to_stage(game, actor, event)
+        StageBroadcastMixin(game).broadcast_to_local_stage(actor, event)
 
         for entity in (stage, actor):
             message: Any = get_agent_memory(game, entity).messages[-1]
@@ -276,8 +279,21 @@ class TestBroadcastToStage:
     def test_broadcast_asserts_on_entity_without_stage(self, game: Any) -> None:
         """传入没有 StageComponent 也没有 ActorComponent 的实体触发 AssertionError。"""
         plain_entity = game.create_entity("PlainEntity")
-        with pytest.raises(AssertionError):
-            broadcast_to_stage(game, plain_entity, _agent_event("fail"))
+        with pytest.raises(AssertionError, match="无法解析 Stage 实体"):
+            StageBroadcastMixin(game).broadcast_to_local_stage(
+                plain_entity, _agent_event("fail")
+            )
+
+    def test_broadcast_rejects_global_stage(self, game: Any) -> None:
+        """全局舞台没有「在场者」，局部广播必须当场拒绝。"""
+        battlefield = game.create_entity("Stage_global")
+        battlefield.add(StageComponent, None)
+        battlefield.add(GlobalStageComponent, 5, 5)
+
+        with pytest.raises(AssertionError, match="全局舞台"):
+            StageBroadcastMixin(game).broadcast_to_local_stage(
+                battlefield, _agent_event("map wide")
+            )
 
 
 # ---------------------------------------------------------------------------

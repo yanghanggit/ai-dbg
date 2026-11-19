@@ -6,18 +6,15 @@ from loguru import logger
 
 from ...entitas import ExecuteProcessor, Matcher
 from ...models import DestroyComponent
-from ..context import SRPGGame
+from .system_mixin import SystemMixin
 
 
 @final
-class DestroyEntitySystem(ExecuteProcessor):
+class DestroyEntitySystem(SystemMixin, ExecuteProcessor):
     """每帧查找持有 DestroyComponent 的实体并将其销毁。
 
     用法：注册为 ExecuteProcessor，向实体添加 DestroyComponent 即可标记其待销毁。
     """
-
-    def __init__(self, game: SRPGGame) -> None:
-        self._game: SRPGGame = game
 
     ####################################################################################################################################
     @override
