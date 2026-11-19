@@ -75,9 +75,9 @@ def _build(game: Any, *stages: StageBlueprint) -> None:
             name="DynamicComponentTest",
             campaign_setting="设定",
             global_rules="规则",
-            root_stage=root,
+            stage_tree=root,
             actors=[],
-            world_entities=[],
+            worlds=[],
         ),
     )
 

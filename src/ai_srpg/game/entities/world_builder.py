@@ -42,12 +42,12 @@ def build_from_blueprint(srpg_game: SRPGGame, blueprint: Blueprint) -> None:
 
     _assert_unique_names(blueprint)
 
-    for world in blueprint.world_entities:
+    for world in blueprint.worlds:
         _create_entity(srpg_game, world, WorldComponent, "世界")
 
-    _create_stage_tree(srpg_game, blueprint.root_stage)
+    _create_stage_tree(srpg_game, blueprint.stage_tree)
 
-    stage_names = {stage.name for stage, _ in walk_stages(blueprint.root_stage)}
+    stage_names = {stage.name for stage, _ in walk_stages(blueprint.stage_tree)}
     for actor in blueprint.actors:
         actor_entity = _create_entity(srpg_game, actor, ActorComponent, "角色")
         _assert_actor_on_declared_stage(actor_entity, stage_names)
@@ -158,9 +158,9 @@ def _assert_placed_on_parent(
 ###############################################################################################################################################
 def _assert_unique_names(blueprint: Blueprint) -> None:
     """实体名是 ECS 的索引键；重名会静默覆盖，必须在装配期拦住。"""
-    names = [world.name for world in blueprint.world_entities]
+    names = [world.name for world in blueprint.worlds]
     names.extend(actor.name for actor in blueprint.actors)
-    names.extend(stage.name for stage, _ in walk_stages(blueprint.root_stage))
+    names.extend(stage.name for stage, _ in walk_stages(blueprint.stage_tree))
 
     duplicates = sorted({name for name in names if names.count(name) > 1})
     assert (

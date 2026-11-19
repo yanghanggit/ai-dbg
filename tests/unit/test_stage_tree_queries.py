@@ -59,7 +59,7 @@ def _blueprint(world_count: int = 1) -> Blueprint:
         name="TreeTest",
         campaign_setting="设定",
         global_rules="规则",
-        root_stage=root,
+        stage_tree=root,
         actors=[
             ActorBlueprint(
                 name="角色.游荡者",
@@ -72,7 +72,7 @@ def _blueprint(world_count: int = 1) -> Blueprint:
                 components={"ActorComponent": {"current_stage": "舞台.铁匠铺"}},
             ),
         ],
-        world_entities=[
+        worlds=[
             WorldBlueprint(
                 name=f"世界.{index}",
                 system_message=f"世界.{index}",

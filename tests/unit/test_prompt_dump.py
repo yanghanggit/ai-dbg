@@ -21,7 +21,7 @@ def _blueprint() -> Blueprint:
         name="TestGame",
         campaign_setting="设定",
         global_rules="规则",
-        root_stage=StageBlueprint(
+        stage_tree=StageBlueprint(
             name="舞台.营",
             system_message="# 舞台.营\n\n舞台 prompt",
             components={
@@ -36,7 +36,7 @@ def _blueprint() -> Blueprint:
                 components={"ActorComponent": {"current_stage": "舞台.营"}},
             )
         ],
-        world_entities=[
+        worlds=[
             WorldBlueprint(
                 name="世界.主",
                 system_message="# 世界.主\n\n世界 prompt",
@@ -85,7 +85,7 @@ def test_removes_stale_files_from_previous_export(tmp_path: pathlib.Path) -> Non
 
 def test_entity_name_is_sanitized(tmp_path: pathlib.Path) -> None:
     blueprint = _blueprint()
-    blueprint.world_entities[0].name = "世界.主/副"
+    blueprint.worlds[0].name = "世界.主/副"
 
     target = dump_blueprint_prompts(blueprint, directory=tmp_path / "bp")
 

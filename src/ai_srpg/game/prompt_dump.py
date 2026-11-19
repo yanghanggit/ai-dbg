@@ -31,9 +31,9 @@ def _safe_name(name: str) -> str:
 def _prompt_entries(blueprint: Blueprint) -> List[Tuple[str, str, str]]:
     """(类别, 实体全名, system prompt)，顺序：世界 → 舞台 → 角色。"""
     entries: List[Tuple[str, str, str]] = []
-    for world in blueprint.world_entities:
+    for world in blueprint.worlds:
         entries.append(("world", world.name, world.system_message))
-    for stage, _ in walk_stages(blueprint.root_stage):
+    for stage, _ in walk_stages(blueprint.stage_tree):
         entries.append(("stage", stage.name, stage.system_message))
     for actor in blueprint.actors:
         entries.append(("actor", actor.name, actor.system_message))

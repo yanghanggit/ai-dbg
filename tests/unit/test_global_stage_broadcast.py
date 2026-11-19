@@ -76,14 +76,14 @@ def _blueprint() -> Blueprint:
         name="BroadcastTest",
         campaign_setting="设定",
         global_rules="规则",
-        root_stage=root,
+        stage_tree=root,
         actors=[
             _entity("角色.营中人", CAMP),
             _entity("角色.铁匠", FORGE),
             _entity("角色.哨兵", OUTPOST),
             _entity("角色.矿工", MINE),
         ],
-        world_entities=[
+        worlds=[
             WorldBlueprint(
                 name="世界.甲",
                 system_message="世界.甲",
@@ -145,7 +145,7 @@ def test_radius_zero_only_covers_the_origin_stage() -> None:
 def test_radius_is_chebyshev() -> None:
     """距离按八方向算：(0,0) 到 (1,1) 也是一格。"""
     blueprint = _blueprint()
-    blueprint.root_stage.children[1].position = Position(x=1, y=1)
+    blueprint.stage_tree.children[1].position = Position(x=1, y=1)
     game = create_srpg_game(name="BroadcastTest", events=RecordingEventSink())
     build_from_blueprint(game, blueprint)
 

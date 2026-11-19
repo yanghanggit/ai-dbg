@@ -101,9 +101,9 @@ def create_blueprint(game_name: str) -> Blueprint:
         name=game_name,
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
-        root_stage=create_battlefield(),
+        stage_tree=create_battlefield(),
         actors=[create_nameless()],
-        world_entities=[create_starless_world()],
+        worlds=[create_starless_world()],
     )
 
 

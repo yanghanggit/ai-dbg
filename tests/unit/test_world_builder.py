@@ -80,7 +80,7 @@ def _blueprint(
         name="BuildTest",
         campaign_setting="设定",
         global_rules="规则",
-        root_stage=(
+        stage_tree=(
             root
             if root is not None
             else _battlefield(children=[_camp(Position(x=2, y=2))])
@@ -100,7 +100,7 @@ def _blueprint(
                 )
             ]
         ),
-        world_entities=[_world()] if worlds is None else worlds,
+        worlds=[_world()] if worlds is None else worlds,
     )
 
 

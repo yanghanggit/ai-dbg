@@ -153,9 +153,9 @@ def _blueprint() -> Blueprint:
         name="TestGame",
         campaign_setting="设定",
         global_rules="规则",
-        root_stage=stage,
+        stage_tree=stage,
         actors=[actor],
-        world_entities=[],
+        worlds=[],
     )
 
 

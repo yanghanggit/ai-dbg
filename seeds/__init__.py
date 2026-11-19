@@ -34,11 +34,11 @@ _WORLD_ENTITY_REF_PATTERN: Final[re.Pattern[str]] = re.compile(r"世界\.\w+")
 ###############################################################################
 def _iter_prompt_messages(blueprint: Blueprint) -> Iterator[Tuple[str, str]]:
     """遍历蓝图里所有实体的 (实体名, system_message)。"""
-    for stage, _ in walk_stages(blueprint.root_stage):
+    for stage, _ in walk_stages(blueprint.stage_tree):
         yield stage.name, stage.system_message
     for actor in blueprint.actors:
         yield actor.name, actor.system_message
-    for world in blueprint.world_entities:
+    for world in blueprint.worlds:
         yield world.name, world.system_message
 
 
@@ -49,7 +49,7 @@ def _check_world_references(blueprint: Blueprint) -> None:
     世界实体名只用于系统路由；写在故事层 prompt 里一旦改名不会有任何报错，
     prompt 只是悄悄指向一个不存在的实体。校验放在出厂处，构建时直接失败。
     """
-    known = {world.name for world in blueprint.world_entities}
+    known = {world.name for world in blueprint.worlds}
     dangling = [
         f"{entity_name} → {ref}"
         for entity_name, message in _iter_prompt_messages(blueprint)
