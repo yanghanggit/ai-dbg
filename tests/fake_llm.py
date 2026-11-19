@@ -4,9 +4,9 @@
 monkeypatch 覆盖即可。
 """
 
-from typing import List, Sequence
+from typing import Any, List, Sequence
 
-from ai_srpg.llm import ChatCompletionRequest, ChatCompletionResult
+from ai_srpg.llm import AgentLoopResult, ChatCompletionRequest, ChatCompletionResult
 from ai_srpg.models import AIMessage
 
 #: 固定回复的前缀；断言「确实刷新过」时按它匹配
@@ -43,4 +43,21 @@ def failed_completion(
 
 
 ###############################################################################
-__all__ = ["FAKE_DESCRIPTION_PREFIX", "failed_completion", "fake_completion"]
+async def fake_agent_loop(**kwargs: Any) -> AgentLoopResult:
+    """空转的 agent loop：成功、不调用工具、不联网。"""
+    messages = kwargs["messages"]
+    return AgentLoopResult(
+        success=True,
+        start_index=len(messages),
+        end_index=len(messages),
+        messages=messages,
+    )
+
+
+###############################################################################
+__all__ = [
+    "FAKE_DESCRIPTION_PREFIX",
+    "fake_agent_loop",
+    "failed_completion",
+    "fake_completion",
+]

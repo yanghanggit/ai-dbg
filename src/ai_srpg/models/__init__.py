@@ -6,10 +6,12 @@
 
 from .actions import (
     ACTION_COMPONENT_TYPES,
+    ActorPlanAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
 )
+from .actor_summary import ActorSummary
 from .agent_event import AgentEvent, AnyAgentEvent, NoneEvent
 from .agent_memory import AgentMemory
 from .agent_memory_snapshot import MEMORY_SNAPSHOT_FORMAT_VERSION, AgentMemorySnapshot
@@ -87,6 +89,7 @@ __all__ = [
     "ASSET_META_SUFFIX",
     "ActorBlueprint",
     "ActorComponent",
+    "ActorSummary",
     "AgentEvent",
     "AgentMemory",
     "AgentMemorySnapshot",
@@ -121,6 +124,7 @@ __all__ = [
     "MsgT",
     "NoneEvent",
     "NPCComponent",
+    "ActorPlanAction",
     "PlayerComponent",
     "PositionComponent",
     "RefreshAppearanceAction",

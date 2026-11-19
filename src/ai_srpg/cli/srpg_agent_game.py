@@ -9,6 +9,8 @@
   bind             接管一个已有角色并写入快照
   snapshots        列出快照历史
   stages           列出舞台-角色映射
+  actors           列出角色名册（所在舞台、控制者、当前外观）
+  plan             让一个或多个角色做本轮计划
   compact-context  手动压缩指定实体的 LLM 记忆并保存快照
   advance          执行一次 pass 并保存结果快照
 """
@@ -31,10 +33,12 @@ from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
 from ai_srpg.paths import LOGS_DIR
 from ai_srpg.srpg_game_agent.compact import compact_context_game
 from ai_srpg.srpg_game_agent.core import (
+    actors_game,
     advance_game,
     bind_actor_game,
     create_and_initialize_game,
     list_games_game,
+    plan_game,
     snapshots_game,
     stages_game,
 )
@@ -370,6 +374,78 @@ def stages(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None
     for stage_name, actor_names in mapping.items():
         actors = ", ".join(actor_names) if actor_names else "（无角色）"
         click.echo(f"{stage_name}: {actors}")
+
+
+###############################################################################
+@main.command("actors")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+@click.option("--json", "as_json", is_flag=True, help="逐行输出完整 JSON")
+def actors(user: str, game: str, snapshot_id: int | None, as_json: bool) -> None:
+    """列出角色名册：所在舞台、控制者与当前外观。"""
+    _setup_logger()
+    try:
+        summaries = _run_game(
+            actors_game(user, game, snapshot_id),
+            command="actors",
+            user=user,
+            game=game,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if not summaries:
+        click.echo("（没有角色）")
+        return
+    if as_json:
+        for summary in summaries:
+            click.echo(summary.model_dump_json())
+        return
+    for summary in summaries:
+        line = "  ".join(
+            [
+                f"{summary.name:<12}",
+                f"{summary.stage:<10}",
+                f"player={summary.player or '-':<10}",
+                summary.appearance or "（外观未定）",
+            ]
+        )
+        click.echo(line)
+
+
+###############################################################################
+@main.command("plan")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option(
+    "--actor",
+    "actors",
+    multiple=True,
+    required=True,
+    help="要计划的角色名，可重复",
+)
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+def plan(
+    user: str, game: str, actors: tuple[str, ...], snapshot_id: int | None
+) -> None:
+    """让一个或多个角色做本轮计划，并保存结果快照。"""
+    _setup_logger()
+    try:
+        outcome = _run_game(
+            plan_game(user, game, list(actors), snapshot_id),
+            command="plan",
+            user=user,
+            game=game,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except OfflinePassFailed as exc:
+        raise click.ClickException(f"pass 失败，已回滚到本次执行前快照: {exc}") from exc
+
+    for actor_name in outcome.actors:
+        click.echo(f"planned:   {actor_name}")
+    click.echo(f"snapshot:  {outcome.snapshot_id}")
 
 
 ###############################################################################

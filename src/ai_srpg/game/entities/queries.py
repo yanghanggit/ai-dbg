@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Set
 from ...entitas import Entity, Matcher
 from ...models import (
     ActorComponent,
+    ActorSummary,
+    AppearanceComponent,
     PlayerComponent,
     StageComponent,
     WorldComponent,
@@ -69,6 +71,30 @@ def get_actors_by_stage_as_names(srpg_game: SRPGGame) -> Dict[str, List[str]]:
     for stage_entity, actor_entities in get_actors_by_stage(srpg_game).items():
         ret[stage_entity.name] = [actor_entity.name for actor_entity in actor_entities]
     return ret
+
+
+def list_actor_summaries(srpg_game: SRPGGame) -> List[ActorSummary]:
+    """所有角色的当前状态，按创建顺序（与快照重放一致）。"""
+    actors = srpg_game.get_group(Matcher(all_of=[ActorComponent])).entities
+    summaries: List[ActorSummary] = []
+    for actor in sorted(actors, key=lambda entity: entity.index):
+        summaries.append(
+            ActorSummary(
+                name=actor.name,
+                stage=actor.get(ActorComponent).current_stage,
+                player=(
+                    actor.get(PlayerComponent).user_name
+                    if actor.has(PlayerComponent)
+                    else None
+                ),
+                appearance=(
+                    actor.get(AppearanceComponent).appearance
+                    if actor.has(AppearanceComponent)
+                    else ""
+                ),
+            )
+        )
+    return summaries
 
 
 def get_child_stages(srpg_game: SRPGGame, stage_name: str) -> List[Entity]:

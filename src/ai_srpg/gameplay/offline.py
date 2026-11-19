@@ -6,9 +6,10 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..entitas import PassResult, ProcessorObserver
+from ..entitas import Entity, PassResult, ProcessorObserver
 from ..game.context import SRPGGame
 from ..game.entities.player_binding import bind_player_actor
+from ..game.entities.queries import get_actor_entity, list_actor_summaries
 from ..game.events.sink import DomainEventSink
 from ..game.lifecycle import (
     initialize_pipeline,
@@ -16,7 +17,13 @@ from ..game.lifecycle import (
     snapshot_game,
 )
 from ..game.offline import create_game_from_blueprint, restore_game_from_snapshot
-from ..models import GameSnapshot, GameSnapshotInfo, GameSummary
+from ..models import (
+    ActorPlanAction,
+    ActorSummary,
+    GameSnapshot,
+    GameSnapshotInfo,
+    GameSummary,
+)
 from ..pgsql import (
     append_game_snapshot,
     list_game_snapshot_ids,
@@ -49,6 +56,14 @@ class BindActorOutcome:
 
     user_name: str
     actor_name: str
+    snapshot_id: int
+
+
+@dataclass(frozen=True)
+class PlanOutcome:
+    """一次计划的结果：计划了谁，落在哪个快照。"""
+
+    actors: List[str]
     snapshot_id: int
 
 
@@ -162,6 +177,38 @@ async def bind_actor(
 
 
 ###############################################################################
+async def plan_actors(
+    room_id: str,
+    game_name: str,
+    actor_names: List[str],
+    *,
+    snapshot_id: Optional[int] = None,
+) -> PlanOutcome:
+    """给指定角色挂上计划动作，跑一次 pass，把结果落成新快照。
+
+    计划不改变世界状态：它只让角色想一遍，并把过程写进自己的记忆。
+    """
+    game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
+    actors = _require_actors(game, actor_names)
+    for actor in actors:
+        actor.replace(ActorPlanAction)
+    outcome = await run_offline_pass(game, room_id)
+    return PlanOutcome(
+        actors=[actor.name for actor in actors],
+        snapshot_id=outcome.snapshot_id,
+    )
+
+
+###############################################################################
+async def list_actors(
+    room_id: str, game_name: str, *, snapshot_id: Optional[int] = None
+) -> List[ActorSummary]:
+    """列出对局里的角色名册；对局不存在时报错，不隐式建局。"""
+    game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
+    return list_actor_summaries(game)
+
+
+###############################################################################
 def list_games(room_id: str) -> List[GameSummary]:
     """列出房间（用户）下的所有对局，按最近更新倒序。"""
     return list_game_summaries(room_id)
@@ -197,6 +244,17 @@ def list_snapshots(
 
 
 ###############################################################################
+def _require_actors(game: SRPGGame, actor_names: List[str]) -> List[Entity]:
+    actors: List[Entity] = []
+    for actor_name in actor_names:
+        actor = get_actor_entity(game, actor_name)
+        if actor is None:
+            raise LookupError(f"找不到角色实体: {actor_name}")
+        actors.append(actor)
+    return actors
+
+
+###############################################################################
 def _load_snapshot(
     room_id: str,
     game_name: str,
@@ -213,12 +271,15 @@ def _load_snapshot(
 
 __all__ = [
     "GameAlreadyExistsError",
+    "PlanOutcome",
     "NewGameOutcome",
     "OfflinePassFailed",
     "OfflinePassOutcome",
     "create_new_game",
+    "list_actors",
     "list_snapshots",
     "load_or_create_game",
+    "plan_actors",
     "run_offline_pass",
     "save_game_snapshot",
 ]

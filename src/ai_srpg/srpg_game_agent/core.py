@@ -13,14 +13,17 @@ from ..gameplay.offline import (
     BindActorOutcome,
     NewGameOutcome,
     OfflinePassOutcome,
+    PlanOutcome,
     bind_actor,
     create_new_game,
+    list_actors,
     list_games,
     list_snapshots,
     load_or_create_game,
+    plan_actors,
     run_offline_pass,
 )
-from ..models import GameSnapshotInfo, GameSummary
+from ..models import ActorSummary, GameSnapshotInfo, GameSummary
 
 
 ###############################################################################
@@ -79,6 +82,28 @@ async def stages_game(
 
 
 ###############################################################################
+async def actors_game(
+    user: str, game: str, snapshot_id: Optional[int]
+) -> List[ActorSummary]:
+    """读取快照并返回角色名册。"""
+    return await list_actors(user, game, snapshot_id=snapshot_id)
+
+
+###############################################################################
+async def plan_game(
+    user: str, game: str, actors: List[str], snapshot_id: Optional[int]
+) -> PlanOutcome:
+    """让一个或多个角色做本轮计划，并写入结果快照。"""
+    outcome = await plan_actors(user, game, actors, snapshot_id=snapshot_id)
+    logger.info(
+        "plan actors: user={}, game={}, actors={}, snapshot_id={}".format(
+            user, game, ", ".join(outcome.actors), outcome.snapshot_id
+        )
+    )
+    return outcome
+
+
+###############################################################################
 async def snapshots_game(
     user: str, game: str, *, limit: int = 20
 ) -> List[GameSnapshotInfo]:
@@ -97,10 +122,12 @@ async def advance_game(
 
 ###############################################################################
 __all__ = [
+    "actors_game",
     "advance_game",
     "bind_actor_game",
     "create_and_initialize_game",
     "list_games_game",
+    "plan_game",
     "snapshots_game",
     "stages_game",
 ]

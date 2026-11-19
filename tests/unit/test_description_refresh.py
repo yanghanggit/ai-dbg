@@ -319,6 +319,26 @@ async def test_llm_failure_keeps_the_base(monkeypatch: pytest.MonkeyPatch) -> No
     )
 
 
+async def test_batch_exception_keeps_the_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    """整批调用抛异常也不炸：底稿保持，下一轮守卫会再挂动作。"""
+
+    async def _boom(*args: object, **kwargs: object) -> List[ChatCompletionResult]:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(
+        "ai_srpg.game.systems.description_refresh_mixin.batch_complete", _boom
+    )
+    game = _game()
+    actor = _entity(game, ACTOR)
+    system = AppearanceRefreshSystem(game)
+    system.activate()
+
+    actor.replace(RefreshAppearanceAction)
+    await system.execute()
+
+    assert actor.get(AppearanceComponent).appearance == BASE_BODY
+
+
 ###############################################################################
 # 主动路径：直接挂动作强制重写
 ###############################################################################

@@ -43,7 +43,14 @@ class DescriptionRefreshMixin(SystemMixin):
             )
             for entity in entities
         ]
-        results = await batch_complete(requests)
+        try:
+            results = await batch_complete(requests)
+        except Exception as e:
+            # 刷新是可选的一步：这一轮拿不到文本就全部保留底稿，下一轮守卫会再挂动作
+            logger.opt(exception=e).warning(
+                f"{label} 批量生成失败，保留底稿: {type(e).__name__}: {e}"
+            )
+            return {}
 
         texts: Dict[str, str] = {}
         for entity, result in zip(entities, results):

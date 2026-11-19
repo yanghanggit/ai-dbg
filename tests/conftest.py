@@ -16,7 +16,7 @@ from ai_srpg.models import (
     ActorBlueprint,
     ActorComponent,
 )
-from fake_llm import fake_completion
+from fake_llm import fake_agent_loop, fake_completion
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +30,14 @@ def offline_descriptions(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         "ai_srpg.game.systems.description_refresh_mixin.batch_complete", _fake
+    )
+
+
+@pytest.fixture(autouse=True)
+def offline_plans(monkeypatch: pytest.MonkeyPatch) -> None:
+    """计划系统用 agent loop 会联网；测试里换成空转实现。"""
+    monkeypatch.setattr(
+        "ai_srpg.game.systems.actor_plan_system.agent_loop", fake_agent_loop
     )
 
 

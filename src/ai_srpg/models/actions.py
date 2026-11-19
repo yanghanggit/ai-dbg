@@ -61,8 +61,17 @@ class RefreshEnvironmentAction(Component):
 
 
 ############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class ActorPlanAction(Component):
+    """动作：本轮让该角色做一次行动计划。"""
+
+
+############################################################################################################
 __all__ = [
     "ACTION_COMPONENT_TYPES",
+    "ActorPlanAction",
     "RefreshAppearanceAction",
     "RefreshEnvironmentAction",
     "register_action_component_type",

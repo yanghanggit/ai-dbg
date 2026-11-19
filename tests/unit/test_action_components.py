@@ -8,6 +8,7 @@ from ai_srpg.entitas.components import Component
 from ai_srpg.models import (
     ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
+    ActorPlanAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
@@ -40,7 +41,7 @@ class TestProductionActions:
 
     @pytest.mark.parametrize(
         "action",
-        [RefreshAppearanceAction, RefreshEnvironmentAction],
+        [ActorPlanAction, RefreshAppearanceAction, RefreshEnvironmentAction],
     )
     def test_is_registered_in_both_tables(self, action: type) -> None:
         """动作同时是组件与动作组件——装饰器叠放的产物。"""
@@ -49,7 +50,7 @@ class TestProductionActions:
 
     @pytest.mark.parametrize(
         "action",
-        [RefreshAppearanceAction, RefreshEnvironmentAction],
+        [ActorPlanAction, RefreshAppearanceAction, RefreshEnvironmentAction],
     )
     def test_is_a_fieldless_component(self, action: type) -> None:
         """动作本身不带状态：它只说「这轮要做这件事」。"""

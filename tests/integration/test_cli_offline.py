@@ -1,4 +1,4 @@
-"""CLI 端到端：list → new → bind → stages → advance → compact → snapshots。"""
+"""CLI 端到端：list → new → bind → stages → actors → plan → advance → compact → snapshots。"""
 
 import json
 import uuid
@@ -47,6 +47,11 @@ def _expected_stages(blueprint: Blueprint) -> Dict[str, List[str]]:
         current_stage = candidate.components[ActorComponent.__name__]["current_stage"]
         expected[current_stage].append(candidate.name)
     return {name: sorted(actors) for name, actors in expected.items()}
+
+
+def _json_lines(output: str) -> List[Any]:
+    """逐行 JSON 输出同样混着日志行，只取以 ``{`` 开头的行。"""
+    return [json.loads(line) for line in output.splitlines() if line.startswith("{")]
 
 
 def _json_output(output: str) -> Any:
@@ -119,6 +124,31 @@ def test_cli_offline_flow(
     assert stages.exit_code == 0, stages.output
     assert _json_output(stages.output) == _expected_stages(blueprint)
 
+    actors = runner.invoke(
+        main, ["actors", "--user", user_name, "--game", "Game1", "--json"]
+    )
+    assert actors.exit_code == 0, actors.output
+    roster = _json_lines(actors.output)
+    assert {summary["name"] for summary in roster} == {
+        candidate.name for candidate in blueprint.actors
+    }
+    assert all(summary["stage"] for summary in roster)
+
+    planned = runner.invoke(
+        main,
+        ["plan", "--user", user_name, "--game", "Game1", "--actor", actor],
+    )
+    assert planned.exit_code == 0, planned.output
+    assert f"planned:   {actor}" in planned.output
+    assert "snapshot:" in planned.output
+
+    unknown_plan = runner.invoke(
+        main,
+        ["plan", "--user", user_name, "--game", "Game1", "--actor", missing_actor],
+    )
+    assert unknown_plan.exit_code == 1
+    assert "找不到角色实体" in unknown_plan.output
+
     advanced = runner.invoke(main, ["advance", "--user", user_name, "--game", "Game1"])
     assert advanced.exit_code == 0, advanced.output
     assert "completed:" in advanced.output
@@ -142,8 +172,8 @@ def test_cli_offline_flow(
 
     history = runner.invoke(main, ["snapshots", "--user", user_name, "--game", "Game1"])
     assert history.exit_code == 0, history.output
-    # 一次 pass 会落两条快照（执行前用于回滚 + 结果），加上 new、两次 bind、compact
-    assert history.output.count("id=") == 6
+    # 一次 pass 会落两条快照（执行前用于回滚 + 结果），加上 new、两次 bind、plan、compact
+    assert history.output.count("id=") == 8
 
     reset = runner.invoke(
         main,
