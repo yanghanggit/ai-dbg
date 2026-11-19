@@ -4,6 +4,11 @@
 不使用星号导入。新增或删除公开名时，两处都要改。
 """
 
+from .actions import (
+    ACTION_COMPONENT_TYPES,
+    NoneAction,
+    register_action_component_type,
+)
 from .agent_event import AgentEvent, AnyAgentEvent, NoneEvent
 from .agent_memory import AgentMemory
 from .agent_memory_snapshot import MEMORY_SNAPSHOT_FORMAT_VERSION, AgentMemorySnapshot
@@ -53,11 +58,9 @@ from .messages import (
     get_buffer_string,
 )
 from .registry import (
-    ACTION_COMPONENT_TYPES,
     COMPONENT_TYPES,
     ComponentT,
     create_component_type,
-    register_action_component_type,
     register_component_type,
     resolve_component_type,
 )
@@ -100,6 +103,7 @@ __all__ = [
     "MEMORY_TAGS",
     "MessageSpan",
     "MsgT",
+    "NoneAction",
     "NoneEvent",
     "PlayerComponent",
     "SNAPSHOT_FORMAT_VERSION",

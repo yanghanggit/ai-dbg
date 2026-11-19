@@ -36,7 +36,7 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     # 通用尾部：清理动作组件、销毁待销毁实体并收尾
     # 顺序不可对调：先清理动作，再销毁实体，最后收尾。
     # ---------------------------------------------------------------------
-    pipeline.add(ActionCleanupSystem(srpg_game, ACTION_COMPONENT_TYPES))
+    pipeline.add(ActionCleanupSystem(srpg_game, ACTION_COMPONENT_TYPES.values()))
     pipeline.add(DestroyEntitySystem(srpg_game))
     pipeline.add(EpilogueSystem(srpg_game))
 

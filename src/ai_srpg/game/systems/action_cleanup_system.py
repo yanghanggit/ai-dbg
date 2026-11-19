@@ -1,6 +1,6 @@
 """Pipeline 收尾清理动作组件，避免动作跨 pass 残留。"""
 
-from typing import Final, FrozenSet, Mapping, Type, final, override
+from typing import Final, FrozenSet, Iterable, Type, final, override
 
 from ...entitas import CleanupProcessor, ExecuteProcessor, Matcher
 from ...entitas.components import Component
@@ -19,11 +19,11 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
     def __init__(
         self,
         game: SRPGGame,
-        action_component_types: Mapping[str, Type[Component]],
+        action_component_types: Iterable[Type[Component]],
     ) -> None:
         self._game: Final[SRPGGame] = game
         self._registered_actions: Final[FrozenSet[Type[Component]]] = frozenset(
-            action_component_types.values()
+            action_component_types
         )
 
     ############################################################################################################
@@ -38,8 +38,6 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
 
     ############################################################################################################
     def _clear_actions(self) -> None:
-
-        # 清除行动！
         action_entities = self._game.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities.copy()
@@ -49,7 +47,6 @@ class ActionCleanupSystem(ExecuteProcessor, CleanupProcessor):
                 if entity.has(action_class):
                     entity.remove(action_class)
 
-        # 确认一下！
         cleared_entities = self._game.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities
