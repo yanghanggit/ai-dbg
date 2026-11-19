@@ -25,14 +25,23 @@ from .assets_meta import (
     asset_url,
     new_asset_filename,
 )
-from .blueprint import ActorBlueprint, Blueprint, StageBlueprint, WorldBlueprint
+from .blueprint import (
+    ActorBlueprint,
+    Blueprint,
+    Position,
+    StageBlueprint,
+    WorldBlueprint,
+    walk_stages,
+)
 from .components import (
     ActorComponent,
     AppearanceComponent,
     DestroyComponent,
     EnvironmentComponent,
+    GlobalStageComponent,
     IdentityComponent,
     PlayerComponent,
+    PositionComponent,
     StageComponent,
     WorldComponent,
 )
@@ -82,6 +91,7 @@ __all__ = [
     "AssetSource",
     "BaseMessage",
     "Blueprint",
+    "Position",
     "COMPONENT_TYPES",
     "ChatMessage",
     "ComponentT",
@@ -89,6 +99,7 @@ __all__ = [
     "DestroyComponent",
     "EntityNaming",
     "EnvironmentComponent",
+    "GlobalStageComponent",
     "GAME_SNAPSHOT_FORMAT_VERSION",
     "GameSnapshot",
     "GameSnapshotInfo",
@@ -103,6 +114,7 @@ __all__ = [
     "NoneAction",
     "NoneEvent",
     "PlayerComponent",
+    "PositionComponent",
     "SNAPSHOT_FORMAT_VERSION",
     "SessionMessage",
     "StageBlueprint",
@@ -110,6 +122,7 @@ __all__ = [
     "SystemMessage",
     "ToolMessage",
     "WorldBlueprint",
+    "walk_stages",
     "WorldComponent",
     "assert_known_memory_tags",
     "asset_meta_path",

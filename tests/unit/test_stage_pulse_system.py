@@ -23,7 +23,7 @@ from ai_srpg.session.room import Room
 ###############################################################################
 def _make_stage(game: SRPGGame, name: str) -> Entity:
     entity: Entity = game.create_entity(name)
-    entity.add(StageComponent)
+    entity.add(StageComponent, None)
     return entity
 
 

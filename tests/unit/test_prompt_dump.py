@@ -21,13 +21,14 @@ def _blueprint() -> Blueprint:
         name="TestGame",
         campaign_setting="设定",
         global_rules="规则",
-        stages=[
-            StageBlueprint(
-                name="舞台.营",
-                system_message="# 舞台.营\n\n舞台 prompt",
-                components={"StageComponent": {}},
-            )
-        ],
+        root_stage=StageBlueprint(
+            name="舞台.营",
+            system_message="# 舞台.营\n\n舞台 prompt",
+            components={
+                "StageComponent": {},
+                "GlobalStageComponent": {"width": 5, "height": 5},
+            },
+        ),
         actors=[
             ActorBlueprint(
                 name="角色.甲",

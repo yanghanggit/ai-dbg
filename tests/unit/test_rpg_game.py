@@ -47,7 +47,7 @@ from ai_srpg.models import (
 def _make_stage(game: SRPGGame, stage_name: str) -> Entity:
     """创建带 StageComponent 的舞台实体。"""
     entity: Entity = game.create_entity(stage_name)
-    entity.add(StageComponent)
+    entity.add(StageComponent, None)
     return entity
 
 

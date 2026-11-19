@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple
 
 from loguru import logger
 
-from ..models import Blueprint
+from ..models import Blueprint, walk_stages
 from ..paths import PROMPTS_DIR
 
 #: index.md 里的类别标签（与实体全名的前缀一一对应）
@@ -33,7 +33,7 @@ def _prompt_entries(blueprint: Blueprint) -> List[Tuple[str, str, str]]:
     entries: List[Tuple[str, str, str]] = []
     for world in blueprint.world_entities:
         entries.append(("world", world.name, world.system_message))
-    for stage in blueprint.stages:
+    for stage, _ in walk_stages(blueprint.root_stage):
         entries.append(("stage", stage.name, stage.system_message))
     for actor in blueprint.actors:
         entries.append(("actor", actor.name, actor.system_message))

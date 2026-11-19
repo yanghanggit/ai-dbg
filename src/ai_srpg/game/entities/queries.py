@@ -44,19 +44,23 @@ def get_actors_in_stage(
 
 
 def get_actors_by_stage(srpg_game: SRPGGame) -> Dict[Entity, List[Entity]]:
-    """获取所有舞台到 Actor 的分组映射。"""
+    """所有舞台到其上角色的映射，只含直接归属（不含子舞台里的人）。
+
+    组查询走的是 ``set``（按对象哈希迭代），顺序不可预期；这里统一按实体创建顺序
+    排序。舞台是父先子后建的，所以结果恰好是舞台树的先序，同一蓝图每次构建都一样。
+    """
     ret: Dict[Entity, List[Entity]] = {}
     actor_entities = srpg_game.get_group(Matcher(all_of=[ActorComponent])).entities
-    for actor_entity in actor_entities:
+    for actor_entity in sorted(actor_entities, key=lambda entity: entity.index):
         stage_entity = resolve_stage_entity(srpg_game, actor_entity)
         assert stage_entity is not None, f"actor_entity = {actor_entity}"
         ret.setdefault(stage_entity, []).append(actor_entity)
 
     stage_entities = srpg_game.get_group(Matcher(all_of=[StageComponent])).entities
     for stage_entity in stage_entities:
-        if stage_entity not in ret:
-            ret.setdefault(stage_entity, [])
-    return ret
+        ret.setdefault(stage_entity, [])
+
+    return {stage: ret[stage] for stage in sorted(ret, key=lambda entity: entity.index)}
 
 
 def get_actors_by_stage_as_names(srpg_game: SRPGGame) -> Dict[str, List[str]]:
@@ -65,6 +69,30 @@ def get_actors_by_stage_as_names(srpg_game: SRPGGame) -> Dict[str, List[str]]:
     for stage_entity, actor_entities in get_actors_by_stage(srpg_game).items():
         ret[stage_entity.name] = [actor_entity.name for actor_entity in actor_entities]
     return ret
+
+
+def get_child_stages(srpg_game: SRPGGame, stage_name: str) -> List[Entity]:
+    """某舞台的直接子舞台，按创建顺序（即蓝图里声明的先后）返回。"""
+    children = [
+        entity
+        for entity in srpg_game.get_group(Matcher(all_of=[StageComponent])).entities
+        if entity.get(StageComponent).parent_stage == stage_name
+    ]
+    return sorted(children, key=lambda entity: entity.index)
+
+
+def get_ancestor_stages(srpg_game: SRPGGame, stage_name: str) -> List[Entity]:
+    """某舞台的祖先链，由近到远（父、祖父……），根舞台返回空列表。"""
+    ancestors: List[Entity] = []
+    entity = get_stage_entity(srpg_game, stage_name)
+    assert entity is not None, f"找不到舞台实体: {stage_name}"
+    parent_name = entity.get(StageComponent).parent_stage
+    while parent_name is not None:
+        parent = get_stage_entity(srpg_game, parent_name)
+        assert parent is not None, f"舞台 {stage_name} 的父舞台不存在: {parent_name}"
+        ancestors.append(parent)
+        parent_name = parent.get(StageComponent).parent_stage
+    return ancestors
 
 
 def get_world_entity(srpg_game: SRPGGame, world_name: str) -> Optional[Entity]:

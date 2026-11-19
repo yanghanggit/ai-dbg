@@ -1,15 +1,23 @@
-"""剧本「无名的营地」：一个世界、一个舞台、一个角色，作为开发与测试的起点。
+"""剧本「无名的营地」：一个世界、一棵舞台树、一个角色，作为开发与测试的起点。
 
-故事级设定（战役设定、全局规则、世界职责）在 ``story`` 模块共用；这里只放本剧本
-专属的实体数据。实体的状态一律写成组件数据，包括角色所在舞台。
+舞台树只有两层：根是 5x5 的战场，营地位于其中一格。故事级设定（战役设定、全局规则、
+世界职责）在 ``story`` 模块共用；这里只放本剧本专属的实体数据，状态一律写成组件数据。
 """
 
 from ai_srpg.game.prompt_composer import compose_actor, compose_stage, compose_world
-from ai_srpg.models import ActorBlueprint, Blueprint, StageBlueprint, WorldBlueprint
+from ai_srpg.models import (
+    ActorBlueprint,
+    Blueprint,
+    Position,
+    StageBlueprint,
+    WorldBlueprint,
+)
 
 from .story import CAMPAIGN_SETTING, GLOBAL_RULES, WORLD_ROLE_RULES
 
+BATTLEFIELD_NAME = "舞台.战场"
 STAGE_NAME = "舞台.营地"
+BATTLEFIELD_GRID = {"width": 5, "height": 5}
 
 #######################################################################################################################################
 # 无名的体型：既进 prompt 的「基础体型」段，也是角色的初始外观
@@ -48,6 +56,26 @@ def create_camp_stage() -> StageBlueprint:
         global_rules=GLOBAL_RULES,
     )
     stage.components = {"StageComponent": {}}
+    stage.position = Position(x=2, y=2)
+    return stage
+
+
+#######################################################################################################################################
+def create_battlefield() -> StageBlueprint:
+    """创建舞台树的根——战场：全局舞台，自带网格，营地摆在中央一格。"""
+
+    stage = compose_stage(
+        name=BATTLEFIELD_NAME,
+        profile="""一片没有名字的旷野，被雨水与旧车辙切成方格状的地界。视野里没有明显的道路，
+只有几处能在夜里分辨的轮廓：一段残墙、一片矮树林、以及远处没有灯火的平地。""",
+        campaign_setting=CAMPAIGN_SETTING,
+        global_rules=GLOBAL_RULES,
+    )
+    stage.components = {
+        "StageComponent": {},
+        "GlobalStageComponent": dict(BATTLEFIELD_GRID),
+    }
+    stage.children = [create_camp_stage()]
     return stage
 
 
@@ -73,7 +101,7 @@ def create_blueprint(game_name: str) -> Blueprint:
         name=game_name,
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
-        stages=[create_camp_stage()],
+        root_stage=create_battlefield(),
         actors=[create_nameless()],
         world_entities=[create_starless_world()],
     )

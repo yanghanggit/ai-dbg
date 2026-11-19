@@ -22,7 +22,7 @@ def game(context: ECSContext) -> Any:
 
 def _make_stage(context: ECSContext, name: str) -> Any:
     entity = context.create_entity(name)
-    entity.add(StageComponent)
+    entity.add(StageComponent, None)
     return entity
 
 

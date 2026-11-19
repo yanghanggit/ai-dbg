@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable, Dict, Final, Iterator, Optional, Tuple
 
 from ai_srpg.game.prompt_dump import dump_blueprint_prompts
-from ai_srpg.models import Blueprint
+from ai_srpg.models import Blueprint, walk_stages
 
 from . import dark_fantasy
 
@@ -34,7 +34,7 @@ _WORLD_ENTITY_REF_PATTERN: Final[re.Pattern[str]] = re.compile(r"世界\.\w+")
 ###############################################################################
 def _iter_prompt_messages(blueprint: Blueprint) -> Iterator[Tuple[str, str]]:
     """遍历蓝图里所有实体的 (实体名, system_message)。"""
-    for stage in blueprint.stages:
+    for stage, _ in walk_stages(blueprint.root_stage):
         yield stage.name, stage.system_message
     for actor in blueprint.actors:
         yield actor.name, actor.system_message

@@ -41,13 +41,14 @@ def test_engine_does_not_reference_seed_data() -> None:
 ###############################################################################
 def test_engine_source_contains_no_blueprint_entity_names(tmp_path: Path) -> None:
     """蓝图里的实体全名只属于内容侧，不得写进引擎。"""
+    from ai_srpg.models import walk_stages
     from seeds import create_blueprint
 
     blueprint = create_blueprint(
         "dark_fantasy/nameless_camp", "BoundaryCheck", trace_dir=tmp_path
     )
     names = [world.name for world in blueprint.world_entities]
-    names.extend(stage.name for stage in blueprint.stages)
+    names.extend(stage.name for stage, _ in walk_stages(blueprint.root_stage))
     names.extend(actor.name for actor in blueprint.actors)
 
     offenders = [

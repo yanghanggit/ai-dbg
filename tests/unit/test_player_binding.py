@@ -144,13 +144,16 @@ def _blueprint() -> Blueprint:
     stage = StageBlueprint(
         name="舞台.甲",
         system_message="# 舞台.甲",
-        components={"StageComponent": {}},
+        components={
+            "StageComponent": {},
+            "GlobalStageComponent": {"width": 5, "height": 5},
+        },
     )
     return Blueprint(
         name="TestGame",
         campaign_setting="设定",
         global_rules="规则",
-        stages=[stage],
+        root_stage=stage,
         actors=[actor],
         world_entities=[],
     )

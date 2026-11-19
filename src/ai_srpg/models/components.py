@@ -4,7 +4,7 @@
 真正的状态（例如角色所在的舞台）。
 """
 
-from typing import final
+from typing import Optional, final
 
 from pydantic import model_validator
 
@@ -33,7 +33,29 @@ class WorldComponent(Component):
 @final
 @register_component_type
 class StageComponent(Component):
-    """标记实体为舞台类型。"""
+    """标记实体为舞台（角色可停留的地点），记录挂在哪个舞台之下。"""
+
+    parent_stage: Optional[str] = None  # 树上层的舞台；根为 None
+
+
+############################################################################################################
+@final
+@register_component_type
+class GlobalStageComponent(Component):
+    """标记实体为全局舞台：舞台树的根，自带一片网格坐标系。"""
+
+    width: int
+    height: int
+
+
+############################################################################################################
+@final
+@register_component_type
+class PositionComponent(Component):
+    """在所属舞台网格上的格子坐标（左上角为原点）。"""
+
+    x: int
+    y: int
 
 
 ############################################################################################################
@@ -92,8 +114,10 @@ __all__ = [
     "AppearanceComponent",
     "DestroyComponent",
     "EnvironmentComponent",
+    "GlobalStageComponent",
     "IdentityComponent",
     "PlayerComponent",
+    "PositionComponent",
     "StageComponent",
     "WorldComponent",
 ]

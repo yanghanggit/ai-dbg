@@ -22,6 +22,7 @@ from ai_srpg.models import (
     AgentMemoryStore,
     Blueprint,
     IdentityComponent,
+    Position,
     StageBlueprint,
     StageComponent,
     create_component_type,
@@ -55,14 +56,26 @@ def _make_stage_model(name: str, component_name: str) -> StageBlueprint:
 
 ############################################################################################################
 def _build(game: Any, *stages: StageBlueprint) -> None:
-    """把若干舞台声明装进最小蓝图并构建。"""
+    """把若干舞台声明挂到一棵 5x5 的战场树下并构建。"""
+    root = StageBlueprint(
+        name="舞台.战场",
+        system_message="# 舞台.战场",
+        components={
+            "StageComponent": {},
+            "GlobalStageComponent": {"width": 5, "height": 5},
+        },
+        children=[
+            stage.model_copy(update={"position": Position(x=index, y=0)})
+            for index, stage in enumerate(stages)
+        ],
+    )
     build_from_blueprint(
         game,
         Blueprint(
             name="DynamicComponentTest",
             campaign_setting="设定",
             global_rules="规则",
-            stages=list(stages),
+            root_stage=root,
             actors=[],
             world_entities=[],
         ),
