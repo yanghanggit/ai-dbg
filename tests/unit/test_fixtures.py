@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from ai_srpg.models import ActorType
-
 
 def test_sample_game_fixture(sample_game: Any) -> None:
     """Test that the sample_game fixture creates a valid game instance."""
@@ -14,14 +12,9 @@ def test_sample_game_fixture(sample_game: Any) -> None:
 
 
 def test_sample_actor_fixture(sample_actor: Any) -> None:
-    """Test that the sample_actor fixture creates a valid actor instance."""
+    """Test that the sample_actor fixture creates a valid actor blueprint."""
     assert sample_actor is not None
-    assert hasattr(sample_actor, "name")
     assert sample_actor.name == "test_actor"
-    assert hasattr(sample_actor, "profile")
-    assert hasattr(sample_actor, "base_body")
-    assert sample_actor.type == ActorType.NONE
-    assert hasattr(sample_actor, "system_message")
     assert sample_actor.system_message == "test system message"
-    # assert hasattr(sample_actor, "kick_off_message")
-    # assert sample_actor.kick_off_message == "test kick off message"
+    assert sample_actor.components["ActorComponent"]["current_stage"] == "test_stage"
+    assert sample_actor.assets["portrait"] == ".assets/image/test.meta"

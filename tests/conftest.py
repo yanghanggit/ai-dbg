@@ -5,7 +5,7 @@ import pytest
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.events.sink import RecordingEventSink
-from ai_srpg.models import Actor, ActorType
+from ai_srpg.models import ActorBlueprint
 
 
 @pytest.fixture
@@ -15,12 +15,11 @@ def sample_game() -> SRPGGame:
 
 
 @pytest.fixture
-def sample_actor() -> Actor:
-    """Create a sample actor for testing."""
-    return Actor(
+def sample_actor() -> ActorBlueprint:
+    """Create a sample actor blueprint for testing."""
+    return ActorBlueprint(
         name="test_actor",
-        type=ActorType.NONE,
-        profile="test profile",
-        base_body="",
         system_message="test system message",
+        components={"ActorComponent": {"current_stage": "test_stage"}},
+        assets={"portrait": ".assets/image/test.meta"},
     )

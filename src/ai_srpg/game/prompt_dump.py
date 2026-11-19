@@ -1,6 +1,6 @@
 """蓝图 prompt 留痕：把每个实体进 ECS 后的第一条记忆导出成 markdown。
 
-构建蓝图时，``Actor`` / ``Stage`` / ``World`` 的 ``system_message`` 就是它进游戏后
+构建蓝图时，``ActorBlueprint`` / ``StageBlueprint`` / ``WorldBlueprint`` 的 ``system_message`` 就是它进游戏后
 的 ``memories[0]``（由 ``add_system_message`` 原样写入）。这里在出厂时把同一份文本
 按实体落盘，提示词的问题在一开始就能看见，不必等游戏跑起来翻调用记录。
 
@@ -35,8 +35,8 @@ def _prompt_entries(blueprint: Blueprint) -> List[Tuple[str, str, str]]:
         entries.append(("world", world.name, world.system_message))
     for stage in blueprint.stages:
         entries.append(("stage", stage.name, stage.system_message))
-        for actor in stage.actors:
-            entries.append(("actor", actor.name, actor.system_message))
+    for actor in blueprint.actors:
+        entries.append(("actor", actor.name, actor.system_message))
     return entries
 
 

@@ -37,7 +37,7 @@ from .components import (
     WorldComponent,
 )
 from .context_snapshot import SNAPSHOT_FORMAT_VERSION, ContextSnapshot
-from .entities import Actor, ActorType, Stage, StageType, World
+from .entities import ActorBlueprint, StageBlueprint, WorldBlueprint
 from .entity_factory import create_actor, create_stage, create_world
 from .entity_naming import EntityNaming
 from .game_snapshot import GAME_SNAPSHOT_FORMAT_VERSION, GameSnapshot, GameSnapshotInfo
@@ -71,9 +71,8 @@ __all__ = [
     "AIMessage",
     "ASSETS_URL_PREFIX",
     "ASSET_META_SUFFIX",
-    "Actor",
+    "ActorBlueprint",
     "ActorComponent",
-    "ActorType",
     "AgentEvent",
     "AgentMemory",
     "AgentMemorySnapshot",
@@ -108,12 +107,11 @@ __all__ = [
     "PlayerComponent",
     "SNAPSHOT_FORMAT_VERSION",
     "SessionMessage",
-    "Stage",
+    "StageBlueprint",
     "StageComponent",
-    "StageType",
     "SystemMessage",
     "ToolMessage",
-    "World",
+    "WorldBlueprint",
     "WorldComponent",
     "assert_known_memory_tags",
     "asset_meta_path",

@@ -31,7 +31,6 @@ def _add_entity(game: SRPGGame, name: str) -> None:
     entity = game.create_entity(name)
     entity.add(
         IdentityComponent,
-        name,
         game.entity_naming.next_creation_order(),
         str(uuid.uuid4()),
     )

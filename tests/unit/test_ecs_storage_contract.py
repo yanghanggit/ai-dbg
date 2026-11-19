@@ -51,9 +51,9 @@ class TestContextDataSerialization:
     def test_serialize_context_orders_by_slot_index(self) -> None:
         source = _new_game()
         first = source.create_entity("first")
-        first.add(IdentityComponent, "first", 9, _new_id())
+        first.add(IdentityComponent, 9, _new_id())
         second = source.create_entity("second")
-        second.add(IdentityComponent, "second", 2, _new_id())
+        second.add(IdentityComponent, 2, _new_id())
 
         data = source.serialize()
 
@@ -64,11 +64,11 @@ class TestContextDataSerialization:
         manager = _new_game()
 
         dead = manager.create_entity("dead")
-        dead.add(IdentityComponent, "dead", 1, _new_id())
+        dead.add(IdentityComponent, 1, _new_id())
         manager.destroy_entity(dead)
 
         live = manager.create_entity("live")
-        live.add(IdentityComponent, "live", 2, _new_id())
+        live.add(IdentityComponent, 2, _new_id())
 
         data = manager.serialize()
 
@@ -77,7 +77,7 @@ class TestContextDataSerialization:
     def test_serialization_reads_components_via_public_api(self) -> None:
         manager = _new_game()
         entity = manager.create_entity("probe")
-        entity.add(IdentityComponent, "probe", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
 
         items = entity.iter_component_items()
         assert [comp_type for comp_type, _ in items] == list(entity.component_types)
@@ -88,7 +88,7 @@ class TestNameIndexContract:
     def test_name_lookup_and_cleanup_on_destroy(self) -> None:
         manager = _new_game()
         entity = manager.create_entity("keeper")
-        entity.add(IdentityComponent, "keeper", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
 
         assert manager.get_entity_by_name("keeper") == entity
 
@@ -98,11 +98,11 @@ class TestNameIndexContract:
     def test_recreated_name_points_to_new_handle(self) -> None:
         manager = _new_game()
         first = manager.create_entity("node")
-        first.add(IdentityComponent, "node", 1, _new_id())
+        first.add(IdentityComponent, 1, _new_id())
         manager.destroy_entity(first)
 
         second = manager.create_entity("node")
-        second.add(IdentityComponent, "node", 2, _new_id())
+        second.add(IdentityComponent, 2, _new_id())
 
         assert manager.get_entity_by_name("node") == second
         assert manager.get_entity_by_name("node") != first
@@ -112,7 +112,7 @@ class TestIndexHandleContract:
     def test_context_entities_property_is_a_set_of_handles(self) -> None:
         manager = _new_game()
         entity = manager.create_entity("solo")
-        entity.add(IdentityComponent, "solo", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
 
         assert isinstance(manager.entities, set)
         assert entity in manager.entities
@@ -122,7 +122,7 @@ class TestIndexHandleContract:
 
         manager = _new_game()
         entity = manager.create_entity("iter")
-        entity.add(IdentityComponent, "iter", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
 
         group = manager.get_group(Matcher(IdentityComponent))
         snapshot = group.entities.copy()
@@ -134,7 +134,7 @@ class TestIndexHandleContract:
     def test_entity_handle_hashable_and_usable_in_sets(self) -> None:
         manager = _new_game()
         entity = manager.create_entity("hash")
-        entity.add(IdentityComponent, "hash", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
 
         assert {entity} == {entity}
         assert isinstance(entity, Entity)
@@ -148,10 +148,10 @@ class TestContextSnapshotContract:
 
         source = _new_game()
         hero = source.create_entity("hero")
-        hero.add(IdentityComponent, "hero", 1, _new_id())
+        hero.add(IdentityComponent, 1, _new_id())
 
         goblin = source.create_entity("goblin")
-        goblin.add(IdentityComponent, "goblin", 2, _new_id())
+        goblin.add(IdentityComponent, 2, _new_id())
         goblin.set(tag_cls, tag_cls.model_validate({"value": 7}))
 
         data = source.serialize()
@@ -175,7 +175,7 @@ class TestContextSnapshotContract:
 
         manager = _new_game()
         entity = manager.create_entity("probe")
-        entity.add(IdentityComponent, "probe", 1, _new_id())
+        entity.add(IdentityComponent, 1, _new_id())
         entity.set(Unregistered, Unregistered(value=1))
 
         data = manager.serialize()
@@ -186,7 +186,7 @@ class TestContextSnapshotContract:
     def test_restore_context_requires_empty_context(self) -> None:
         manager = _new_game()
         existing = manager.create_entity("existing")
-        existing.add(IdentityComponent, "existing", 1, _new_id())
+        existing.add(IdentityComponent, 1, _new_id())
 
         with pytest.raises(AssertionError, match="empty context"):
             manager.restore({}, resolve_component_type)

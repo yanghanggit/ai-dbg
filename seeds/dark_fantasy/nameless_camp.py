@@ -1,16 +1,14 @@
 """剧本「无名的营地」：一个世界、一个舞台、一个角色，作为开发与测试的起点。
 
 故事级设定（战役设定、全局规则、世界职责）在 ``story`` 模块共用；这里只放本剧本
-专属的实体数据。
+专属的实体数据。实体的状态一律写成组件数据，包括角色所在舞台。
 """
 
 from ai_srpg.models import (
-    Actor,
-    ActorType,
+    ActorBlueprint,
     Blueprint,
-    Stage,
-    StageType,
-    World,
+    StageBlueprint,
+    WorldBlueprint,
     create_actor,
     create_stage,
     create_world,
@@ -18,49 +16,60 @@ from ai_srpg.models import (
 
 from .story import CAMPAIGN_SETTING, GLOBAL_RULES, WORLD_ROLE_RULES
 
+STAGE_NAME = "舞台.营地"
 
-def create_nameless() -> Actor:
+#######################################################################################################################################
+# 无名的体型：既进 prompt 的「基础体型」段，也是角色的初始外观
+BASE_BODY = "年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。"
+
+
+def create_nameless() -> ActorBlueprint:
     """创建玩家角色——无名。"""
 
-    return create_actor(
+    actor = create_actor(
         name="角色.无名",
-        actor_type=ActorType.NONE,
         profile="""**历史**: 你醒来时想不起自己是谁，也想不起自己从哪儿来。你身上穿着一件不属于此地样式的旧斗篷，脑海深处只残留着一些断裂的碎片——那里没有魔法，也没有刀剑横行的荒野。你说不清那是什么地方，却清楚一件事：你不是这里的人。这件事你对谁都没有提过，也说不清。于是你给自己取了一个称呼：「无名」。把你从路边捡回来的，是个落魄的老佣兵，他给你起了名，也没多问，就这样把你带进了这一行。
 **性格**: 你沉默，观察多于开口。面对陌生的事物不会慌乱，而是停下来，仔细看，仔细想，再决定怎么做。你不排斥危险，但也不会轻易莽撞。
 **禁忌**: 你对任何人追问你的来历、强行拿走你身上仅有的东西、或强迫你去某个地方，都有本能的抵触。
 **最爱**: 你发现自己喜欢坐在炉火边，听火舌舔过木柴的轻响，那时候周围很安静。""",
-        base_body="年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。",
+        base_body=BASE_BODY,
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
     )
+    actor.components = {
+        "ActorComponent": {"current_stage": STAGE_NAME},
+        "AppearanceComponent": {"base_body": BASE_BODY},
+    }
+    return actor
 
 
 #######################################################################################################################################
-def create_camp_stage() -> Stage:
+def create_camp_stage() -> StageBlueprint:
     """创建极简营地：作为舞台与据点数据的起点。"""
 
     stage = create_stage(
-        name="舞台.营地",
-        stage_type=StageType.NONE,
+        name=STAGE_NAME,
         profile="""一处背风的营地。碎石围出一圈浅坑，余烬还带着一点温度；几件行囊靠在岩根，远处是通往荒野的旧道。
 这里没有常驻的人，也没有可做的事，只是出发前与归来后短暂停留的地方。""",
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
     )
-    stage.actors = [create_nameless()]
+    stage.components = {"StageComponent": {}}
     return stage
 
 
 #######################################################################################################################################
-def create_starless_world() -> World:
+def create_starless_world() -> WorldBlueprint:
     """创建世界实体——无星长夜：叙事者与规则仲裁者，高于所有舞台。"""
 
-    return create_world(
+    world = create_world(
         name="世界.无星长夜",
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
         role_rules=WORLD_ROLE_RULES,
     )
+    world.components = {"WorldComponent": {}}
+    return world
 
 
 #######################################################################################################################################
@@ -72,6 +81,7 @@ def create_blueprint(game_name: str) -> Blueprint:
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
         stages=[create_camp_stage()],
+        actors=[create_nameless()],
         world_entities=[create_starless_world()],
     )
 

@@ -55,7 +55,7 @@ class TestDestroyEntitySystem:
     ) -> None:
         """持有 DestroyComponent 的实体执行后应被销毁。"""
         entity = context.create_entity()
-        entity.add(DestroyComponent, "target")
+        entity.add(DestroyComponent)
 
         await system.execute()
 
@@ -67,11 +67,11 @@ class TestDestroyEntitySystem:
     ) -> None:
         """多个持有 DestroyComponent 的实体全部应被销毁。"""
         entity_a = context.create_entity()
-        entity_a.add(DestroyComponent, "a")
+        entity_a.add(DestroyComponent)
         entity_b = context.create_entity()
-        entity_b.add(DestroyComponent, "b")
+        entity_b.add(DestroyComponent)
         entity_c = context.create_entity()
-        entity_c.add(DestroyComponent, "c")
+        entity_c.add(DestroyComponent)
 
         await system.execute()
 
@@ -97,7 +97,7 @@ class TestDestroyEntitySystem:
     ) -> None:
         """混合场景：仅销毁持有 DestroyComponent 的实体，保留其他实体。"""
         to_destroy = context.create_entity()
-        to_destroy.add(DestroyComponent, "bye")
+        to_destroy.add(DestroyComponent)
 
         to_keep = context.create_entity()
         to_keep.add(Position, 0.0, 0.0)
@@ -113,7 +113,7 @@ class TestDestroyEntitySystem:
     ) -> None:
         """execute() 应通过 destroy_entity(game) 销毁实体，而非仅移除组件。"""
         entity = context.create_entity()
-        entity.add(DestroyComponent, "x")
+        entity.add(DestroyComponent)
 
         await system.execute()
 

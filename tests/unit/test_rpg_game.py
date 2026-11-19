@@ -47,21 +47,21 @@ from ai_srpg.models import (
 def _make_stage(game: SRPGGame, stage_name: str) -> Entity:
     """创建带 StageComponent 的舞台实体。"""
     entity: Entity = game.create_entity(stage_name)
-    entity.add(StageComponent, stage_name)
+    entity.add(StageComponent)
     return entity
 
 
 def _make_actor(game: SRPGGame, actor_name: str, current_stage_name: str) -> Entity:
     """创建带 ActorComponent 的角色实体。"""
     entity: Entity = game.create_entity(actor_name)
-    entity.add(ActorComponent, actor_name, current_stage_name)
+    entity.add(ActorComponent, current_stage_name)
     return entity
 
 
 def _make_entity_with_identity(game: SRPGGame, name: str, order: int) -> Entity:
     """创建带 IdentityComponent 的实体（flush_entities 排序所需）。"""
     entity: Entity = game.create_entity(name)
-    entity.add(IdentityComponent, name, order, str(uuid.uuid4()))
+    entity.add(IdentityComponent, order, str(uuid.uuid4()))
     return entity
 
 

@@ -15,17 +15,11 @@ from .queries import (
     get_world_entity,
     resolve_stage_entity,
 )
-from .world_builder import (
-    build_from_blueprint,
-    create_actor_entities,
-    create_stage_entities,
-)
+from .world_builder import build_from_blueprint
 
 __all__ = [
     "bind_player_actor",
     "build_from_blueprint",
-    "create_actor_entities",
-    "create_stage_entities",
     "get_actor_entity",
     "get_actors_by_stage",
     "get_actors_by_stage_as_names",

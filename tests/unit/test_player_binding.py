@@ -17,13 +17,11 @@ from ai_srpg.game.entities import (
     get_player_entity,
 )
 from ai_srpg.models import (
-    Actor,
+    ActorBlueprint,
     ActorComponent,
-    ActorType,
     Blueprint,
     PlayerComponent,
-    Stage,
-    StageType,
+    StageBlueprint,
 )
 
 
@@ -40,7 +38,7 @@ def context() -> ECSContext:
 
 def _make_actor(context: ECSContext, name: str) -> Any:
     entity = context.create_entity(name)
-    entity.add(ActorComponent, name, "")
+    entity.add(ActorComponent, "")
     return entity
 
 
@@ -138,25 +136,22 @@ class TestBindPlayerActor:
 ############################################################################################################
 def _blueprint() -> Blueprint:
     """单舞台单角色的最小蓝图：谁会玩不写在蓝图里。"""
-    actor = Actor(
+    actor = ActorBlueprint(
         name="角色.甲",
-        type=ActorType.NONE,
-        profile="角色设定",
-        base_body="体型",
         system_message="# 角色.甲",
+        components={"ActorComponent": {"current_stage": "舞台.甲"}},
     )
-    stage = Stage(
+    stage = StageBlueprint(
         name="舞台.甲",
-        type=StageType.NONE,
-        profile="舞台设定",
         system_message="# 舞台.甲",
-        actors=[actor],
+        components={"StageComponent": {}},
     )
     return Blueprint(
         name="TestGame",
         campaign_setting="设定",
         global_rules="规则",
         stages=[stage],
+        actors=[actor],
         world_entities=[],
     )
 

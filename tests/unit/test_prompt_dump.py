@@ -8,12 +8,10 @@ from ai_srpg.game.entities.world_builder import build_from_blueprint
 from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.game.prompt_dump import dump_blueprint_prompts
 from ai_srpg.models import (
-    Actor,
-    ActorType,
+    ActorBlueprint,
     Blueprint,
-    Stage,
-    StageType,
-    World,
+    StageBlueprint,
+    WorldBlueprint,
 )
 
 
@@ -24,24 +22,25 @@ def _blueprint() -> Blueprint:
         campaign_setting="设定",
         global_rules="规则",
         stages=[
-            Stage(
+            StageBlueprint(
                 name="舞台.营",
-                type=StageType.NONE,
-                profile="舞台设定",
                 system_message="# 舞台.营\n\n舞台 prompt",
-                actors=[
-                    Actor(
-                        name="角色.甲",
-                        type=ActorType.NONE,
-                        profile="角色设定",
-                        base_body="体型",
-                        system_message="# 角色.甲\n\n角色 prompt",
-                    )
-                ],
+                components={"StageComponent": {}},
+            )
+        ],
+        actors=[
+            ActorBlueprint(
+                name="角色.甲",
+                system_message="# 角色.甲\n\n角色 prompt",
+                components={"ActorComponent": {"current_stage": "舞台.营"}},
             )
         ],
         world_entities=[
-            World(name="世界.主", system_message="# 世界.主\n\n世界 prompt")
+            WorldBlueprint(
+                name="世界.主",
+                system_message="# 世界.主\n\n世界 prompt",
+                components={"WorldComponent": {}},
+            )
         ],
     )
 

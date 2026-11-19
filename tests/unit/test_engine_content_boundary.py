@@ -47,9 +47,8 @@ def test_engine_source_contains_no_blueprint_entity_names(tmp_path: Path) -> Non
         "dark_fantasy/nameless_camp", "BoundaryCheck", trace_dir=tmp_path
     )
     names = [world.name for world in blueprint.world_entities]
-    for stage in blueprint.stages:
-        names.append(stage.name)
-        names.extend(actor.name for actor in stage.actors)
+    names.extend(stage.name for stage in blueprint.stages)
+    names.extend(actor.name for actor in blueprint.actors)
 
     offenders = [
         f"{_relative(path)} → {name}"

@@ -30,7 +30,7 @@ def game(context: ECSContext) -> Any:
 
 def _make_actor(context: ECSContext, name: str, user_name: str = "") -> Any:
     entity = context.create_entity(name)
-    entity.add(ActorComponent, name, "")
+    entity.add(ActorComponent, "")
     if user_name:
         entity.replace(PlayerComponent, user_name)
     return entity

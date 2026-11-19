@@ -3,7 +3,7 @@
 覆盖范围：
 - registry.create_component_type 动态创建组件类（含幂等与字段定义）
 - registry.resolve_component_type 惰性重建动态组件（含按 data 推断字段）
-- SRPGGame.create_stage_entities 挂载 Stage.components
+- build_from_blueprint 挂载蓝图声明的动态组件
 - RPGEntityManager.restore_context 跨进程重建动态组件
 """
 
@@ -16,16 +16,14 @@ from pydantic import ValidationError
 from ai_srpg.entitas import Context
 from ai_srpg.entitas.components import Component
 from ai_srpg.game.ecs_context import ECSContext
-from ai_srpg.game.entities import (
-    create_stage_entities,
-)
+from ai_srpg.game.entities import build_from_blueprint, get_stage_entity
 from ai_srpg.models import (
     COMPONENT_TYPES,
     AgentMemoryStore,
+    Blueprint,
     IdentityComponent,
-    Stage,
+    StageBlueprint,
     StageComponent,
-    StageType,
     create_component_type,
     resolve_component_type,
 )
@@ -43,15 +41,32 @@ def _clean_dynamic_component_types() -> Iterator[None]:
 
 
 ############################################################################################################
-def _make_stage_model(name: str, component_name: str) -> Stage:
-    """构造一个挂载了指定动态组件的 Stage 模型。"""
-    return Stage(
+def _make_stage_model(name: str, component_name: str) -> StageBlueprint:
+    """构造一个挂载了指定动态组件的舞台声明。"""
+    return StageBlueprint(
         name=name,
-        type=StageType.NONE,
-        profile="测试舞台",
         system_message=f"{name} 的系统消息",
-        actors=[],
-        components={component_name: {"name": name}},
+        components={
+            "StageComponent": {},
+            component_name: {"name": name},
+        },
+    )
+
+
+############################################################################################################
+def _build(game: Any, *stages: StageBlueprint) -> None:
+    """把若干舞台声明装进最小蓝图并构建。"""
+    build_from_blueprint(
+        game,
+        Blueprint(
+            name="DynamicComponentTest",
+            campaign_setting="设定",
+            global_rules="规则",
+            stages=list(stages),
+            actors=[],
+            world_entities=[],
+        ),
+        user_name="tester",
     )
 
 
@@ -134,18 +149,16 @@ class TestResolveComponentType:
 
 
 ############################################################################################################
-# SRPGGame.create_stage_entities 集成
+# 蓝图装配挂载动态组件
 ############################################################################################################
-class TestCreateStageEntitiesDynamicComponent:
+class TestBuildWithDynamicComponent:
     def test_attaches_dynamic_component(self, sample_game: Any) -> None:
-        tag_name = "integration_001"
-        tag_cls = create_component_type(tag_name, name=(str, ...))
-        stage_model = _make_stage_model("舞台.测试房", "integration_001")
+        tag_cls = create_component_type("integration_001", name=(str, ...))
+        _build(sample_game, _make_stage_model("舞台.测试房", "integration_001"))
 
-        stage_entities = create_stage_entities(sample_game, [stage_model])
+        stage_entity = sample_game.get_entity_by_name("舞台.测试房")
 
-        assert len(stage_entities) == 1
-        stage_entity = stage_entities[0]
+        assert stage_entity is not None
         assert stage_entity.has(StageComponent)
         assert stage_entity.has(tag_cls)
         assert stage_entity.get(tag_cls).model_dump() == {"name": "舞台.测试房"}
@@ -154,21 +167,21 @@ class TestCreateStageEntitiesDynamicComponent:
         cls_a = create_component_type("integration_a", name=(str, ...))
         cls_b = create_component_type("integration_b", name=(str, ...))
 
-        entities = create_stage_entities(
+        _build(
             sample_game,
-            [
-                _make_stage_model("舞台.A", "integration_a"),
-                _make_stage_model("舞台.B", "integration_b"),
-            ],
+            _make_stage_model("舞台.A", "integration_a"),
+            _make_stage_model("舞台.B", "integration_b"),
         )
-        by_name = {e.name: e for e in entities}
+        stage_a = get_stage_entity(sample_game, "舞台.A")
+        stage_b = get_stage_entity(sample_game, "舞台.B")
+        assert stage_a is not None and stage_b is not None
 
-        assert by_name["舞台.A"].has(cls_a)
-        assert not by_name["舞台.A"].has(cls_b)
-        assert by_name["舞台.B"].has(cls_b)
-        assert not by_name["舞台.B"].has(cls_a)
-        assert by_name["舞台.A"].get(cls_a).model_dump() == {"name": "舞台.A"}
-        assert by_name["舞台.B"].get(cls_b).model_dump() == {"name": "舞台.B"}
+        assert stage_a.has(cls_a)
+        assert not stage_a.has(cls_b)
+        assert stage_b.has(cls_b)
+        assert not stage_b.has(cls_a)
+        assert stage_a.get(cls_a).model_dump() == {"name": "舞台.A"}
+        assert stage_b.get(cls_b).model_dump() == {"name": "舞台.B"}
 
 
 ############################################################################################################
@@ -181,7 +194,7 @@ class TestRestoreContextDynamicComponent:
 
         source = _new_game()
         entity = source.create_entity("舞台.序列化测试")
-        entity.add(IdentityComponent, "舞台.序列化测试", 1, str(uuid.uuid4()))
+        entity.add(IdentityComponent, 1, str(uuid.uuid4()))
         entity.set(tag_cls, tag_cls.model_validate({"name": "舞台.序列化测试"}))
 
         serialized = source.serialize()

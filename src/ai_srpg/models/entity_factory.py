@@ -1,52 +1,41 @@
 """
 游戏实体工厂模块。
 
+这里只负责把内容侧的作者信息（设定、体型）拼成实体的 ``system_message``；组件
+一律由内容侧显式声明，工厂不猜。
+
 system prompt 段序原则：内容向的「游戏设定」「角色/舞台设定」「基础体型」等在前，
 具备规则效果的「全局规则」在后——让 agent 先建立角色与世界观，最后读到必须遵守的规则。
 """
 
-from . import (
-    Actor,
-    ActorType,
-    Stage,
-    StageType,
-    World,
-)
+from . import ActorBlueprint, StageBlueprint, WorldBlueprint
 
 
 #######################################################################################################################################
 def create_actor(
     name: str,
-    actor_type: ActorType,
     profile: str,
     base_body: str,
     campaign_setting: str,
     global_rules: str,
-) -> Actor:
+) -> ActorBlueprint:
     """
-    创建一个游戏角色(Actor)实例。
+    创建一个角色蓝图实例，组装它的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有角色名称(name)"
     assert profile.strip() != "", "SRPG 游戏要求必须有角色设定(profile)"
-    assert base_body.strip() != "", "SRPG 游戏要求必须有角色设定(base_body)"
+    assert base_body.strip() != "", "SRPG 游戏要求必须有角色体型(base_body)"
     assert (
         campaign_setting.strip() != ""
     ), "SRPG 游戏要求必须有游戏设定(campaign_setting)"
     assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
 
-    actor = Actor(
+    return ActorBlueprint(
         name=name,
-        type=actor_type,
-        profile=profile,
-        base_body=base_body,
-        system_message="",
-    )
+        system_message=f"""# {name}
 
-    # 系统提示词词
-    actor.system_message = f"""# {actor.name}
-
-你扮演角色: {actor.name}
+你扮演角色: {name}
 
 ## 游戏设定
 
@@ -62,21 +51,19 @@ def create_actor(
 
 ## 全局规则
 
-{global_rules}"""
-
-    return actor
+{global_rules}""",
+    )
 
 
 #######################################################################################################################################
 def create_stage(
     name: str,
-    stage_type: StageType,
     profile: str,
     campaign_setting: str,
     global_rules: str,
-) -> Stage:
+) -> StageBlueprint:
     """
-    创建一个游戏舞台(Stage)实例。
+    创建一个舞台蓝图实例，组装它的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有舞台名称(name)"
@@ -86,19 +73,11 @@ def create_stage(
     ), "SRPG 游戏要求必须有游戏设定(campaign_setting)"
     assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
 
-    # 创建舞台实例
-    stage = Stage(
+    return StageBlueprint(
         name=name,
-        type=stage_type,
-        profile=profile,
-        system_message="",
-        actors=[],
-    )
+        system_message=f"""# {name}
 
-    # 系统提示词词
-    stage.system_message = f"""# {stage.name}
-
-你扮演舞台: {stage.name}
+你扮演舞台: {name}
 
 ## 游戏设定
 
@@ -110,19 +89,16 @@ def create_stage(
 
 ## 全局规则
 
-{global_rules}"""
-
-    return stage
+{global_rules}""",
+    )
 
 
 #######################################################################################################################################
-
-
 def create_world(
     name: str, campaign_setting: str, global_rules: str, role_rules: str
-) -> World:
+) -> WorldBlueprint:
     """
-    创建一个世界(World)实例。
+    创建一个世界蓝图实例，组装它的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有世界名称(name)"
@@ -132,17 +108,11 @@ def create_world(
     assert global_rules.strip() != "", "SRPG 游戏要求必须有全局规则(global_rules)"
     assert role_rules.strip() != "", "SRPG 游戏要求必须有角色扮演规则(role_rules)"
 
-    # 创建世界实例
-    world = World(
+    return WorldBlueprint(
         name=name,
-        system_message="",
-        components={},
-    )
+        system_message=f"""# {name}
 
-    # 系统提示词词
-    world.system_message = f"""# {world.name}
-
-你扮演世界: {world.name}
+你扮演世界: {name}
 
 ## 游戏设定
 
@@ -152,9 +122,8 @@ def create_world(
 
 ## 全局规则
 
-{global_rules}"""
-
-    return world
+{global_rules}""",
+    )
 
 
 ###############################################################################

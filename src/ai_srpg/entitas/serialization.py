@@ -10,7 +10,7 @@ JSON-friendly, readable and diffable::
 
     {
         "hero": {
-            "IdentityComponent": {"name": "hero", "creation_order": 1, ...},
+            "IdentityComponent": {"creation_order": 1, "entity_id": "..."},
             "Position": {"x": 1.0, "y": 2.0},
         },
     }

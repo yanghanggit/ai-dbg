@@ -36,8 +36,8 @@ def _iter_prompt_messages(blueprint: Blueprint) -> Iterator[Tuple[str, str]]:
     """遍历蓝图里所有实体的 (实体名, system_message)。"""
     for stage in blueprint.stages:
         yield stage.name, stage.system_message
-        for actor in stage.actors:
-            yield actor.name, actor.system_message
+    for actor in blueprint.actors:
+        yield actor.name, actor.system_message
     for world in blueprint.world_entities:
         yield world.name, world.system_message
 
