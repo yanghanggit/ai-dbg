@@ -4,7 +4,7 @@
 这是破坏性的完整重置，不是增量 seed：会删除目标库后重建。
 
 步骤：
-1. 生成种子蓝图并写入 ``.blueprints/``（内容见 ``seeds/blueprint.py``）；
+1. 重建蓝图产物（``.blueprints/`` 与 ``logs/blueprints/``，内容见 ``seeds/``）；
 2. 删除并重建 ``postgresql_config.database`` 指定的数据库；
 3. 建业务表（含 pgvector 扩展）；
 4. 建 Procrastinate 任务队列表结构；
@@ -23,7 +23,6 @@ from typing import Final, final
 from loguru import logger
 from pydantic import BaseModel
 
-from ai_srpg.paths import BLUEPRINTS_DIR
 from ai_srpg.pgsql import (
     pgsql_create_database,
     pgsql_drop_database,
@@ -32,7 +31,7 @@ from ai_srpg.pgsql import (
     procrastinate_app,
 )
 from ai_srpg.pgsql.user_operations import has_user, save_user
-from seeds import create_seed_blueprint
+from scripts.build_blueprint import build_blueprint_artifacts
 
 ###########################################################################################################
 ###########################################################################################################
@@ -48,7 +47,8 @@ class UserAccount(BaseModel):
     display_name: str
 
 
-#: 种子蓝图与游戏名
+#: 本次重建用的内容源与游戏名
+SOURCE: Final[str] = "dark_fantasy/nameless_camp"
 GAME_NAME: Final[str] = "Game1"
 
 TEST_USER: Final[UserAccount] = UserAccount(
@@ -60,11 +60,9 @@ TEST_USER: Final[UserAccount] = UserAccount(
 
 ###########################################################################################################
 def _seed_blueprint() -> None:
-    """把种子蓝图写入 ``.blueprints/``。"""
-    logger.info("🗺️ 生成种子蓝图...")
-    blueprint = create_seed_blueprint(GAME_NAME)
-    path = BLUEPRINTS_DIR / f"{GAME_NAME}.json"
-    path.write_text(blueprint.model_dump_json(indent=4), encoding="utf-8")
+    """重建蓝图产物（蓝图 JSON 与提示词留痕）。"""
+    logger.info(f"🗺️ 重建蓝图产物: source={SOURCE}, game={GAME_NAME}")
+    path = build_blueprint_artifacts(SOURCE, GAME_NAME)
     logger.success(f"✅ 蓝图已写入 {path}")
 
 

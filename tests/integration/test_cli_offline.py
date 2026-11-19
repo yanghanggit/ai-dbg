@@ -11,7 +11,7 @@ from ai_srpg.cli.srpg_agent_game import main
 from ai_srpg.pgsql import pgsql_ensure_database_tables
 from ai_srpg.pgsql.client import SessionLocal
 from ai_srpg.pgsql.game_snapshot import GameSnapshotDB
-from seeds import create_seed_blueprint
+from seeds import create_blueprint
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -21,7 +21,7 @@ def _ensure_schema() -> None:
 
 @pytest.fixture
 def blueprint_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    blueprint = create_seed_blueprint("Game1")
+    blueprint = create_blueprint("dark_fantasy/nameless_camp", "Game1")
     (tmp_path / "Game1.json").write_text(
         blueprint.model_dump_json(indent=2), encoding="utf-8"
     )

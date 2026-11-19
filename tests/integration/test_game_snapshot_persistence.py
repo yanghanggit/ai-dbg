@@ -19,7 +19,7 @@ from ai_srpg.pgsql.game_snapshot_operations import (
     load_game_snapshot,
     load_latest_game_snapshot,
 )
-from seeds import create_seed_blueprint
+from seeds import create_blueprint
 
 GAME_NAME = "Game1"
 
@@ -43,7 +43,11 @@ def user_name() -> Iterator[str]:
 
 def _build_game() -> SRPGGame:
     game = create_srpg_game(name=GAME_NAME)
-    build_from_blueprint(game, create_seed_blueprint(GAME_NAME), user_name="alice")
+    build_from_blueprint(
+        game,
+        create_blueprint("dark_fantasy/nameless_camp", GAME_NAME),
+        user_name="alice",
+    )
     return game
 
 

@@ -1,25 +1,9 @@
-"""种子世界数据：构建开发/测试用的初始蓝图。
+"""黑暗幻想故事的故事级设定：战役设定、全局规则与世界职责，被本故事下所有剧本共用。
 
-本模块只做数据构建：战役设定、全局规则、世界、舞台与角色。玩法相关的数据（战斗、
-遭遇与推进规则）在 SRPG 规则落地后再按新数据结构补充。
+写在这里的文字对所有剧本生效；某个剧本专属的世界、舞台与角色不进本模块。
 """
 
-import re
-from pathlib import Path
-from typing import Final, Iterator, Optional, Tuple
-
-from ai_srpg.game.prompt_dump import dump_blueprint_prompts
-from ai_srpg.models import (
-    Actor,
-    ActorType,
-    Blueprint,
-    Stage,
-    StageType,
-    World,
-    create_actor,
-    create_stage,
-    create_world,
-)
+from typing import Final
 
 #######################################################################################################################################
 # CAMPAIGN_SETTING 编写原则
@@ -54,7 +38,7 @@ CAMPAIGN_SETTING: Final[str] = (
 # ---------------------------------------------------------------------------
 # 定位：注入到每个实体 system prompt 的「全局规则」段，只写所有实体必须
 #       共同遵守的纯机制规则（扮演契约、实体类型、实体全名、舞台移动）。
-#       玩法规则（战斗、副本等）不属于这里，由具体玩法模块按需注入。
+#       玩法规则（副本、战斗等）不属于这里，由具体玩法模块按需注入。
 #######################################################################################################################################
 GLOBAL_RULES: Final[
     str
@@ -102,106 +86,5 @@ WORLD_ROLE_RULES: Final[
 冷、湿、暗。光亮总是有限的：一盏灯、一堆火、一次日出，都不足以驱散更远处的东西。暴力有重量，语言有阶级，陌生人先是威胁，然后才可能是同伴。没有人握着完整的答案，能活过今夜的人靠的是谨慎、运气，和一点不肯认命的固执。"""
 
 
-# 故事层 prompt 里对世界实体的引用（只用于检出悬空引用，不参与任何路由）
-_WORLD_ENTITY_REF_PATTERN: Final[re.Pattern[str]] = re.compile(r"世界\.\w+")
-
-
-def create_nameless() -> Actor:
-    """创建玩家角色——无名。"""
-
-    return create_actor(
-        name="角色.无名",
-        actor_type=ActorType.NONE,
-        profile="""**历史**: 你醒来时想不起自己是谁，也想不起自己从哪儿来。你身上穿着一件不属于此地样式的旧斗篷，脑海深处只残留着一些断裂的碎片——那里没有魔法，也没有刀剑横行的荒野。你说不清那是什么地方，却清楚一件事：你不是这里的人。这件事你对谁都没有提过，也说不清。于是你给自己取了一个称呼：「无名」。把你从路边捡回来的，是个落魄的老佣兵，他给你起了名，也没多问，就这样把你带进了这一行。
-**性格**: 你沉默，观察多于开口。面对陌生的事物不会慌乱，而是停下来，仔细看，仔细想，再决定怎么做。你不排斥危险，但也不会轻易莽撞。
-**禁忌**: 你对任何人追问你的来历、强行拿走你身上仅有的东西、或强迫你去某个地方，都有本能的抵触。
-**最爱**: 你发现自己喜欢坐在炉火边，听火舌舔过木柴的轻响，那时候周围很安静。""",
-        base_body="年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。",
-        campaign_setting=CAMPAIGN_SETTING,
-        global_rules=GLOBAL_RULES,
-    )
-
-
-#######################################################################################################################################
-def create_camp_stage() -> Stage:
-    """创建极简营地：作为舞台与据点数据的起点。"""
-
-    stage = create_stage(
-        name="舞台.营地",
-        stage_type=StageType.NONE,
-        profile="""一处背风的营地。碎石围出一圈浅坑，余烬还带着一点温度；几件行囊靠在岩根，远处是通往荒野的旧道。
-这里没有常驻的人，也没有可做的事，只是出发前与归来后短暂停留的地方。""",
-        campaign_setting=CAMPAIGN_SETTING,
-        global_rules=GLOBAL_RULES,
-    )
-    stage.actors = [create_nameless()]
-    return stage
-
-
-#######################################################################################################################################
-def create_starless_world() -> World:
-    """创建世界实体——无星长夜：叙事者与规则仲裁者，高于所有舞台。"""
-
-    return create_world(
-        name="世界.无星长夜",
-        campaign_setting=CAMPAIGN_SETTING,
-        global_rules=GLOBAL_RULES,
-        role_rules=WORLD_ROLE_RULES,
-    )
-
-
-#######################################################################################################################################
-def _iter_prompt_messages(blueprint: Blueprint) -> Iterator[Tuple[str, str]]:
-    """遍历蓝图里所有实体的 (实体名, system_message)。"""
-    for stage in blueprint.stages:
-        yield stage.name, stage.system_message
-        for actor in stage.actors:
-            yield actor.name, actor.system_message
-    for world in blueprint.world_entities:
-        yield world.name, world.system_message
-
-
-#######################################################################################################################################
-def _assert_no_dangling_world_refs(blueprint: Blueprint) -> None:
-    """prompt 中出现的「世界.X」必须是蓝图里真实存在的世界实体。
-
-    世界实体名只用于系统路由；写在故事层 prompt 里一旦改名不会有任何报错，
-    prompt 只是悄悄指向一个不存在的实体。校验放在蓝图出厂处，seed 时直接失败。
-    """
-    known = {world.name for world in blueprint.world_entities}
-    dangling = [
-        f"{entity_name} → {ref}"
-        for entity_name, message in _iter_prompt_messages(blueprint)
-        for ref in _WORLD_ENTITY_REF_PATTERN.findall(message)
-        if ref not in known
-    ]
-    assert (
-        not dangling
-    ), "prompt 引用了不存在的世界实体（改名后会静默失效）：" + "；".join(dangling)
-
-
-#######################################################################################################################################
-def create_seed_blueprint(
-    game_name: str, *, trace_dir: Optional[Path] = None
-) -> Blueprint:
-    """创建种子蓝图：一世界、一舞台、一角色，等待后续 SRPG 内容扩展。
-
-    出厂时把每个实体的 system prompt 导出到 ``logs/blueprints/<game_name>/``，
-    即它们进 ECS 后的 ``memories[0]``；``trace_dir`` 可指定别的导出目录。
-    """
-
-    blueprint = Blueprint(
-        name=game_name,
-        campaign_setting=CAMPAIGN_SETTING,
-        global_rules=GLOBAL_RULES,
-        stages=[create_camp_stage()],
-        world_entities=[create_starless_world()],
-    )
-
-    # 出厂闸门：prompt 里的悬空实体引用不放行
-    _assert_no_dangling_world_refs(blueprint)
-
-    # 出厂留痕：导出各实体的 system prompt，便于逐段核对
-    dump_blueprint_prompts(blueprint, directory=trace_dir)
-
-    return blueprint
+###############################################################################
+__all__ = ["CAMPAIGN_SETTING", "GLOBAL_RULES", "WORLD_ROLE_RULES"]

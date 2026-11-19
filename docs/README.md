@@ -33,6 +33,7 @@
 
 | 文档 | 简介 |
 | ------ | ------ |
+| [内容无关引擎（Content-Agnostic Engine）](wiki/content-agnostic-engine.md) | 蓝图是输入、引擎是机制执行器：结构词汇与题材词汇、机制与值、骨架与内容三条分界线；换故事的边界与防线 |
 | [System 错误处理与回滚边界](wiki/system-error-handling.md) | system 何时可自行处理失败、何时必须上抛；整次 pass 的回滚粒度与 `StopPipeline` 的区别 |
 | [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与事件记录 |
 | [会话历史（Session History）](wiki/session-history.md) | 局级 append-only 事件流：一局一条流、每人一个游标、事件自带可见性；内存只留游标与上下文 |
