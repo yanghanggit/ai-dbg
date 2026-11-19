@@ -102,8 +102,6 @@ def test_dumped_prompt_equals_first_memory(tmp_path: pathlib.Path) -> None:
     build_from_blueprint(
         game,
         blueprint,
-        user_name="tester",
-        player_actor="角色.甲",
     )
 
     stage = get_stage_entity(game, "舞台.营")

@@ -17,6 +17,7 @@ from .game_snapshot_operations import (
     append_game_snapshot,
     list_game_snapshot_ids,
     list_game_snapshots,
+    list_game_summaries,
     load_game_snapshot,
     load_latest_game_snapshot,
 )
@@ -57,6 +58,7 @@ __all__ = [
     "load_game_snapshot",
     "list_game_snapshot_ids",
     "list_game_snapshots",
+    "list_game_summaries",
     # Job event models
     "JobEventDB",
     # Job event operations

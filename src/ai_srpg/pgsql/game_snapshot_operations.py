@@ -5,9 +5,10 @@
 
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..models import GameSnapshot, GameSnapshotInfo
+from ..models import GameSnapshot, GameSnapshotInfo, GameSummary
 from .client import SessionLocal
 from .game_snapshot import GameSnapshotDB
 
@@ -140,6 +141,46 @@ def list_game_snapshots(
                 )
             )
         return result
+    finally:
+        db.close()
+
+
+###############################################################################
+def list_game_summaries(room_id: str) -> List[GameSummary]:
+    """列出房间（用户）下的所有对局，按最近更新倒序。"""
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(
+                GameSnapshotDB.game_name,
+                func.max(GameSnapshotDB.id),
+                func.count(GameSnapshotDB.id),
+                func.max(GameSnapshotDB.created_at),
+            )
+            .filter(GameSnapshotDB.room_id == room_id)
+            .group_by(GameSnapshotDB.game_name)
+            .all()
+        )
+        latest_ids = [row[1] for row in rows]
+        latest_rows = {
+            row.game_name: row
+            for row in db.query(GameSnapshotDB)
+            .filter(GameSnapshotDB.id.in_(latest_ids))
+            .all()
+        }
+        summaries: List[GameSummary] = []
+        for game_name, latest_id, count, updated_at in rows:
+            snapshot = GameSnapshot.model_validate(latest_rows[game_name].data)
+            summaries.append(
+                GameSummary(
+                    game_name=game_name,
+                    latest_snapshot_id=latest_id,
+                    snapshot_count=count,
+                    updated_at=updated_at,
+                    entity_count=len(snapshot.ecs.entities),
+                )
+            )
+        return sorted(summaries, key=lambda item: item.updated_at, reverse=True)
     finally:
         db.close()
 

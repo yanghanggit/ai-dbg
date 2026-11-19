@@ -85,7 +85,7 @@ def _blueprint(world_count: int = 1) -> Blueprint:
 
 def _build(world_count: int = 1) -> SRPGGame:
     game = create_srpg_game(name="TreeTest")
-    build_from_blueprint(game, _blueprint(world_count), user_name="tester")
+    build_from_blueprint(game, _blueprint(world_count))
     return game
 
 

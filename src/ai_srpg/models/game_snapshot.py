@@ -42,4 +42,21 @@ class GameSnapshotInfo(BaseModel):
 
 
 ###############################################################################
-__all__ = ["GameSnapshot", "GameSnapshotInfo", "GAME_SNAPSHOT_FORMAT_VERSION"]
+@final
+class GameSummary(BaseModel):
+    """一局的概览：最新快照 + 累计条数，用于列房间里的所有对局。"""
+
+    game_name: str
+    latest_snapshot_id: int
+    snapshot_count: int
+    updated_at: datetime.datetime
+    entity_count: int
+
+
+###############################################################################
+__all__ = [
+    "GameSnapshot",
+    "GameSnapshotInfo",
+    "GameSummary",
+    "GAME_SNAPSHOT_FORMAT_VERSION",
+]

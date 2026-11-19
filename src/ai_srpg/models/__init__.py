@@ -47,7 +47,12 @@ from .components import (
 )
 from .context_snapshot import SNAPSHOT_FORMAT_VERSION, ContextSnapshot
 from .entity_naming import EntityNaming
-from .game_snapshot import GAME_SNAPSHOT_FORMAT_VERSION, GameSnapshot, GameSnapshotInfo
+from .game_snapshot import (
+    GAME_SNAPSHOT_FORMAT_VERSION,
+    GameSnapshot,
+    GameSnapshotInfo,
+    GameSummary,
+)
 from .job import JobEvent
 from .memory_tags import MEMORY_TAGS, assert_known_memory_tags
 from .messages import (
@@ -103,6 +108,7 @@ __all__ = [
     "GAME_SNAPSHOT_FORMAT_VERSION",
     "GameSnapshot",
     "GameSnapshotInfo",
+    "GameSummary",
     "HumanMessage",
     "IdentityComponent",
     "ImageMeta",

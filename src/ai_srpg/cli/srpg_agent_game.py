@@ -4,7 +4,9 @@
 不保持进程内状态。状态与历史由 PostgreSQL 的 game_snapshots 承载。
 
 命令一览：
+  list             列出该玩家的所有对局
   new              从蓝图创建新游戏并写入基线快照
+  bind             接管一个已有角色并写入快照
   snapshots        列出快照历史
   stages           列出舞台-角色映射
   compact-context  手动压缩指定实体的 LLM 记忆并保存快照
@@ -30,7 +32,9 @@ from ai_srpg.paths import LOGS_DIR
 from ai_srpg.srpg_game_agent.compact import compact_context_game
 from ai_srpg.srpg_game_agent.core import (
     advance_game,
+    bind_actor_game,
     create_and_initialize_game,
+    list_games_game,
     snapshots_game,
     stages_game,
 )
@@ -207,28 +211,49 @@ def llm_call(request_id: str, as_json: bool) -> None:
 
 
 ###############################################################################
+@main.command("list")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--json", "as_json", is_flag=True, help="逐行输出完整 JSON")
+def list_games(user: str, as_json: bool) -> None:
+    """列出该玩家的所有对局。"""
+    summaries = list_games_game(user)
+    if not summaries:
+        click.echo("（没有对局）")
+        return
+    if as_json:
+        for summary in summaries:
+            click.echo(summary.model_dump_json())
+        return
+    for summary in summaries:
+        line = "  ".join(
+            [
+                f"{summary.updated_at.astimezone():%Y-%m-%d %H:%M:%S}",
+                f"{summary.game_name:<12}",
+                f"snapshots={summary.snapshot_count:<4}",
+                f"latest={summary.latest_snapshot_id:<6}",
+                f"entities={summary.entity_count}",
+            ]
+        )
+        click.echo(line)
+
+
+###############################################################################
 @main.command("new")
 @click.option("--user", required=True, help="玩家用户名")
 @click.option(
     "--game", required=True, help="游戏名称（对应 BLUEPRINTS_DIR 下的文件名）"
 )
-@click.option("--player-actor", default=None, help="指定玩家角色名；缺省由蓝图决定")
 @click.option(
     "--reset",
     is_flag=True,
     help="已有快照时仍从蓝图重建，并追加新的基线快照（旧历史保留）",
 )
-def new_game(user: str, game: str, player_actor: str | None, reset: bool) -> None:
-    """从蓝图创建新游戏并写入基线快照。"""
+def new_game(user: str, game: str, reset: bool) -> None:
+    """从蓝图创建新游戏并写入基线快照（不绑定玩家）。"""
     _setup_logger()
     try:
         outcome = _run_game(
-            create_and_initialize_game(
-                user,
-                game,
-                player_actor=player_actor,
-                reset=reset,
-            ),
+            create_and_initialize_game(user, game, reset=reset),
             command="new",
             user=user,
             game=game,
@@ -241,6 +266,35 @@ def new_game(user: str, game: str, player_actor: str | None, reset: bool) -> Non
     click.echo(f"user:      {user}")
     click.echo(f"game:      {game}")
     click.echo(f"entities:  {outcome.game.entity_count}")
+    click.echo(f"snapshot:  {outcome.snapshot_id}")
+
+
+###############################################################################
+@main.command("bind")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--actor", required=True, help="要接管的角色名")
+@click.option(
+    "--snapshot-id", type=int, default=None, help="基于哪个快照接管；缺省用最新"
+)
+def bind_actor_cmd(user: str, game: str, actor: str, snapshot_id: int | None) -> None:
+    """让该玩家接管一个已有角色，并写入新快照。"""
+    _setup_logger()
+    try:
+        outcome = _run_game(
+            bind_actor_game(user, game, actor, snapshot_id),
+            command="bind",
+            user=user,
+            game=game,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"user:      {outcome.user_name}")
+    click.echo(f"game:      {game}")
+    click.echo(f"actor:     {outcome.actor_name}")
     click.echo(f"snapshot:  {outcome.snapshot_id}")
 
 

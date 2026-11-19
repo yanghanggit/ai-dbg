@@ -95,7 +95,7 @@ def _blueprint() -> Blueprint:
 
 def _game() -> SRPGGame:
     game = create_srpg_game(name="BroadcastTest", events=RecordingEventSink())
-    build_from_blueprint(game, _blueprint(), user_name="tester")
+    build_from_blueprint(game, _blueprint())
     return game
 
 
@@ -147,7 +147,7 @@ def test_radius_is_chebyshev() -> None:
     blueprint = _blueprint()
     blueprint.root_stage.children[1].position = Position(x=1, y=1)
     game = create_srpg_game(name="BroadcastTest", events=RecordingEventSink())
-    build_from_blueprint(game, blueprint, user_name="tester")
+    build_from_blueprint(game, blueprint)
 
     StageBroadcastMixin(game).broadcast_to_global_stage(
         game.get_entity_by_name(CAMP),  # type: ignore[arg-type]

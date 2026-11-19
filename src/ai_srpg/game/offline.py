@@ -30,24 +30,17 @@ def load_blueprint(game_name: str) -> Blueprint:
 
 ###############################################################################
 def create_game_from_blueprint(
-    user_name: str,
     game_name: str,
     *,
-    player_actor: Optional[str] = None,
     events: Optional[DomainEventSink] = None,
 ) -> SRPGGame:
-    """读取蓝图并构建新游戏世界；pipeline 尚未初始化。
+    """读取蓝图并装配新游戏世界；pipeline 尚未初始化。
 
     ``events`` 是领域事件出口（如会话历史 sink）；不传则丢弃事件。
     """
     blueprint = load_blueprint(game_name)
     game = create_srpg_game(name=game_name, events=events)
-    build_from_blueprint(
-        game,
-        blueprint,
-        user_name=user_name,
-        player_actor=player_actor,
-    )
+    build_from_blueprint(game, blueprint)
     return game
 
 

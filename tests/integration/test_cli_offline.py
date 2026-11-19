@@ -1,4 +1,4 @@
-"""CLI 端到端：new → stages → advance → compact → snapshots。"""
+"""CLI 端到端：list → new → bind → stages → advance → compact → snapshots。"""
 
 import uuid
 from pathlib import Path
@@ -53,6 +53,36 @@ def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
     assert duplicate.exit_code == 1
     assert "已有 1 个快照" in duplicate.output
 
+    listed = runner.invoke(main, ["list", "--user", user_name])
+    assert listed.exit_code == 0, listed.output
+    assert "Game1" in listed.output
+    assert "snapshots=1" in listed.output
+
+    unknown = runner.invoke(
+        main,
+        ["bind", "--user", user_name, "--game", "NoSuchGame", "--actor", "角色.无名"],
+    )
+    assert unknown.exit_code == 1
+    assert "先用 new 建局" in unknown.output
+
+    bound = runner.invoke(
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.无名"]
+    )
+    assert bound.exit_code == 0, bound.output
+    assert "actor:     角色.无名" in bound.output
+    assert "snapshot:" in bound.output
+
+    rebound_to_same = runner.invoke(
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.无名"]
+    )
+    assert rebound_to_same.exit_code == 0, rebound_to_same.output
+
+    missing_actor = runner.invoke(
+        main, ["bind", "--user", user_name, "--game", "Game1", "--actor", "角色.不存在"]
+    )
+    assert missing_actor.exit_code == 1
+    assert "找不到角色实体" in missing_actor.output
+
     stages = runner.invoke(
         main, ["stages", "--user", user_name, "--game", "Game1", "--json"]
     )
@@ -83,7 +113,8 @@ def test_cli_offline_flow(blueprint_dir: Path, user_name: str) -> None:
 
     history = runner.invoke(main, ["snapshots", "--user", user_name, "--game", "Game1"])
     assert history.exit_code == 0, history.output
-    assert history.output.count("id=") == 4
+    # 一次 pass 会落两条快照（执行前用于回滚 + 结果），加上 new、两次 bind、compact
+    assert history.output.count("id=") == 6
 
     reset = runner.invoke(
         main,

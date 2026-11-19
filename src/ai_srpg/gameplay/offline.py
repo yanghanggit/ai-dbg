@@ -8,6 +8,7 @@ from typing import List, Optional
 
 from ..entitas import PassResult, ProcessorObserver
 from ..game.context import SRPGGame
+from ..game.entities.player_binding import bind_player_actor
 from ..game.events.sink import DomainEventSink
 from ..game.lifecycle import (
     initialize_pipeline,
@@ -15,11 +16,12 @@ from ..game.lifecycle import (
     snapshot_game,
 )
 from ..game.offline import create_game_from_blueprint, restore_game_from_snapshot
-from ..models import GameSnapshot, GameSnapshotInfo
+from ..models import GameSnapshot, GameSnapshotInfo, GameSummary
 from ..pgsql import (
     append_game_snapshot,
     list_game_snapshot_ids,
     list_game_snapshots,
+    list_game_summaries,
     load_latest_game_snapshot,
 )
 from ..pgsql.game_snapshot_operations import load_game_snapshot
@@ -42,6 +44,15 @@ class NewGameOutcome:
 
 
 @dataclass(frozen=True)
+class BindActorOutcome:
+    """一次接管的结果：谁接管了谁，落在哪个快照。"""
+
+    user_name: str
+    actor_name: str
+    snapshot_id: int
+
+
+@dataclass(frozen=True)
 class OfflinePassOutcome:
     result: PassResult
     snapshot_id: int
@@ -60,12 +71,13 @@ async def create_new_game(
     room_id: str,
     game_name: str,
     *,
-    user_name: Optional[str] = None,
-    player_actor: Optional[str] = None,
     reset: bool = False,
     events: Optional[DomainEventSink] = None,
 ) -> NewGameOutcome:
-    """从蓝图新建一局并写入基线快照；``reset`` 允许覆盖已有对局语义。"""
+    """从蓝图新建一局并写入基线快照；``reset`` 允许覆盖已有对局语义。
+
+    只装配世界，不绑定玩家——接管角色是独立的一步（``bind_actor``）。
+    """
     if not reset and load_latest_game_snapshot(room_id, game_name) is not None:
         raise GameAlreadyExistsError(
             room_id,
@@ -73,15 +85,33 @@ async def create_new_game(
             len(list_game_snapshot_ids(room_id, game_name)),
         )
 
-    game = create_game_from_blueprint(
-        user_name if user_name is not None else room_id,
-        game_name,
-        player_actor=player_actor,
-        events=events,
-    )
+    game = create_game_from_blueprint(game_name, events=events)
     await initialize_pipeline(game)
     snapshot_id = append_game_snapshot(room_id, snapshot_game(game))
     return NewGameOutcome(game=game, snapshot_id=snapshot_id)
+
+
+###############################################################################
+async def load_required_game(
+    room_id: str,
+    game_name: str,
+    *,
+    snapshot_id: Optional[int] = None,
+    events: Optional[DomainEventSink] = None,
+) -> SRPGGame:
+    """读取已存在的对局；没有快照就报错，不隐式建局。"""
+    snapshot = _load_snapshot(room_id, game_name, snapshot_id)
+    if snapshot is None:
+        if snapshot_id is not None:
+            raise LookupError(
+                f"找不到快照: room={room_id!r}, game={game_name!r}, id={snapshot_id}"
+            )
+        raise LookupError(
+            f"找不到对局: room={room_id!r}, game={game_name!r}（先用 new 建局）"
+        )
+    game = restore_game_from_snapshot(game_name, snapshot, events=events)
+    await rebuild_pipeline(game)
+    return game
 
 
 ###############################################################################
@@ -89,34 +119,52 @@ async def load_or_create_game(
     room_id: str,
     game_name: str,
     *,
-    user_name: Optional[str] = None,
     snapshot_id: Optional[int] = None,
-    player_actor: Optional[str] = None,
     events: Optional[DomainEventSink] = None,
 ) -> SRPGGame:
     """读取指定快照；没有快照时从蓝图新建，并写入基线快照。
 
     ``events`` 会注入到构造出的游戏实例，用于把领域事件接入会话历史等出口。
     """
-    snapshot = _load_snapshot(room_id, game_name, snapshot_id)
-    if snapshot is not None:
-        game = restore_game_from_snapshot(game_name, snapshot, events=events)
-        await rebuild_pipeline(game)
-        return game
-
-    if snapshot_id is not None:
-        raise LookupError(
-            f"找不到快照: room={room_id!r}, game={game_name!r}, id={snapshot_id}"
+    try:
+        return await load_required_game(
+            room_id, game_name, snapshot_id=snapshot_id, events=events
         )
+    except LookupError:
+        if snapshot_id is not None:
+            raise
 
-    outcome = await create_new_game(
-        room_id,
-        game_name,
-        user_name=user_name,
-        player_actor=player_actor,
-        events=events,
-    )
+    outcome = await create_new_game(room_id, game_name, events=events)
     return outcome.game
+
+
+###############################################################################
+async def bind_actor(
+    room_id: str,
+    game_name: str,
+    user_name: str,
+    actor_name: str,
+    *,
+    snapshot_id: Optional[int] = None,
+) -> BindActorOutcome:
+    """让 ``user_name`` 接管 ``actor_name``，并把结果落成新快照。
+
+    接管只改 ECS 里的绑定关系，不推进时间；它是入场前的一次配置动作，不进 pipeline。
+    """
+    game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
+    entity = bind_player_actor(game, user_name, actor_name)
+    new_snapshot_id = save_game_snapshot(room_id, game)
+    return BindActorOutcome(
+        user_name=user_name,
+        actor_name=entity.name,
+        snapshot_id=new_snapshot_id,
+    )
+
+
+###############################################################################
+def list_games(room_id: str) -> List[GameSummary]:
+    """列出房间（用户）下的所有对局，按最近更新倒序。"""
+    return list_game_summaries(room_id)
 
 
 ###############################################################################

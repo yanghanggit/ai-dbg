@@ -79,7 +79,6 @@ def _build(game: Any, *stages: StageBlueprint) -> None:
             actors=[],
             world_entities=[],
         ),
-        user_name="tester",
     )
 
 

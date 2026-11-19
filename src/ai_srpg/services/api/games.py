@@ -37,9 +37,7 @@ async def open_game(
     sink = SessionEventSink(room, session)
 
     # 读快照/建蓝图都要访问数据库，放在房间锁外，避免阻塞同房间的其他请求
-    game = await load_or_create_game(
-        room.room_id, game_name, user_name=user_name, events=sink
-    )
+    game = await load_or_create_game(room.room_id, game_name, events=sink)
     actor = get_player_actor_name(game, user_name)
     session.set_context(actor=actor, game=game_name)
 

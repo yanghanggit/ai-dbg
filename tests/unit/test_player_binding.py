@@ -160,21 +160,11 @@ def _blueprint() -> Blueprint:
 
 
 ############################################################################################################
-class TestBuildFromBlueprintBinding:
-    def test_binds_nobody_when_no_actor_is_chosen(self) -> None:
-        """蓝图不声明谁可玩：不指定就不绑定，进场后再认领。"""
+class TestBuildingBindsNobody:
+    def test_blueprint_assembly_leaves_every_actor_unclaimed(self) -> None:
+        """装配世界不涉及玩家：绑定是入场时的一次独立动作。"""
         game = create_srpg_game(name="TestGame")
 
-        build_from_blueprint(game, _blueprint(), user_name="alice")
+        build_from_blueprint(game, _blueprint())
 
         assert get_player_entity(game, "alice") is None
-
-    def test_binds_the_chosen_actor(self) -> None:
-        """任意角色都能被接管，不需要蓝图先声明「可玩」。"""
-        game = create_srpg_game(name="TestGame")
-
-        build_from_blueprint(
-            game, _blueprint(), user_name="alice", player_actor="角色.甲"
-        )
-
-        assert get_player_actor_name(game, "alice") == "角色.甲"

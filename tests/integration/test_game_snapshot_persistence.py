@@ -46,7 +46,6 @@ def _build_game() -> SRPGGame:
     build_from_blueprint(
         game,
         create_blueprint("dark_fantasy/nameless_camp", GAME_NAME),
-        user_name="alice",
     )
     return game
 

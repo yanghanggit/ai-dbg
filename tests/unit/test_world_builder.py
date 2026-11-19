@@ -115,7 +115,7 @@ def test_components_land_on_the_entity_verbatim() -> None:
         }
     )
 
-    build_from_blueprint(game, blueprint, user_name="alice")
+    build_from_blueprint(game, blueprint)
 
     actor = get_actor_entity(game, "角色.甲")
     assert actor is not None
@@ -134,7 +134,6 @@ def test_appearance_defaults_to_base_body() -> None:
                 "AppearanceComponent": {"base_body": "瘦削"},
             }
         ),
-        user_name="alice",
     )
 
     actor = get_actor_entity(game, "角色.甲")
@@ -147,7 +146,7 @@ def test_appearance_defaults_to_base_body() -> None:
 def test_stage_tree_sets_parent_and_position() -> None:
     """父子关系由嵌套决定，坐标由蓝图落成 ``PositionComponent``。"""
     game = create_srpg_game(name="BuildTest")
-    build_from_blueprint(game, _blueprint(), user_name="alice")
+    build_from_blueprint(game, _blueprint())
 
     battlefield = get_stage_entity(game, "舞台.战场")
     camp = get_stage_entity(game, "舞台.营地")
@@ -168,7 +167,6 @@ def test_missing_actor_marker_is_rejected() -> None:
         build_from_blueprint(
             game,
             _blueprint(actor_components={"AppearanceComponent": {"base_body": "瘦削"}}),
-            user_name="alice",
         )
 
 
@@ -183,7 +181,6 @@ def test_missing_stage_marker_is_rejected() -> None:
             _blueprint(
                 root=_battlefield(components={"GlobalStageComponent": dict(GRID)})
             ),
-            user_name="alice",
         )
 
 
@@ -198,7 +195,7 @@ def test_root_stage_must_be_global() -> None:
     )
 
     with pytest.raises(AssertionError, match="根舞台必须是全局舞台"):
-        build_from_blueprint(game, _blueprint(root=root), user_name="alice")
+        build_from_blueprint(game, _blueprint(root=root))
 
 
 ###############################################################################
@@ -216,7 +213,6 @@ def test_only_the_root_stage_may_be_global() -> None:
         build_from_blueprint(
             game,
             _blueprint(root=_battlefield(children=[child])),
-            user_name="alice",
         )
 
 
@@ -229,7 +225,6 @@ def test_child_stage_needs_a_position() -> None:
         build_from_blueprint(
             game,
             _blueprint(root=_battlefield(children=[_camp()])),
-            user_name="alice",
         )
 
 
@@ -242,7 +237,6 @@ def test_child_stage_must_fit_in_the_grid() -> None:
         build_from_blueprint(
             game,
             _blueprint(root=_battlefield(children=[_camp(Position(x=5, y=0))])),
-            user_name="alice",
         )
 
 
@@ -258,7 +252,7 @@ def test_two_children_cannot_share_a_cell() -> None:
     )
 
     with pytest.raises(AssertionError, match="已被占用"):
-        build_from_blueprint(game, _blueprint(root=root), user_name="alice")
+        build_from_blueprint(game, _blueprint(root=root))
 
 
 ###############################################################################
@@ -272,7 +266,6 @@ def test_position_without_grid_parent_is_rejected() -> None:
         build_from_blueprint(
             game,
             _blueprint(root=_battlefield(children=[settlement])),
-            user_name="alice",
         )
 
 
@@ -296,7 +289,7 @@ def test_duplicate_names_are_rejected() -> None:
     )
 
     with pytest.raises(AssertionError, match="重名实体"):
-        build_from_blueprint(game, duplicated, user_name="alice")
+        build_from_blueprint(game, duplicated)
 
 
 ###############################################################################
@@ -308,7 +301,6 @@ def test_actor_on_undeclared_stage_is_rejected() -> None:
         build_from_blueprint(
             game,
             _blueprint(actor_stage="舞台.别处"),
-            user_name="alice",
         )
 
 
@@ -320,24 +312,24 @@ def test_prompt_must_contain_entity_name() -> None:
     root.system_message = "少了名字的设定"
 
     with pytest.raises(AssertionError, match="系统消息缺少实体名"):
-        build_from_blueprint(game, _blueprint(root=root), user_name="alice")
+        build_from_blueprint(game, _blueprint(root=root))
 
 
 ###############################################################################
 def test_build_rejects_non_empty_game() -> None:
     """一局只构建一次，已有实体的游戏不能重复构建。"""
     game = create_srpg_game(name="BuildTest")
-    build_from_blueprint(game, _blueprint(), user_name="alice")
+    build_from_blueprint(game, _blueprint())
 
     with pytest.raises(AssertionError, match="游戏中有实体"):
-        build_from_blueprint(game, _blueprint(), user_name="bob")
+        build_from_blueprint(game, _blueprint())
 
 
 ###############################################################################
 def test_actor_marker_carries_stage() -> None:
     """舞台归属写在组件里，不靠嵌套结构，读回来就是当初写下的值。"""
     game: SRPGGame = create_srpg_game(name="BuildTest")
-    build_from_blueprint(game, _blueprint(), user_name="alice")
+    build_from_blueprint(game, _blueprint())
 
     actor = get_actor_entity(game, "角色.甲")
     assert actor is not None
