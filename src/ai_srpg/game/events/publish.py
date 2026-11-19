@@ -1,7 +1,10 @@
-"""事件投递原语：把一条事件写进指定实体的记忆，并发布到游戏的事件出口。
+"""事件投递与发布：投递决定「谁听见」，发布决定「记下发生过什么」。
 
-「向哪个范围投递」属于系统层，由 ``game/systems`` 里的 mixin 负责解析；这里只管
-投递本身，不认识舞台、角色与广播范围。
+向哪个范围投递属于系统层，由 ``game/systems`` 里的 mixin 解析；这里只管投递本身，
+不认识舞台、角色与广播范围。
+
+两者分开是因为它们不是一回事：一次位置变化要说给旧处、新处和自己三处听，但那只是
+一次搬运的事实。投递可以有很多份，事件只发布一次。
 """
 
 from typing import Any, Dict, Iterable, Mapping, Optional, Set
@@ -13,36 +16,39 @@ from ..memory.access import add_human_message
 
 
 #################################################################################################################################################
-def notify_entities(
+def publish_event(srpg_game: SRPGGame, agent_event: AnyAgentEvent) -> None:
+    """把一个领域事件交给游戏的事件出口（默认实现直接丢弃）。"""
+    srpg_game.events.publish(agent_event)
+
+
+#################################################################################################################################################
+def deliver_entities(
     srpg_game: SRPGGame,
     entities: Set[Entity],
     agent_event: AnyAgentEvent,
     *,
     broadcast_stage: Optional[str] = None,
 ) -> None:
-    """向指定实体投递事件消息，并发布到游戏的事件出口。
+    """向指定实体投递事件消息（不发布事件）。
 
     ``broadcast_stage`` 只由全舞台广播传入，用于在记忆里标记广播范围；私发不传，
     消息上就不会出现这个标记。
     """
     _append_messages(srpg_game, entities, agent_event, broadcast_stage=broadcast_stage)
-    srpg_game.events.publish(agent_event)
 
 
 #################################################################################################################################################
-def notify_entities_by_stage(
+def deliver_entities_by_stage(
     srpg_game: SRPGGame,
     entities_by_stage: Mapping[str, Set[Entity]],
     agent_event: AnyAgentEvent,
 ) -> None:
-    """按舞台分组投递：每条消息带自己所在舞台的标记，事件仍然只发布一次。
+    """按舞台分组投递：每条消息带自己所在舞台的标记。
 
-    跨舞台的广播（例如按距离波及若干据点）不该变成多条领域事件——事件是「发生了一
-    件事」，范围只是它被谁听见。
+    跨舞台的广播（例如按距离波及若干据点）不该变成多条领域事件——范围只是它被谁听见。
     """
     for stage_name, entities in entities_by_stage.items():
         _append_messages(srpg_game, entities, agent_event, broadcast_stage=stage_name)
-    srpg_game.events.publish(agent_event)
 
 
 #################################################################################################################################################
@@ -72,4 +78,8 @@ def _append_messages(
 
 
 ###############################################################################
-__all__ = ["notify_entities", "notify_entities_by_stage"]
+__all__ = [
+    "deliver_entities",
+    "deliver_entities_by_stage",
+    "publish_event",
+]

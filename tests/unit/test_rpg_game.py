@@ -5,7 +5,7 @@ Unit tests for game lifecycle/entity/memory/broadcast functions
   - get_agent_memory
   - destroy_entity（含 agent 记忆清理）
   - add_system_message
-  - notify_entities
+  - deliver_entities / publish_event
   - StageBroadcastMixin.broadcast_to_local_stage
   - exit / initialize（冒烟测试）
 """
@@ -17,7 +17,7 @@ import pytest
 
 from ai_srpg.entitas.entity import Entity
 from ai_srpg.game.context import SRPGGame
-from ai_srpg.game.events.publish import notify_entities
+from ai_srpg.game.events.publish import deliver_entities, publish_event
 from ai_srpg.game.lifecycle import (
     exit_game,
     initialize_game,
@@ -171,48 +171,63 @@ class TestAddSystemMessage:
 
 
 # ---------------------------------------------------------------------------
-# notify_entities
+# deliver_entities / publish_event
 # ---------------------------------------------------------------------------
 
 
-class TestNotifyEntities:
-    def test_notify_adds_message_to_all_entities(
+class TestDeliverEntities:
+    def test_deliver_adds_message_to_all_entities(
         self, game: Any, actor: Entity, second_actor: Entity
     ) -> None:
-        """notify_entities 把事件消息添加给集合中的每个实体。"""
+        """deliver_entities 把事件消息添加给集合中的每个实体。"""
         event = _agent_event("broadcast")
-        notify_entities(game, {actor, second_actor}, event)
+        deliver_entities(game, {actor, second_actor}, event)
 
         assert get_agent_memory(game, actor).messages[-1].content == "broadcast"
         assert get_agent_memory(game, second_actor).messages[-1].content == "broadcast"
 
-    def test_notify_publishes_domain_event(self, game: Any, actor: Entity) -> None:
-        """notify_entities 向领域事件出口发布事件。"""
+    def test_deliver_does_not_publish(self, game: Any, actor: Entity) -> None:
+        """投递只决定谁听见；事件是否发布由发起这件事的 system 决定。"""
         before = len(game.events.events)
-        notify_entities(game, {actor}, _agent_event("event1"))
-        assert len(game.events.events) == before + 1
+        deliver_entities(game, {actor}, _agent_event("event1"))
+        assert len(game.events.events) == before
 
-    def test_notify_stamps_event_type_without_broadcast_stage(
+    def test_publish_does_not_touch_memory(self, game: Any, actor: Entity) -> None:
+        """发布只记账，不写任何人的记忆。"""
+        event = _agent_event("event2")
+        publish_event(game, event)
+
+        assert game.events.events[-1] == event
+        assert len(get_agent_memory(game, actor).messages) == 0
+
+    def test_deliver_stamps_event_type_without_broadcast_stage(
         self, game: Any, actor: Entity
     ) -> None:
         """私发消息只盖 agent_event 标记，不盖 broadcast_stage（不是全舞台广播）。"""
-        notify_entities(game, {actor}, _agent_event("private note"))
+        deliver_entities(game, {actor}, _agent_event("private note"))
 
         message: Any = get_agent_memory(game, actor).messages[-1]
         assert message.agent_event == "none"
         assert not hasattr(message, "broadcast_stage")
 
-    def test_notify_empty_set_still_publishes(self, game: Any) -> None:
-        """实体集合为空时，领域事件仍会发布。"""
-        before = len(game.events.events)
-        notify_entities(game, set(), _agent_event("empty broadcast"))
-        assert len(game.events.events) == before + 1
+    def test_deliver_empty_set_writes_nothing(self, game: Any) -> None:
+        """没有听众时投递是空操作，但事件照样可以发布。"""
+        event = _agent_event("empty broadcast")
+        deliver_entities(game, set(), event)
+        publish_event(game, event)
 
-    def test_domain_events_accumulate_in_order(self, game: Any, actor: Entity) -> None:
-        """每次 notify_entities 都会追加一条领域事件。"""
+        assert game.events.events[-1] == event
+
+    def test_domain_events_accumulate_in_order(self, game: Any) -> None:
+        """每次 publish_event 都按调用顺序追加一条领域事件。"""
         before = list(game.events.events)
-        notify_entities(game, {actor}, _agent_event("seq test"))
-        assert game.events.events == before + [_agent_event("seq test")]
+        publish_event(game, _agent_event("first"))
+        publish_event(game, _agent_event("second"))
+
+        assert game.events.events == before + [
+            _agent_event("first"),
+            _agent_event("second"),
+        ]
 
 
 # ---------------------------------------------------------------------------

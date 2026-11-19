@@ -19,7 +19,11 @@ from ...entitas.components import Component
 from ...llm import ToolDefinition
 from ...models import AIMessage, ChatMessage, HumanMessage, ToolMessage
 from ..entities.action_rules import action_tool_call
-from ..memory import get_agent_memory, insert_messages
+from ..memory import (
+    get_agent_memory,
+    insert_messages,
+    sync_latest_context_usage_ratio,
+)
 from .system_mixin import SystemMixin
 
 #: 最多往返几轮：够表达一个行动，又不给模型自己绕圈的空间
@@ -70,6 +74,10 @@ class ActorPlanMixin(SystemMixin):
         # 记忆里留摘要而不是整段上下文：接管路径写的也是这一版，两条来源因此同形
         if result.start_message is not None:
             result.start_message.content = record_message
+
+        # agent_loop 直接往记忆的消息列表里追加，不经 insert_messages，
+        # 所以上下文占比要在这里手动接上，否则满度信号永远停在 0
+        sync_latest_context_usage_ratio(self._game, entity)
 
         logger.info(
             " ".join(

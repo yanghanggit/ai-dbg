@@ -37,6 +37,7 @@
 | [角色行为（Actor Actions）](wiki/actor-actions.md) | 战役层与据点层的动词表：地图不是场所、据点对外只是一个节点、一次位置变化说给三处听 |
 | [角色计划（Actor Plan）](wiki/actor-plan.md) | 角色一轮里的「想」：两层各有一个计划系统、上下文取哪一层、行为如何以工具表达、失败即轮空 |
 | [描述刷新（Description Refresh）](wiki/description-refresh.md) | 外观与环境两对「底稿/当前」：收集端的幂等守卫、主动强制重写、两种描述的尺度差异与失败出口 |
+| [状态改动的边界（State Change Boundary）](wiki/state-change-boundary.md) | 读写在架构上不对等：基建模块只放原语，改记忆与 ECS 只在 systems 的 mixin 里；四类例外与回滚，守卫靠命名约定 + 类型入口 |
 | [System 错误处理与回滚边界](wiki/system-error-handling.md) | system 何时可自行处理失败、何时必须上抛；整次 pass 的回滚粒度与 `StopPipeline` 的区别 |
 | [Job 执行与事件日志（Job Execution）](wiki/job-execution.md) | 一次动作的异步执行单元：Procrastinate 队列状态 + `job_events` 过程日志、失败定位与事件记录 |
 | [会话历史（Session History）](wiki/session-history.md) | 局级 append-only 事件流：一局一条流、每人一个游标、事件自带可见性；内存只留游标与上下文 |

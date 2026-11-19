@@ -282,9 +282,9 @@ def test_cli_offline_flow(
 
     history = runner.invoke(main, ["snapshots", "--user", user_name, "--game", "Game1"])
     assert history.exit_code == 0, history.output
-    # 每次 pass 落两条快照（执行前回滚点 + 结果）：new 一次、两次 bind、三次 act、
-    # plan、advance 各算一次，外加 compact
-    assert history.output.count("id=") == 14
+    # 每次 pass 落两条快照（执行前回滚点 + 结果）。compact 也走 pass，
+    # 因此与 act / plan / advance 一样算两条。
+    assert history.output.count("id=") == 15
 
     reset = runner.invoke(
         main,

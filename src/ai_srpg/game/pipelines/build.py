@@ -21,6 +21,8 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     from ..systems.actor_travel_system import ActorTravelSystem
     from ..systems.actor_wait_system import ActorWaitSystem
     from ..systems.appearance_refresh_system import AppearanceRefreshSystem
+    from ..systems.auto_compact_system import AutoCompactSystem
+    from ..systems.compact_memory_system import CompactMemorySystem
     from ..systems.destroy_entity_system import DestroyEntitySystem
     from ..systems.environment_refresh_system import EnvironmentRefreshSystem
     from ..systems.epilogue_system import EpilogueSystem
@@ -44,6 +46,8 @@ def build_game_pipeline(srpg_game: SRPGGame) -> ProcessorPipeline:
     pipeline.add(StaleDescriptionSystem(srpg_game))
     pipeline.add(AppearanceRefreshSystem(srpg_game))
     pipeline.add(EnvironmentRefreshSystem(srpg_game))
+    pipeline.add(AutoCompactSystem(srpg_game))
+    pipeline.add(CompactMemorySystem(srpg_game))
 
     # 计划：两层各有各的上下文与动词，靠 filter 的层级判定互斥。
     pipeline.add(LocalPlanSystem(srpg_game))

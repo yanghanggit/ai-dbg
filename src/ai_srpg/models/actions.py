@@ -126,6 +126,19 @@ class ActorWaitAction(Component):
 
 
 ############################################################################################################
+@final
+@register_action_component_type
+@register_component_type
+class CompactMemoryAction(Component):
+    """动作：把该实体的历史记忆折叠成一条摘要；``summary`` 为空时用默认摘要。
+
+    动作组件的字段一律必填（组件引擎不套用默认值），「空串表示用默认」由消费方解释。
+    """
+
+    summary: str
+
+
+############################################################################################################
 __all__ = [
     "ACTION_COMPONENT_TYPES",
     "ActorEnterStageAction",
@@ -135,6 +148,7 @@ __all__ = [
     "ActorSpeakAction",
     "ActorTravelAction",
     "ActorWaitAction",
+    "CompactMemoryAction",
     "RefreshAppearanceAction",
     "RefreshEnvironmentAction",
     "register_action_component_type",

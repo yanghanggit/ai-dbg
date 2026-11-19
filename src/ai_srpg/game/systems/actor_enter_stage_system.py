@@ -9,7 +9,12 @@ from typing import Dict, List, final, override
 from loguru import logger
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ...models import ActorComponent, ActorEnterStageAction, PositionComponent
+from ...models import (
+    ActorComponent,
+    ActorEnteredStage,
+    ActorEnterStageAction,
+    PositionComponent,
+)
 from ..context import SRPGGame
 from ..entities.action_rules import action_blocker
 from ..entities.queries import get_cell, get_stage_entity
@@ -57,14 +62,26 @@ class ActorEnterStageSystem(ReactiveProcessor, LocationChangeMixin):
         assert settlement is not None
         global_stage = get_cell(self._game, entity)[0]
         from_label = self.map_label(entity)
-        self.announce_departure(entity, location=global_stage, from_label=from_label)
+        event = ActorEnteredStage(
+            message=f"你从{from_label}走到{settlement.name}。",
+            actor=entity.name,
+            stage=settlement.name,
+        )
+        self.announce_departure(
+            entity, location=global_stage, from_label=from_label, agent_event=event
+        )
 
         entity.replace(ActorComponent, settlement.name)
         if entity.has(PositionComponent):
             entity.remove(PositionComponent)
 
-        self.announce_arrival(entity, location=settlement, to_label=settlement.name)
-        self.record_journey(entity, from_label=from_label, to_label=settlement.name)
+        self.announce_arrival(
+            entity, location=settlement, to_label=settlement.name, agent_event=event
+        )
+        self.record_journey(
+            entity, from_label=from_label, to_label=settlement.name, agent_event=event
+        )
+        self.publish(event)
 
 
 ###############################################################################

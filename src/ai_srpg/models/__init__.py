@@ -13,12 +13,24 @@ from .actions import (
     ActorSpeakAction,
     ActorTravelAction,
     ActorWaitAction,
+    CompactMemoryAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
 )
 from .actor_summary import ActorSummary
-from .agent_event import AgentEvent, AnyAgentEvent, NoneEvent
+from .agent_event import (
+    ActorEnteredStage,
+    ActorExitedStage,
+    ActorMovedWithinStage,
+    ActorSpoke,
+    ActorTraveled,
+    ActorWaited,
+    AgentEvent,
+    AnyAgentEvent,
+    NoneEvent,
+    StagePulse,
+)
 from .agent_memory import AgentMemory
 from .agent_memory_snapshot import MEMORY_SNAPSHOT_FORMAT_VERSION, AgentMemorySnapshot
 from .agent_memory_store import AgentMemoryStore
@@ -103,6 +115,12 @@ __all__ = [
     "ActorSummary",
     "ActorTravelAction",
     "ActorWaitAction",
+    "ActorEnteredStage",
+    "ActorExitedStage",
+    "ActorMovedWithinStage",
+    "ActorSpoke",
+    "ActorTraveled",
+    "ActorWaited",
     "AgentEvent",
     "AgentMemory",
     "AgentMemorySnapshot",
@@ -117,6 +135,7 @@ __all__ = [
     "Position",
     "COMPONENT_TYPES",
     "ChatMessage",
+    "CompactMemoryAction",
     "ComponentT",
     "ContextSnapshot",
     "DestroyComponent",
@@ -137,7 +156,6 @@ __all__ = [
     "MsgT",
     "NoneEvent",
     "NPCComponent",
-    "ActorPlanAction",
     "PlayerComponent",
     "PositionComponent",
     "RefreshAppearanceAction",
@@ -146,6 +164,7 @@ __all__ = [
     "SessionMessage",
     "StageBlueprint",
     "StageComponent",
+    "StagePulse",
     "SystemMessage",
     "ToolMessage",
     "WorldBlueprint",

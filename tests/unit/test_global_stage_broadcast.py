@@ -194,8 +194,8 @@ def test_full_map_broadcast_reaches_every_local_stage() -> None:
 
 
 ###############################################################################
-def test_event_is_published_exactly_once() -> None:
-    """跨多个舞台的广播仍是一条领域事件，否则会话历史会重复。"""
+def test_broadcast_only_delivers() -> None:
+    """广播只决定谁听见；事件由发起这件事的 system 发布一次，否则历史会重复。"""
     game = _game()
 
     StageBroadcastMixin(game).broadcast_to_global_stage(
@@ -204,8 +204,12 @@ def test_event_is_published_exactly_once() -> None:
         radius=1,
     )
 
-    assert len(_events(game)) == 1
-    assert _events(game)[0].message == "讯息传开"
+    assert _events(game) == []
+    assert _heard(game) == {
+        "角色.营中人": [CAMP],
+        "角色.铁匠": [FORGE],
+        "角色.哨兵": [OUTPOST],
+    }
 
 
 ###############################################################################

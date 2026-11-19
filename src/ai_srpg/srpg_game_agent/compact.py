@@ -1,13 +1,18 @@
-"""上下文压缩动作：加载快照、压缩目标实体记忆，并保存结果快照。"""
+"""手动压缩也走 pipeline：挂动作、跑一次 pass、失败自动回滚。
+
+压缩改的是记忆，因此和其它改变状态的操作一样，只能在 pipeline 里发生——这里只负责
+把「压缩这个实体」这个动作挂上去，并回报折叠前后的规模。
+"""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
-from ..game.memory import compact_agent_memory, get_agent_memory
-from ..gameplay.offline import load_or_create_game, save_game_snapshot
-from ..models import HumanMessage, SystemMessage
-
-DEFAULT_COMPACT_SUMMARY = "（上下文已手动压缩，此前的对话在此折叠。）"
+from ..entitas import Entity
+from ..game.context import SRPGGame
+from ..game.memory import get_agent_memory
+from ..game.systems.compact_memory_system import DEFAULT_COMPACT_SUMMARY
+from ..gameplay.offline import load_or_create_game, run_offline_pass
+from ..models import CompactMemoryAction, SystemMessage
 
 
 @dataclass(frozen=True)
@@ -29,34 +34,42 @@ async def compact_context_game(
     *,
     summary: str = DEFAULT_COMPACT_SUMMARY,
 ) -> CompactContextOutcome:
-    """手动压缩指定实体的 LLM 记忆，并保存新快照。"""
+    """给目标实体挂压缩动作，跑一次 pass，回来后报告折叠前后的规模。"""
     srpg_game = await load_or_create_game(user, game, snapshot_id=snapshot_id)
     entity = srpg_game.get_entity_by_name(target)
     if entity is None:
         raise LookupError(f"找不到实体: {target!r}")
+    _require_compactable(srpg_game, entity)
 
-    memory = get_agent_memory(srpg_game, entity)
-    if not memory.messages:
-        raise ValueError(f"实体 {target!r} 没有 agent 记忆可压缩")
-    if not isinstance(memory.messages[0], SystemMessage):
-        raise ValueError(f"实体 {target!r} 的首条记忆不是 SystemMessage")
-
-    before_messages = len(memory.messages)
-    before_ratio = memory.context_usage_ratio
-
-    compact_agent_memory(srpg_game, entity, HumanMessage(content=summary))
-
-    after_messages = len(memory.messages)
-    after_ratio = memory.context_usage_ratio
-    new_snapshot_id = save_game_snapshot(user, srpg_game)
+    before_messages, before_ratio = _size(srpg_game, entity)
+    entity.replace(CompactMemoryAction, summary)
+    outcome = await run_offline_pass(srpg_game, user)
+    after_messages, after_ratio = _size(srpg_game, entity)
     return CompactContextOutcome(
         entity_name=target,
         before_messages=before_messages,
         after_messages=after_messages,
         before_ratio=before_ratio,
         after_ratio=after_ratio,
-        snapshot_id=new_snapshot_id,
+        snapshot_id=outcome.snapshot_id,
     )
 
 
+###############################################################################
+def _require_compactable(srpg_game: SRPGGame, entity: Entity) -> None:
+    """提前报错，而不是让 pipeline 跑一趟却什么都没发生。"""
+    messages = get_agent_memory(srpg_game, entity).messages
+    if not messages:
+        raise ValueError(f"实体 {entity.name!r} 没有 agent 记忆可压缩")
+    if not isinstance(messages[0], SystemMessage):
+        raise ValueError(f"实体 {entity.name!r} 的首条记忆不是 SystemMessage")
+
+
+###############################################################################
+def _size(srpg_game: SRPGGame, entity: Entity) -> Tuple[int, float]:
+    memory = get_agent_memory(srpg_game, entity)
+    return len(memory.messages), memory.context_usage_ratio
+
+
+###############################################################################
 __all__ = ["CompactContextOutcome", "compact_context_game"]

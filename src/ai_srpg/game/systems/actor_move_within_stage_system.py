@@ -8,10 +8,14 @@ from typing import Dict, List, final, override
 from loguru import logger
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ...models import ActorComponent, ActorMoveWithinStageAction
+from ...models import (
+    ActorComponent,
+    ActorMovedWithinStage,
+    ActorMoveWithinStageAction,
+)
 from ..context import SRPGGame
 from ..entities.action_rules import action_blocker
-from ..entities.queries import get_stage_entity, resolve_stage_entity
+from ..entities.queries import get_settlement, get_stage_entity, resolve_stage_entity
 from .location_change_mixin import LocationChangeMixin
 
 
@@ -59,12 +63,27 @@ class ActorMoveWithinStageSystem(ReactiveProcessor, LocationChangeMixin):
         target = get_stage_entity(self._game, action.destination)
         assert target is not None, f"找不到舞台实体: {action.destination}"
 
-        self.announce_departure(entity, location=from_stage, from_label=from_stage.name)
+        settlement = get_settlement(self._game, entity)
+        assert settlement is not None, f"{entity.name} 在据点里却没有据点根"
+        event = ActorMovedWithinStage(
+            message=f"你从{from_stage.name}走到{target.name}。",
+            actor=entity.name,
+            stage=settlement.name,
+            destination=target.name,
+        )
+        self.announce_departure(
+            entity, location=from_stage, from_label=from_stage.name, agent_event=event
+        )
 
         entity.replace(ActorComponent, target.name)
 
-        self.announce_arrival(entity, location=target, to_label=target.name)
-        self.record_journey(entity, from_label=from_stage.name, to_label=target.name)
+        self.announce_arrival(
+            entity, location=target, to_label=target.name, agent_event=event
+        )
+        self.record_journey(
+            entity, from_label=from_stage.name, to_label=target.name, agent_event=event
+        )
+        self.publish(event)
 
 
 ###############################################################################

@@ -7,7 +7,7 @@
 from typing import Dict, List, final, override
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ...models import ActorComponent, ActorWaitAction, NoneEvent
+from ...models import ActorComponent, ActorWaitAction, ActorWaited
 from ..context import SRPGGame
 from ..entities.queries import is_on_map, resolve_stage_entity
 from .stage_broadcast_mixin import StageBroadcastMixin
@@ -40,14 +40,17 @@ class ActorWaitSystem(ReactiveProcessor, StageBroadcastMixin):
             entity.remove(ActorWaitAction)
             stage_entity = resolve_stage_entity(self._game, entity)
             assert stage_entity is not None, f"{entity.name} 无所在舞台"
-            if is_on_map(self._game, entity):
-                # 地图不是场所：没有可告知的对象，等待只是「这轮没动」
-                continue
-            self.broadcast_at_location(
-                stage_entity,
-                NoneEvent(message=f"{entity.name}留在原地。"),
-                exclude_entities={entity},
+            event = ActorWaited(
+                message=f"{entity.name}留在原地。",
+                actor=entity.name,
+                stage=stage_entity.name,
             )
+            if not is_on_map(self._game, entity):
+                # 地图不是场所：没有可告知的对象，但「这轮没动」仍是发生过的事
+                self.broadcast_at_location(
+                    stage_entity, event, exclude_entities={entity}
+                )
+            self.publish(event)
 
 
 ###############################################################################

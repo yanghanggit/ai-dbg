@@ -1,5 +1,8 @@
 """舞台广播：局部舞台只影响自己，全局舞台按战场格距波及一片。
 
+广播只负责「谁听见」——投递事件消息，不发布领域事件。事件由发起这件事的 system
+发布一次，广播可以有多个方向。
+
 只有局部舞台能收到「在场者」这类局部广播。全局舞台（``GlobalStageComponent``）
 代表整张地图，没有「在场者」这回事，向它广播等于把一条局部事件当成全局事实。
 需要影响多个舞台时走 ``broadcast_to_global_stage``：以锚点的战场坐标为中心，按格距
@@ -22,14 +25,14 @@ from ..entities import (
     get_stage_entity,
     resolve_stage_entity,
 )
-from ..events.publish import notify_entities, notify_entities_by_stage
-from .system_mixin import SystemMixin
+from ..events.publish import deliver_entities, deliver_entities_by_stage
+from .domain_event_mixin import DomainEventMixin
 
 #: 战场上的一个位置：全局舞台 + 格子坐标
 Anchor = Tuple[Entity, Tuple[int, int]]
 
 
-class StageBroadcastMixin(SystemMixin):
+class StageBroadcastMixin(DomainEventMixin):
     """向舞台广播事件的 mixin：局部一份，全局一片。"""
 
     ############################################################################################################
@@ -48,7 +51,7 @@ class StageBroadcastMixin(SystemMixin):
         targets = (get_actors_in_stage(self._game, stage_entity) | {stage_entity}) - (
             exclude_entities or set()
         )
-        notify_entities(
+        deliver_entities(
             self._game, targets, agent_event, broadcast_stage=stage_entity.name
         )
 
@@ -66,7 +69,7 @@ class StageBroadcastMixin(SystemMixin):
         """
         if location.has(GlobalStageComponent):
             targets = {location} - (exclude_entities or set())
-            notify_entities(
+            deliver_entities(
                 self._game, targets, agent_event, broadcast_stage=location.name
             )
             return
@@ -95,7 +98,7 @@ class StageBroadcastMixin(SystemMixin):
         excluded = exclude_entities or set()
         global_stage, cell = self._anchor_of(entity, radius)
         targets = self._targets_by_stage(global_stage, cell, radius, excluded)
-        notify_entities_by_stage(self._game, targets, agent_event)
+        deliver_entities_by_stage(self._game, targets, agent_event)
 
     ############################################################################################################
     def _local_stage_of(self, entity: Entity) -> Entity:

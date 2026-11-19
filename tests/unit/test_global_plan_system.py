@@ -6,6 +6,7 @@ import pytest
 
 from ai_srpg.game.systems.global_plan_system import (
     GlobalPlanSystem,
+    global_plan_input,
     global_plan_prompt,
 )
 from ai_srpg.llm import AgentLoopResult
@@ -121,6 +122,52 @@ async def test_prompt_lists_the_actors_standing_on_a_cell(
 
     (call,) = calls
     assert f"({2},{1}) 空地，在场 {SENTRY}" in call["input_message"]
+
+
+async def test_prompt_names_the_actors_on_the_same_cell(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """同一格上的另一个人必须写出来，否则格上的人互相瞎。"""
+    game = build_world()
+    sentry = entity(game, SENTRY)
+    sentry.replace(ActorComponent, BATTLEFIELD)
+    sentry.replace(PositionComponent, 1, 1)
+    calls = _capture(monkeypatch)
+    system = _planner(game, WANDERER)
+
+    await system.execute()
+
+    (call,) = calls
+    message = call["input_message"]
+    assert f"与你同格：{SENTRY}" in message
+    # 脚下是什么由位置行回答，不重复
+    assert message.count(f"({1},{1})") == 1
+
+
+async def test_prompt_says_nothing_about_the_same_cell_when_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = build_world()
+    calls = _capture(monkeypatch)
+    system = _planner(game, WANDERER)
+
+    await system.execute()
+
+    (call,) = calls
+    assert "与你同格" not in call["input_message"]
+
+
+async def test_memory_keeps_the_actors_on_the_same_cell() -> None:
+    """记忆里的压缩版同样保留同格的人：接管与自主都靠它。"""
+    game = build_world()
+    sentry = entity(game, SENTRY)
+    sentry.replace(ActorComponent, BATTLEFIELD)
+    sentry.replace(PositionComponent, 1, 1)
+
+    compact = global_plan_input(game, entity(game, WANDERER), compact=True)
+
+    assert f"与你同格：{SENTRY}" in compact
+    assert "视野：" in compact
 
 
 async def test_prompt_builder_is_registered() -> None:

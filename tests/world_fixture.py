@@ -10,6 +10,7 @@ from ai_srpg.entitas import Entity
 from ai_srpg.game.assembly import create_srpg_game
 from ai_srpg.game.context import SRPGGame
 from ai_srpg.game.entities import build_from_blueprint
+from ai_srpg.game.events.sink import RecordingEventSink
 from ai_srpg.game.memory import get_agent_memory
 from ai_srpg.models import (
     ActorBlueprint,
@@ -38,8 +39,11 @@ WANDERER = "角色.丁"
 CAMP_ENVIRONMENT = "碎石浅坑，压实的灰土，风被石头切开"
 
 
-def build_world(name: str = "TwoLevelWorld") -> SRPGGame:
-    game = create_srpg_game(name=name)
+def build_world(
+    name: str = "TwoLevelWorld", *, events: RecordingEventSink | None = None
+) -> SRPGGame:
+    """``events`` 给定时，可以断言这一轮发布了哪些领域事件。"""
+    game = create_srpg_game(name=name, events=events)
     build_from_blueprint(
         game,
         Blueprint(

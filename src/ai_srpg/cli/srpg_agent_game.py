@@ -654,6 +654,8 @@ def compact_context(
         raise click.ClickException(str(exc)) from exc
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
+    except OfflinePassFailed as exc:
+        raise click.ClickException(f"pass 失败，已回滚到本次执行前快照: {exc}") from exc
 
     click.echo(f"target:    {outcome.entity_name}")
     click.echo(f"messages:  {outcome.before_messages} -> {outcome.after_messages}")

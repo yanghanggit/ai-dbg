@@ -8,7 +8,12 @@ from typing import Dict, List, final, override
 from loguru import logger
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ...models import ActorComponent, ActorTravelAction, PositionComponent
+from ...models import (
+    ActorComponent,
+    ActorTravelAction,
+    ActorTraveled,
+    PositionComponent,
+)
 from ..context import SRPGGame
 from ..entities.action_rules import action_blocker
 from ..entities.queries import get_cell
@@ -53,13 +58,27 @@ class ActorTravelSystem(ReactiveProcessor, LocationChangeMixin):
         target = (action.cell_x, action.cell_y)
         from_label = self.map_label(entity)
         map_entity = get_cell(self._game, entity)[0]
-        self.announce_departure(entity, location=map_entity, from_label=from_label)
+        event = ActorTraveled(
+            message=f"你从{from_label}走到{map_entity.name}({target[0]},{target[1]})。",
+            actor=entity.name,
+            stage=map_entity.name,
+            x=target[0],
+            y=target[1],
+        )
+        self.announce_departure(
+            entity, location=map_entity, from_label=from_label, agent_event=event
+        )
 
         entity.replace(PositionComponent, target[0], target[1])
 
         to_label = self.map_label(entity)
-        self.announce_arrival(entity, location=map_entity, to_label=to_label)
-        self.record_journey(entity, from_label=from_label, to_label=to_label)
+        self.announce_arrival(
+            entity, location=map_entity, to_label=to_label, agent_event=event
+        )
+        self.record_journey(
+            entity, from_label=from_label, to_label=to_label, agent_event=event
+        )
+        self.publish(event)
 
 
 ###############################################################################

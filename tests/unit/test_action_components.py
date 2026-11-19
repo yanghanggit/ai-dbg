@@ -15,6 +15,7 @@ from ai_srpg.models import (
     ActorSpeakAction,
     ActorTravelAction,
     ActorWaitAction,
+    CompactMemoryAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
     register_action_component_type,
@@ -47,6 +48,7 @@ PRODUCTION_ACTIONS = [
     ActorWaitAction,
     RefreshAppearanceAction,
     RefreshEnvironmentAction,
+    CompactMemoryAction,
 ]
 
 #: 不带参数的动作：只声明「这轮做这件事」

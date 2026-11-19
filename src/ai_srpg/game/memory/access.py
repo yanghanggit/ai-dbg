@@ -193,6 +193,9 @@ def insert_messages(
         return
     agent_memory = get_agent_memory(srpg_game, entity)
     agent_memory.messages[index:index] = messages
+    # 批量插入同样要延续「最近一次调用的上下文占比」信号，否则占比停在 0，
+    # 依赖它做判断的地方（例如自动压缩阈值）永远看不到真实的满度
+    sync_latest_context_usage_ratio(srpg_game, entity)
     logger.debug(
         f"insert_messages: inserted {len(messages)} message(s) at index {index} for {entity.name}"
     )

@@ -8,7 +8,7 @@ from typing import Dict, List, final, override
 from loguru import logger
 
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
-from ...models import ActorComponent, ActorSpeakAction, NoneEvent
+from ...models import ActorComponent, ActorSpeakAction, ActorSpoke
 from ..context import SRPGGame
 from ..entities.action_rules import action_blocker
 from ..entities.queries import resolve_stage_entity
@@ -48,11 +48,14 @@ class ActorSpeakSystem(ReactiveProcessor, StageBroadcastMixin):
             stage_entity = resolve_stage_entity(self._game, entity)
             assert stage_entity is not None, f"{entity.name} 无所在舞台"
             content = action.content
-            self.broadcast_at_location(
-                stage_entity,
-                NoneEvent(message=f"{entity.name}说：{content}"),
-                exclude_entities={entity},
+            event = ActorSpoke(
+                message=f"{entity.name}说：{content}",
+                actor=entity.name,
+                stage=stage_entity.name,
+                content=content,
             )
+            self.broadcast_at_location(stage_entity, event, exclude_entities={entity})
+            self.publish(event)
 
 
 ###############################################################################

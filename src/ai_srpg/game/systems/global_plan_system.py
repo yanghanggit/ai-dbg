@@ -77,13 +77,20 @@ _GLOBAL_ACTIONS: Final[Tuple[Type[Component], ...]] = (
 ############################################################################################################
 @prompt_builder
 def global_plan_prompt(
-    *, location: str, cells: List[str], compact: bool = False
+    *,
+    location: str,
+    cells: List[str],
+    same_cell: Tuple[str, ...] = (),
+    compact: bool = False,
 ) -> str:
-    """地图上计划的任务说明：这一刻的位置与视野内的相邻格。
+    """地图上计划的任务说明：这一刻的位置、同格的人与视野内的相邻格。
 
     ``compact`` 给记忆用：视野压成一行，只留据点与别人——空地在记忆里没有信息量。
     """
-    lines = [f"当前位置：{location}", "", "视野："]
+    lines = [f"当前位置：{location}"]
+    if same_cell:
+        lines.append(f"与你同格：{'、'.join(same_cell)}")
+    lines.extend(["", "视野："])
     if compact:
         lines.append("、".join(cells) if cells else "全是空地")
     else:
@@ -160,19 +167,22 @@ class GlobalPlanSystem(ReactiveProcessor, ActorPlanMixin):
 
 ############################################################################################################
 def global_plan_input(srpg_game: SRPGGame, entity: Entity, *, compact: bool) -> str:
-    """地图层这一刻的输入；计划与接管共用，只有 compact 不同。"""
+    """地图层这一刻的输入；计划与接管共用，只有 compact 不同。
+
+    脚下那一格不重复写「这里是什么」——位置行已经说了；但格上的人必须写出来，
+    否则同一格上的两个人互相瞎。
+    """
     map_entity, (x, y) = get_cell(srpg_game, entity)
     here = get_stage_at_cell(srpg_game, map_entity, (x, y))
-    cells = [
-        _describe_cell(cell)
-        for cell in get_map_cells(srpg_game, entity)
-        if (cell.x, cell.y) != (x, y)
-    ]
+    cells = get_map_cells(srpg_game, entity)
+    same_cell = [cell for cell in cells if (cell.x, cell.y) == (x, y)]
+    around = [_describe_cell(cell) for cell in cells if (cell.x, cell.y) != (x, y)]
     if compact:
-        cells = [cell for cell in cells if not cell.endswith(" 空地")]
+        around = [cell for cell in around if not cell.endswith(" 空地")]
     return global_plan_prompt(
         location=f"({x},{y}) {here.name if here is not None else '空地'}",
-        cells=cells,
+        same_cell=same_cell[0].actors if same_cell else (),
+        cells=around,
         compact=compact,
     )
 
