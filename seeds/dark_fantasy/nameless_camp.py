@@ -4,15 +4,8 @@
 专属的实体数据。实体的状态一律写成组件数据，包括角色所在舞台。
 """
 
-from ai_srpg.models import (
-    ActorBlueprint,
-    Blueprint,
-    StageBlueprint,
-    WorldBlueprint,
-    create_actor,
-    create_stage,
-    create_world,
-)
+from ai_srpg.game.prompt_composer import compose_actor, compose_stage, compose_world
+from ai_srpg.models import ActorBlueprint, Blueprint, StageBlueprint, WorldBlueprint
 
 from .story import CAMPAIGN_SETTING, GLOBAL_RULES, WORLD_ROLE_RULES
 
@@ -26,7 +19,7 @@ BASE_BODY = "年近三十的男性，肩宽而骨架分明，身形偏瘦但不�
 def create_nameless() -> ActorBlueprint:
     """创建玩家角色——无名。"""
 
-    actor = create_actor(
+    actor = compose_actor(
         name="角色.无名",
         profile="""**历史**: 你醒来时想不起自己是谁，也想不起自己从哪儿来。你身上穿着一件不属于此地样式的旧斗篷，脑海深处只残留着一些断裂的碎片——那里没有魔法，也没有刀剑横行的荒野。你说不清那是什么地方，却清楚一件事：你不是这里的人。这件事你对谁都没有提过，也说不清。于是你给自己取了一个称呼：「无名」。把你从路边捡回来的，是个落魄的老佣兵，他给你起了名，也没多问，就这样把你带进了这一行。
 **性格**: 你沉默，观察多于开口。面对陌生的事物不会慌乱，而是停下来，仔细看，仔细想，再决定怎么做。你不排斥危险，但也不会轻易莽撞。
@@ -47,7 +40,7 @@ def create_nameless() -> ActorBlueprint:
 def create_camp_stage() -> StageBlueprint:
     """创建极简营地：作为舞台与据点数据的起点。"""
 
-    stage = create_stage(
+    stage = compose_stage(
         name=STAGE_NAME,
         profile="""一处背风的营地。碎石围出一圈浅坑，余烬还带着一点温度；几件行囊靠在岩根，远处是通往荒野的旧道。
 这里没有常驻的人，也没有可做的事，只是出发前与归来后短暂停留的地方。""",
@@ -62,7 +55,7 @@ def create_camp_stage() -> StageBlueprint:
 def create_starless_world() -> WorldBlueprint:
     """创建世界实体——无星长夜：叙事者与规则仲裁者，高于所有舞台。"""
 
-    world = create_world(
+    world = compose_world(
         name="世界.无星长夜",
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,

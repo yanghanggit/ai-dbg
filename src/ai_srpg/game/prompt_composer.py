@@ -1,18 +1,16 @@
-"""
-游戏实体工厂模块。
+"""把内容侧的作者信息拼成蓝图的 system prompt（实体进游戏后的 ``memories[0]``）。
 
-这里只负责把内容侧的作者信息（设定、体型）拼成实体的 ``system_message``；组件
-一律由内容侧显式声明，工厂不猜。
+这里只管段落与顺序，不猜组件：组件一律由内容侧显式声明。
 
-system prompt 段序原则：内容向的「游戏设定」「角色/舞台设定」「基础体型」等在前，
-具备规则效果的「全局规则」在后——让 agent 先建立角色与世界观，最后读到必须遵守的规则。
+段序原则：内容向的「游戏设定」「角色/舞台设定」「基础体型」等在前，具备规则效果的
+「全局规则」在后——让 agent 先建立角色与世界观，最后读到必须遵守的规则。
 """
 
-from . import ActorBlueprint, StageBlueprint, WorldBlueprint
+from ..models import ActorBlueprint, StageBlueprint, WorldBlueprint
 
 
 #######################################################################################################################################
-def create_actor(
+def compose_actor(
     name: str,
     profile: str,
     base_body: str,
@@ -20,7 +18,7 @@ def create_actor(
     global_rules: str,
 ) -> ActorBlueprint:
     """
-    创建一个角色蓝图实例，组装它的 system prompt。
+    组装角色蓝图的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有角色名称(name)"
@@ -56,14 +54,14 @@ def create_actor(
 
 
 #######################################################################################################################################
-def create_stage(
+def compose_stage(
     name: str,
     profile: str,
     campaign_setting: str,
     global_rules: str,
 ) -> StageBlueprint:
     """
-    创建一个舞台蓝图实例，组装它的 system prompt。
+    组装舞台蓝图的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有舞台名称(name)"
@@ -94,11 +92,11 @@ def create_stage(
 
 
 #######################################################################################################################################
-def create_world(
+def compose_world(
     name: str, campaign_setting: str, global_rules: str, role_rules: str
 ) -> WorldBlueprint:
     """
-    创建一个世界蓝图实例，组装它的 system prompt。
+    组装世界蓝图的 system prompt。
     """
 
     assert name.strip() != "", "SRPG 游戏要求必须有世界名称(name)"
@@ -127,4 +125,4 @@ def create_world(
 
 
 ###############################################################################
-__all__ = ["create_actor", "create_stage", "create_world"]
+__all__ = ["compose_actor", "compose_stage", "compose_world"]

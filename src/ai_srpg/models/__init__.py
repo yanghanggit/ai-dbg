@@ -25,7 +25,7 @@ from .assets_meta import (
     asset_url,
     new_asset_filename,
 )
-from .blueprint import Blueprint
+from .blueprint import ActorBlueprint, Blueprint, StageBlueprint, WorldBlueprint
 from .components import (
     ActorComponent,
     AppearanceComponent,
@@ -37,8 +37,6 @@ from .components import (
     WorldComponent,
 )
 from .context_snapshot import SNAPSHOT_FORMAT_VERSION, ContextSnapshot
-from .entities import ActorBlueprint, StageBlueprint, WorldBlueprint
-from .entity_factory import create_actor, create_stage, create_world
 from .entity_naming import EntityNaming
 from .game_snapshot import GAME_SNAPSHOT_FORMAT_VERSION, GameSnapshot, GameSnapshotInfo
 from .job import JobEvent
@@ -117,10 +115,7 @@ __all__ = [
     "asset_meta_path",
     "asset_path",
     "asset_url",
-    "create_actor",
     "create_component_type",
-    "create_stage",
-    "create_world",
     "find_marked_span",
     "find_marked_spans",
     "find_message",
