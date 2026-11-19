@@ -103,15 +103,25 @@ def resolve_stage_entity(srpg_game: SRPGGame, entity: Entity) -> Optional[Entity
     return None
 
 
-def get_player_actor_name(srpg_game: SRPGGame) -> Optional[str]:
-    """玩家控制的角色名；没有玩家角色时返回 None（读侧不抛）。"""
-    player_entities = srpg_game.get_group(Matcher(all_of=[PlayerComponent])).entities
-    entity = next(iter(player_entities), None)
+def get_player_actor_name(srpg_game: SRPGGame, user_name: str) -> Optional[str]:
+    """某玩家控制的角色名；该玩家尚未分到角色时返回 None。"""
+    entity = get_player_entity(srpg_game, user_name)
     return entity.name if entity is not None else None
 
 
-def get_player_entity(srpg_game: SRPGGame) -> Optional[Entity]:
-    """获取玩家实体。"""
-    player_entities = srpg_game.get_group(Matcher(all_of=[PlayerComponent])).entities
-    assert len(player_entities) == 1, "There should be exactly one player entity."
-    return next(iter(player_entities), None)
+def get_player_entity(srpg_game: SRPGGame, user_name: str) -> Optional[Entity]:
+    """某玩家控制的角色实体；该玩家尚未分到角色时返回 None。
+
+    一局里可以有多个 ``PlayerComponent``（一人一个角色），因此必须按身份查，
+    不能取「第一个玩家」。同一玩家绑定多个角色是状态损坏，直接报错。
+    """
+    players = srpg_game.get_group(Matcher(all_of=[PlayerComponent])).entities
+    found = [
+        entity
+        for entity in players
+        if entity.get(PlayerComponent).user_name == user_name
+    ]
+    if len(found) > 1:
+        names = [entity.name for entity in found]
+        raise ValueError(f"玩家 {user_name} 绑定了多个角色: {names}")
+    return found[0] if found else None

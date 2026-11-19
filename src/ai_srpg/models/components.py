@@ -59,7 +59,7 @@ class EnvironmentComponent(Component):
 @final
 @register_component_type
 class PlayerComponent(Component):
-    """标记角色由玩家控制（全局唯一）。"""
+    """标记角色由某玩家控制；一个玩家控制一个角色。"""
 
     user_name: str
 

@@ -1,13 +1,15 @@
-"""实体查询、蓝图装配与舞台分组查询。
+"""实体查询、蓝图装配、玩家绑定与舞台分组查询。
 
 实体创建/销毁/快照序列化是 ``SRPGGame``（``ECSContext``）自身的方法，不在此包内。
 """
 
+from .player_binding import bind_player_actor
 from .queries import (
     get_actor_entity,
     get_actors_by_stage,
     get_actors_by_stage_as_names,
     get_actors_in_stage,
+    get_player_actor_name,
     get_player_entity,
     get_stage_entity,
     get_world_entity,
@@ -20,6 +22,7 @@ from .world_builder import (
 )
 
 __all__ = [
+    "bind_player_actor",
     "build_from_blueprint",
     "create_actor_entities",
     "create_stage_entities",
@@ -27,6 +30,7 @@ __all__ = [
     "get_actors_by_stage",
     "get_actors_by_stage_as_names",
     "get_actors_in_stage",
+    "get_player_actor_name",
     "get_player_entity",
     "get_stage_entity",
     "get_world_entity",

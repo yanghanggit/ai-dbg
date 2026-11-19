@@ -10,7 +10,7 @@ from .entities import Stage, World
 @final
 class Blueprint(BaseModel):
     name: str
-    player_actor: str
+    player_actor: str  # 开局者未指定时的默认受控角色；其余席位由房间分配
     campaign_setting: str
     global_rules: (
         str  # 所有实体共同遵守的纯机制规则（扮演契约、实体类型与全名、舞台移动等）

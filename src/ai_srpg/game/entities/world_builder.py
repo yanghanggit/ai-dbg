@@ -13,7 +13,6 @@ from ...models import (
     AppearanceComponent,
     Blueprint,
     IdentityComponent,
-    PlayerComponent,
     Stage,
     StageComponent,
     SystemMessage,
@@ -23,6 +22,7 @@ from ...models import (
 )
 from ..context import SRPGGame
 from ..memory.access import add_system_message
+from .player_binding import bind_player_actor
 from .queries import get_actor_entity
 
 
@@ -49,12 +49,7 @@ def build_from_blueprint(
     create_stage_entities(srpg_game, blueprint.stages)
 
     actor_name = player_actor or blueprint.player_actor
-    assert user_name.strip() != "", "玩家名字不能为空"
-    assert actor_name.strip() != "", "玩家角色不能为空"
-    player_actor_entity = get_actor_entity(srpg_game, actor_name)
-    assert player_actor_entity is not None, f"找不到玩家角色实体: {actor_name}"
-    assert not player_actor_entity.has(PlayerComponent)
-    player_actor_entity.replace(PlayerComponent, user_name)
+    bind_player_actor(srpg_game, user_name, actor_name)
     logger.info(f"玩家: {user_name} 选择控制: {actor_name}")
 
 

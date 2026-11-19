@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query, status
 
-from ...game.entities.queries import get_player_actor_name
+from ...game.entities import get_player_actor_name
 from ...gameplay.dispatch import defer_room_job
 from ...gameplay.jobs import advance_game_job
 from ...gameplay.offline import load_or_create_game
@@ -40,7 +40,7 @@ async def open_game(
     game = await load_or_create_game(
         room.room_id, game_name, user_name=user_name, events=sink
     )
-    actor = get_player_actor_name(game)
+    actor = get_player_actor_name(game, user_name)
     session.set_context(actor=actor, game=game_name)
 
     async with room.transaction():
