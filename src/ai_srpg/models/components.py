@@ -71,9 +71,21 @@ class ActorComponent(Component):
 @final
 @register_component_type
 class EnvironmentComponent(Component):
-    """舞台环境叙述，由 AI 根据当前状态动态生成，为后续行动规划提供背景信息。"""
+    """舞台环境：``base_environment`` 是内容侧写定的底稿，``narrative`` 是当前叙述。
 
-    narrative: str  # 叙述性描述文本
+    未给出 ``narrative`` 时与 ``base_environment`` 相同（与外观的派生同一套路）。
+    叙述只写舞台自身的物理状态——光、声、气味、地形，不写谁来过、留下了什么；
+    在场者属于角色自己的状态，不该从环境里推断出来。
+    """
+
+    base_environment: str  # 内容侧写定的环境底稿
+    narrative: str = ""  # 当前环境叙述，之后由系统按状态更新
+
+    @model_validator(mode="after")
+    def _fill_narrative(self) -> "EnvironmentComponent":
+        if not self.narrative:
+            object.__setattr__(self, "narrative", self.base_environment)
+        return self
 
 
 ############################################################################################################

@@ -12,6 +12,7 @@ from ai_srpg.models import (
     ActorComponent,
     AppearanceComponent,
     Blueprint,
+    EnvironmentComponent,
     GlobalStageComponent,
     NPCComponent,
     Position,
@@ -31,6 +32,14 @@ BATTLEFIELD_GRID: Dict[str, int] = {"width": 5, "height": 5}
 # 无名的体型：既进 prompt 的「基础体型」段，也是角色的初始外观
 NAMELESS_BODY: Final[str] = (
     "年近三十的男性，肩宽而骨架分明，身形偏瘦但不单薄。身穿一件洗得发白的旧斗篷，缝制方式少见、边角磨损起毛，肤色偏浅。面容轮廓分明，下颌线条硬朗，眼下有淡淡的暗沉，眼睑低垂，目光沉静。手指细长，关节明显。"
+)
+
+#: 两个舞台的环境底稿：进游戏时是它们的初始环境叙述，之后按状态更新
+BATTLEFIELD_ENVIRONMENT: Final[str] = (
+    "夜里分辨得出的只有几处轮廓：一段残墙、一片矮树林，再远处是没有灯火的平地。风从旧车辙的方向来，带着潮土味，除此以外没有别的声音。"
+)
+CAMP_ENVIRONMENT: Final[str] = (
+    "碎石围出一圈浅坑，坑底是压实的灰土，北面几块石头挡着风。地面干燥，风从旧道方向进来时被石头切开，剩下的一股贴着坑壁低低地绕过去。"
 )
 
 #: 老雇佣兵的体型
@@ -87,12 +96,15 @@ def create_camp_stage() -> StageBlueprint:
 
     stage = compose_stage(
         name=STAGE_NAME,
-        profile="""一处背风的营地。碎石围出一圈浅坑，余烬还带着一点温度；几件行囊靠在岩根，远处是通往荒野的旧道。
-营地里只有一个常来的人，他把行囊丢在岩根，就着余烬坐着。这里没有可做的事，只是出发前与归来后短暂停留的地方。""",
+        profile="""荒野上来往的人偶尔在此落脚：背风、离水近、离旧道不远。这里没有可做的事，也没有人愿意多待，
+它只是出发前与归来后短暂停留的地方。""",
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
     )
-    stage.components = {StageComponent.__name__: {}}
+    stage.components = {
+        StageComponent.__name__: {},
+        EnvironmentComponent.__name__: {"base_environment": CAMP_ENVIRONMENT},
+    }
     stage.position = Position(x=2, y=2)
     return stage
 
@@ -103,14 +115,15 @@ def create_battlefield() -> StageBlueprint:
 
     stage = compose_stage(
         name=BATTLEFIELD_NAME,
-        profile="""一片没有名字的旷野，被雨水与旧车辙切成方格状的地界。视野里没有明显的道路，
-只有几处能在夜里分辨的轮廓：一段残墙、一片矮树林、以及远处没有灯火的平地。""",
+        profile="""一片没有名字的旷野，被雨水与旧车辙切成方格状的地界。这里没有路标，也没有人烟：
+路是车轮压出来的，方向由地面记着，不由人指点。""",
         campaign_setting=CAMPAIGN_SETTING,
         global_rules=GLOBAL_RULES,
     )
     stage.components = {
         StageComponent.__name__: {},
         GlobalStageComponent.__name__: dict(BATTLEFIELD_GRID),
+        EnvironmentComponent.__name__: {"base_environment": BATTLEFIELD_ENVIRONMENT},
     }
     stage.children = [create_camp_stage()]
     return stage

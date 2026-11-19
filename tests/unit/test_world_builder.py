@@ -20,6 +20,7 @@ from ai_srpg.models import (
     ActorComponent,
     AppearanceComponent,
     Blueprint,
+    EnvironmentComponent,
     GlobalStageComponent,
     Position,
     PositionComponent,
@@ -141,6 +142,58 @@ def test_appearance_defaults_to_base_body() -> None:
     assert actor is not None
     appearance = actor.get(AppearanceComponent)
     assert appearance.appearance == appearance.base_body == "瘦削"
+
+
+###############################################################################
+def test_environment_narrative_defaults_to_base_environment() -> None:
+    """环境叙述缺省等于底稿——与外观的派生同一套路，内容侧只写一遍。"""
+    game = create_srpg_game(name="BuildTest")
+    build_from_blueprint(
+        game,
+        _blueprint(
+            root=_battlefield(
+                components={
+                    StageComponent.__name__: {},
+                    GlobalStageComponent.__name__: dict(GRID),
+                    EnvironmentComponent.__name__: {"base_environment": "湿冷，风很大"},
+                },
+                children=[_camp(Position(x=2, y=2))],
+            )
+        ),
+    )
+
+    battlefield = get_stage_entity(game, "舞台.战场")
+    assert battlefield is not None
+    environment = battlefield.get(EnvironmentComponent)
+    assert environment.narrative == environment.base_environment == "湿冷，风很大"
+
+
+###############################################################################
+def test_given_environment_narrative_is_kept() -> None:
+    """显式给了当前叙述就不再被底稿覆盖。"""
+    game = create_srpg_game(name="BuildTest")
+    build_from_blueprint(
+        game,
+        _blueprint(
+            root=_battlefield(
+                components={
+                    StageComponent.__name__: {},
+                    GlobalStageComponent.__name__: dict(GRID),
+                    EnvironmentComponent.__name__: {
+                        "base_environment": "湿冷，风很大",
+                        "narrative": "火堆被雨浇灭了",
+                    },
+                },
+                children=[_camp(Position(x=2, y=2))],
+            )
+        ),
+    )
+
+    battlefield = get_stage_entity(game, "舞台.战场")
+    assert battlefield is not None
+    environment = battlefield.get(EnvironmentComponent)
+    assert environment.narrative == "火堆被雨浇灭了"
+    assert environment.base_environment == "湿冷，风很大"
 
 
 ###############################################################################
