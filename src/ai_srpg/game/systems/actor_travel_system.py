@@ -10,7 +10,8 @@ from loguru import logger
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ...models import ActorComponent, ActorTravelAction, PositionComponent
 from ..context import SRPGGame
-from ..entities.queries import get_map_cells, is_on_map
+from ..entities.action_rules import action_blocker
+from ..entities.queries import get_cell
 from .location_change_mixin import LocationChangeMixin
 
 
@@ -31,10 +32,8 @@ class ActorTravelSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作、且站在地图上的角色。"""
-        return entity.has(ActorComponent, ActorTravelAction) and is_on_map(
-            self._game, entity
-        )
+        """只处理仍挂着动作的角色：动作在处理的同一刻被消费。"""
+        return entity.has(ActorComponent, ActorTravelAction)
 
     ##########################################################################################
     @override
@@ -45,14 +44,15 @@ class ActorTravelSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     def _travel(self, entity: Entity) -> None:
         action = entity.get(ActorTravelAction)
-        target = (action.cell_x, action.cell_y)
-        reachable = {(cell.x, cell.y) for cell in get_map_cells(self._game, entity)}
-        if target not in reachable:
-            logger.warning(f"{entity.name} 只能移动到相邻格，忽略目标 {target}")
+        entity.remove(ActorTravelAction)
+        blocker = action_blocker(self._game, entity, action)
+        if blocker is not None:
+            logger.warning(f"{entity.name} 的战场移动被拒绝: {blocker}")
             return
 
+        target = (action.cell_x, action.cell_y)
         from_label = self.map_label(entity)
-        map_entity = self._map_of(entity)
+        map_entity = get_cell(self._game, entity)[0]
         self.announce_departure(entity, location=map_entity, from_label=from_label)
 
         entity.replace(PositionComponent, target[0], target[1])
@@ -60,13 +60,6 @@ class ActorTravelSystem(ReactiveProcessor, LocationChangeMixin):
         to_label = self.map_label(entity)
         self.announce_arrival(entity, location=map_entity, to_label=to_label)
         self.record_journey(entity, from_label=from_label, to_label=to_label)
-
-    ##########################################################################################
-    def _map_of(self, entity: Entity) -> Entity:
-        """行动者在哪张地图上：坐标解析会带上全局舞台本身。"""
-        from ..entities.queries import get_cell
-
-        return get_cell(self._game, entity)[0]
 
 
 ###############################################################################

@@ -59,6 +59,7 @@ class EnvironmentRefreshSystem(ReactiveProcessor, DescriptionRefreshMixin):
             include_events=False,
         )
         for entity in entities:
+            entity.remove(RefreshEnvironmentAction)  # 处理即消费
             text = texts.get(entity.name)
             if text is None:
                 continue

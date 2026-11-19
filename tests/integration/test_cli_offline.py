@@ -1,4 +1,4 @@
-"""CLI 端到端：list → new → bind → stages → actors → plan → advance → compact → snapshots。"""
+"""CLI 端到端：list → new → bind → stages → actors → act → plan → advance → compact → snapshots。"""
 
 import json
 import uuid
@@ -77,6 +77,7 @@ def test_cli_offline_flow(
 ) -> None:
     runner = CliRunner()
     actor = blueprint.actors[0].name
+    other_actor = blueprint.actors[1].name
     missing_actor = f"角色.{uuid.uuid4().hex}"
 
     created = runner.invoke(main, ["new", "--user", user_name, "--game", "Game1"])
@@ -134,6 +135,89 @@ def test_cli_offline_flow(
     }
     assert all(summary["stage"] for summary in roster)
 
+    acted = runner.invoke(
+        main,
+        [
+            "act",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--actor",
+            actor,
+            "--wait",
+        ],
+    )
+    assert acted.exit_code == 0, acted.output
+    assert f"actor:     {actor}" in acted.output
+    assert "action:    ActorWait" in acted.output
+    assert f"where:     " in acted.output
+    assert "snapshot:" in acted.output
+
+    unbound = runner.invoke(
+        main,
+        [
+            "act",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--actor",
+            other_actor,
+            "--wait",
+        ],
+    )
+    assert unbound.exit_code == 1
+    assert "没有控制" in unbound.output
+
+    forced = runner.invoke(
+        main,
+        [
+            "act",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--actor",
+            other_actor,
+            "--wait",
+            "--force",
+        ],
+    )
+    assert forced.exit_code == 0, forced.output
+
+    blocked = runner.invoke(
+        main,
+        [
+            "act",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--actor",
+            actor,
+            "--speak",
+            "喂",
+        ],
+    )
+    assert blocked.exit_code == 0, blocked.output
+
+    bad_verb = runner.invoke(
+        main,
+        [
+            "act",
+            "--user",
+            user_name,
+            "--game",
+            "Game1",
+            "--actor",
+            actor,
+            "--wait",
+            "--exit",
+        ],
+    )
+    assert bad_verb.exit_code == 2
+
     planned = runner.invoke(
         main,
         ["plan", "--user", user_name, "--game", "Game1", "--actor", actor],
@@ -172,8 +256,9 @@ def test_cli_offline_flow(
 
     history = runner.invoke(main, ["snapshots", "--user", user_name, "--game", "Game1"])
     assert history.exit_code == 0, history.output
-    # 一次 pass 会落两条快照（执行前用于回滚 + 结果），加上 new、两次 bind、plan、compact
-    assert history.output.count("id=") == 8
+    # 每次 pass 落两条快照（执行前回滚点 + 结果）：new 一次、两次 bind、三次 act、
+    # plan、advance 各算一次，外加 compact
+    assert history.output.count("id=") == 14
 
     reset = runner.invoke(
         main,

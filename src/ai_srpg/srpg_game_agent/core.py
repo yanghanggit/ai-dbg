@@ -8,13 +8,16 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
+from ..entitas.components import Component
 from ..game.entities.queries import get_actors_by_stage_as_names
 from ..gameplay.offline import (
     BindActorOutcome,
+    CommandOutcome,
     NewGameOutcome,
     OfflinePassOutcome,
     PlanOutcome,
     bind_actor,
+    command_actor,
     create_new_game,
     list_actors,
     list_games,
@@ -82,6 +85,32 @@ async def stages_game(
 
 
 ###############################################################################
+async def command_actor_game(
+    user: str,
+    game: str,
+    actor: str,
+    action: Component,
+    *,
+    force: bool = False,
+    snapshot_id: Optional[int] = None,
+) -> CommandOutcome:
+    """接管一个角色：校验、挂动作、跑一次 pass。"""
+    outcome = await command_actor(
+        user, game, user, actor, action, force=force, snapshot_id=snapshot_id
+    )
+    logger.info(
+        "command actor: user={}, actor={}, action={}, at={}, snapshot_id={}".format(
+            user,
+            outcome.actor_name,
+            outcome.command,
+            outcome.location,
+            outcome.snapshot_id,
+        )
+    )
+    return outcome
+
+
+###############################################################################
 async def actors_game(
     user: str, game: str, snapshot_id: Optional[int]
 ) -> List[ActorSummary]:
@@ -123,6 +152,7 @@ async def advance_game(
 ###############################################################################
 __all__ = [
     "actors_game",
+    "command_actor_game",
     "advance_game",
     "bind_actor_game",
     "create_and_initialize_game",

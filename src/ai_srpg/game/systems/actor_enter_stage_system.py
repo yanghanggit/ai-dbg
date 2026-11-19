@@ -11,12 +11,8 @@ from loguru import logger
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ...models import ActorComponent, ActorEnterStageAction, PositionComponent
 from ..context import SRPGGame
-from ..entities.queries import (
-    get_cell,
-    get_stage_at_cell,
-    get_stage_entity,
-    is_on_map,
-)
+from ..entities.action_rules import action_blocker
+from ..entities.queries import get_cell, get_stage_entity
 from .location_change_mixin import LocationChangeMixin
 
 
@@ -39,10 +35,8 @@ class ActorEnterStageSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作、且站在地图上的角色。"""
-        return entity.has(ActorComponent, ActorEnterStageAction) and is_on_map(
-            self._game, entity
-        )
+        """只处理仍挂着动作的角色：动作在处理的同一刻被消费。"""
+        return entity.has(ActorComponent, ActorEnterStageAction)
 
     ##########################################################################################
     @override
@@ -53,21 +47,15 @@ class ActorEnterStageSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     def _enter(self, entity: Entity) -> None:
         action = entity.get(ActorEnterStageAction)
-        stage_entity = get_stage_entity(self._game, action.stage_name)
-        if stage_entity is None:
-            logger.warning(f"{entity.name} 要进的据点不存在: {action.stage_name}")
+        entity.remove(ActorEnterStageAction)
+        blocker = action_blocker(self._game, entity, action)
+        if blocker is not None:
+            logger.warning(f"{entity.name} 的进城被拒绝: {blocker}")
             return
 
-        global_stage, cell = get_cell(self._game, entity)
-        here = get_stage_at_cell(self._game, global_stage, cell)
-        if here is None or here.name != stage_entity.name:
-            logger.warning(
-                f"{entity.name} 不在 {stage_entity.name} 所在的格子 {cell}，不能进城"
-            )
-            return
-
-        settlement = get_stage_entity(self._game, stage_entity.name)
+        settlement = get_stage_entity(self._game, action.stage_name)
         assert settlement is not None
+        global_stage = get_cell(self._game, entity)[0]
         from_label = self.map_label(entity)
         self.announce_departure(entity, location=global_stage, from_label=from_label)
 

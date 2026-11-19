@@ -10,7 +10,8 @@ from loguru import logger
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ...models import ActorComponent, ActorMoveWithinStageAction
 from ..context import SRPGGame
-from ..entities.queries import get_adjacent_stages, is_on_map, resolve_stage_entity
+from ..entities.action_rules import action_blocker
+from ..entities.queries import get_stage_entity, resolve_stage_entity
 from .location_change_mixin import LocationChangeMixin
 
 
@@ -35,10 +36,8 @@ class ActorMoveWithinStageSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作、且在据点里的角色。"""
-        return entity.has(ActorComponent, ActorMoveWithinStageAction) and not is_on_map(
-            self._game, entity
-        )
+        """只处理仍挂着动作的角色：动作在处理的同一刻被消费。"""
+        return entity.has(ActorComponent, ActorMoveWithinStageAction)
 
     ##########################################################################################
     @override
@@ -48,17 +47,17 @@ class ActorMoveWithinStageSystem(ReactiveProcessor, LocationChangeMixin):
 
     ##########################################################################################
     def _move(self, entity: Entity) -> None:
-        destination = entity.get(ActorMoveWithinStageAction).destination
-        reachable = {stage.name for stage in get_adjacent_stages(self._game, entity)}
-        if destination not in reachable:
-            logger.warning(
-                f"{entity.name} 只能在据点内移动到相邻区域，忽略目标 {destination!r}"
-            )
+        action = entity.get(ActorMoveWithinStageAction)
+        entity.remove(ActorMoveWithinStageAction)
+        blocker = action_blocker(self._game, entity, action)
+        if blocker is not None:
+            logger.warning(f"{entity.name} 的城内移动被拒绝: {blocker}")
             return
 
         from_stage = resolve_stage_entity(self._game, entity)
         assert from_stage is not None, f"{entity.name} 无所在舞台"
-        target = self._stage_by_name(destination)
+        target = get_stage_entity(self._game, action.destination)
+        assert target is not None, f"找不到舞台实体: {action.destination}"
 
         self.announce_departure(entity, location=from_stage, from_label=from_stage.name)
 
@@ -66,14 +65,6 @@ class ActorMoveWithinStageSystem(ReactiveProcessor, LocationChangeMixin):
 
         self.announce_arrival(entity, location=target, to_label=target.name)
         self.record_journey(entity, from_label=from_stage.name, to_label=target.name)
-
-    ##########################################################################################
-    def _stage_by_name(self, stage_name: str) -> Entity:
-        from ..entities.queries import get_stage_entity
-
-        stage_entity = get_stage_entity(self._game, stage_name)
-        assert stage_entity is not None, f"找不到舞台实体: {stage_name}"
-        return stage_entity
 
 
 ###############################################################################

@@ -11,6 +11,7 @@
   stages           列出舞台-角色映射
   actors           列出角色名册（所在舞台、控制者、当前外观）
   plan             让一个或多个角色做本轮计划
+  act              接管一个角色：直接下一条命令，跑一次 pass
   compact-context  手动压缩指定实体的 LLM 记忆并保存快照
   advance          执行一次 pass 并保存结果快照
 """
@@ -27,15 +28,25 @@ from typing import Any, Coroutine, Final
 import click
 from loguru import logger
 
+from ai_srpg.entitas.components import Component
 from ai_srpg.gameplay.offline import GameAlreadyExistsError, OfflinePassFailed
 from ai_srpg.llm.call_context import llm_call_trace
 from ai_srpg.llm.call_records import find_llm_call, iter_llm_call_records
+from ai_srpg.models import (
+    ActorEnterStageAction,
+    ActorExitStageAction,
+    ActorMoveWithinStageAction,
+    ActorSpeakAction,
+    ActorTravelAction,
+    ActorWaitAction,
+)
 from ai_srpg.paths import LOGS_DIR
 from ai_srpg.srpg_game_agent.compact import compact_context_game
 from ai_srpg.srpg_game_agent.core import (
     actors_game,
     advance_game,
     bind_actor_game,
+    command_actor_game,
     create_and_initialize_game,
     list_games_game,
     plan_game,
@@ -446,6 +457,123 @@ def plan(
     for actor_name in outcome.actors:
         click.echo(f"planned:   {actor_name}")
     click.echo(f"snapshot:  {outcome.snapshot_id}")
+
+
+###############################################################################
+def _parse_cell(raw: str) -> tuple[int, int]:
+    """``3,2`` → (3, 2)；写错就按用法错误报，而不是猜。"""
+    parts = raw.split(",")
+    if len(parts) != 2:
+        raise click.BadParameter("坐标要写成 x,y，例如 3,2")
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError as exc:
+        raise click.BadParameter("坐标必须是整数，例如 3,2") from exc
+
+
+###############################################################################
+@main.command("act")
+@click.option("--user", required=True, help="玩家用户名")
+@click.option("--game", required=True, help="游戏名称")
+@click.option("--actor", required=True, help="要接管的角色名")
+@click.option("--speak", "speak", default=None, help="说话：要说的内容")
+@click.option("--travel", "travel", default=None, help="战场移动：目标格 x,y")
+@click.option("--enter", "enter_stage", default=None, help="进城：据点名")
+@click.option("--exit", "exit_stage", is_flag=True, help="出城：回到据点所在的格")
+@click.option("--move-within", "move_within", default=None, help="城内移动：目标区域名")
+@click.option("--wait", "wait_action", is_flag=True, help="原地不动")
+@click.option(
+    "--force",
+    is_flag=True,
+    help="跳过绑定校验（开发期直接驱动没有绑定过的角色）",
+)
+@click.option("--snapshot-id", type=int, default=None, help="指定快照 id；缺省用最新")
+def act(
+    user: str,
+    game: str,
+    actor: str,
+    speak: str | None,
+    travel: str | None,
+    enter_stage: str | None,
+    exit_stage: bool,
+    move_within: str | None,
+    wait_action: bool,
+    force: bool,
+    snapshot_id: int | None,
+) -> None:
+    """接管一个角色：直接下一条命令，跑一次 pass。"""
+    action = _build_action(
+        speak=speak,
+        travel=travel,
+        enter_stage=enter_stage,
+        exit_stage=exit_stage,
+        move_within=move_within,
+        wait_action=wait_action,
+    )
+    _setup_logger()
+    try:
+        outcome = _run_game(
+            command_actor_game(
+                user, game, actor, action, force=force, snapshot_id=snapshot_id
+            ),
+            command="act",
+            user=user,
+            game=game,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except OfflinePassFailed as exc:
+        raise click.ClickException(f"pass 失败，已回滚到本次执行前快照: {exc}") from exc
+
+    click.echo(f"actor:     {outcome.actor_name}")
+    click.echo(f"action:    {outcome.command}")
+    click.echo(f"where:     {outcome.location}")
+    click.echo(f"snapshot:  {outcome.snapshot_id}")
+
+
+###############################################################################
+def _build_action(
+    *,
+    speak: str | None,
+    travel: str | None,
+    enter_stage: str | None,
+    exit_stage: bool,
+    move_within: str | None,
+    wait_action: bool,
+) -> "Component":
+    """六个动词里只能选一个；选不出来就按用法错误报。"""
+    chosen = [
+        ("speak", speak is not None),
+        ("travel", travel is not None),
+        ("enter", enter_stage is not None),
+        ("exit", exit_stage),
+        ("move-within", move_within is not None),
+        ("wait", wait_action),
+    ]
+    picked = [name for name, used in chosen if used]
+    if len(picked) != 1:
+        raise click.UsageError(
+            " ".join(
+                [
+                    f"一次只能下一个动作，收到 {picked or '一个都没有'}：",
+                    "用 --speak / --travel / --enter / --exit / --move-within / --wait 之一",
+                ]
+            )
+        )
+    if speak is not None:
+        return ActorSpeakAction(content=speak)
+    if travel is not None:
+        x, y = _parse_cell(travel)
+        return ActorTravelAction(cell_x=x, cell_y=y)
+    if enter_stage is not None:
+        return ActorEnterStageAction(stage_name=enter_stage)
+    if exit_stage:
+        return ActorExitStageAction()
+    if move_within is not None:
+        return ActorMoveWithinStageAction(destination=move_within)
+    return ActorWaitAction()
 
 
 ###############################################################################

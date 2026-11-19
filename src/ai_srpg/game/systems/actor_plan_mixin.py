@@ -2,9 +2,14 @@
 
 计划是「想」而不是「做」：它只挂动作，不改世界。失败只让这个角色本轮轮空，不抛给
 pipeline——思考失败不该让世界倒退。
+
+记忆里写入的是 ``record_message``（压缩版上下文），与接管路径（``game.command``）写
+的完全一致：事后看记忆，分不出这一轮是自己想的还是被接管的。
 """
 
-from typing import Awaitable, Callable, Dict, Final, List, Tuple, Type, Union
+import json
+from typing import Awaitable, Callable, Dict, Final, List, Optional, Tuple, Type, Union
+from uuid import uuid4
 
 from loguru import logger
 
@@ -12,11 +17,16 @@ from ...deepseek import AgentLoopResult, agent_loop
 from ...entitas import Entity
 from ...entitas.components import Component
 from ...llm import ToolDefinition
-from ..memory import get_agent_memory
+from ...models import AIMessage, ChatMessage, HumanMessage, ToolMessage
+from ..entities.action_rules import action_tool_call
+from ..memory import get_agent_memory, insert_messages
 from .system_mixin import SystemMixin
 
 #: 最多往返几轮：够表达一个行动，又不给模型自己绕圈的空间
 PLAN_ROUNDS: Final[int] = 3
+
+#: 写进记忆的回执，与工具处理器返回同一个词
+ACK: Final[str] = "（已记下）"
 
 
 ############################################################################################################
@@ -35,6 +45,7 @@ class ActorPlanMixin(SystemMixin):
         entity: Entity,
         *,
         input_message: str,
+        record_message: str,
         tools: List[ToolDefinition],
         handlers: Dict[str, Callable[..., Union[str, Awaitable[str]]]],
     ) -> None:
@@ -56,6 +67,10 @@ class ActorPlanMixin(SystemMixin):
             )
             return
 
+        # 记忆里留摘要而不是整段上下文：接管路径写的也是这一版，两条来源因此同形
+        if result.start_message is not None:
+            result.start_message.content = record_message
+
         logger.info(
             " ".join(
                 [
@@ -66,6 +81,42 @@ class ActorPlanMixin(SystemMixin):
                 ]
             )
         )
+
+    ############################################################################################################
+    def predecided_action(self, actor: Entity) -> Optional[Component]:
+        """这一轮的行动是否已经由接管决定：是就返回那个动作。"""
+        for action_type in self.allowed_actions():
+            if actor.has(action_type):
+                return actor.get(action_type)
+        return None
+
+    ############################################################################################################
+    def record_decision(self, actor: Entity, *, action: Component, prompt: str) -> None:
+        """把接管写进记忆：「输入 → 工具调用 → 回执」，与计划 loop 产出的三条一致。"""
+        tool_name, arguments = action_tool_call(action)
+        call_id = f"call_{uuid4().hex[:24]}"
+        messages: List[ChatMessage] = [
+            HumanMessage(content=prompt),
+            AIMessage(
+                content="",
+                additional_kwargs={
+                    "tool_calls": [
+                        {
+                            "id": call_id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_name,
+                                "arguments": json.dumps(arguments, ensure_ascii=False),
+                            },
+                        }
+                    ]
+                },
+            ),
+            ToolMessage(content=ACK, tool_call_id=call_id),
+        ]
+        memory = get_agent_memory(self._game, actor)
+        insert_messages(self._game, actor, len(memory.messages), messages)
+        logger.info(f"[plan:{actor.name}] 接管决定: {tool_name}{arguments}")
 
     ############################################################################################################
     def mount_action(
@@ -97,4 +148,4 @@ def _called_tools(result: AgentLoopResult) -> str:
 
 
 ###############################################################################
-__all__ = ["ActorPlanMixin"]
+__all__ = ["ACK", "ActorPlanMixin"]

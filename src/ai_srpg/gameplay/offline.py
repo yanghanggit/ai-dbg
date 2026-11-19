@@ -7,9 +7,18 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..entitas import Entity, PassResult, ProcessorObserver
+from ..entitas.components import Component
+from ..game.command import mount_command
 from ..game.context import SRPGGame
+from ..game.entities.action_rules import action_blocker
 from ..game.entities.player_binding import bind_player_actor
-from ..game.entities.queries import get_actor_entity, list_actor_summaries
+from ..game.entities.queries import (
+    get_actor_entity,
+    get_cell,
+    get_player_entity,
+    is_on_map,
+    list_actor_summaries,
+)
 from ..game.events.sink import DomainEventSink
 from ..game.lifecycle import (
     initialize_pipeline,
@@ -18,6 +27,7 @@ from ..game.lifecycle import (
 )
 from ..game.offline import create_game_from_blueprint, restore_game_from_snapshot
 from ..models import (
+    ActorComponent,
     ActorPlanAction,
     ActorSummary,
     GameSnapshot,
@@ -56,6 +66,17 @@ class BindActorOutcome:
 
     user_name: str
     actor_name: str
+    snapshot_id: int
+
+
+@dataclass(frozen=True)
+class CommandOutcome:
+    """一次接管的结果：谁下了什么命令，执行后停在哪儿。"""
+
+    user_name: str
+    actor_name: str
+    command: str
+    location: str
     snapshot_id: int
 
 
@@ -200,6 +221,63 @@ async def plan_actors(
 
 
 ###############################################################################
+async def command_actor(
+    room_id: str,
+    game_name: str,
+    user_name: str,
+    actor_name: str,
+    action: Component,
+    *,
+    force: bool = False,
+    snapshot_id: Optional[int] = None,
+) -> CommandOutcome:
+    """接管一个角色：校验后挂动作、跑一次 pass，并回报执行后的位置。
+
+    与自主计划共用同一套前置条件（``action_blocker``），所以人能做的与模型能做的没有
+    差别。``force`` 跳过绑定校验，用于开发期直接驱动 NPC。
+    """
+    game = await load_required_game(room_id, game_name, snapshot_id=snapshot_id)
+    actor = get_actor_entity(game, actor_name)
+    if actor is None:
+        raise LookupError(f"找不到角色实体: {actor_name}")
+
+    if not force:
+        controlled = get_player_entity(game, user_name)
+        if controlled is None or controlled.index != actor.index:
+            raise ValueError(
+                f"{user_name} 没有控制 {actor_name}（先 bind，或用 --force 直接驱动）"
+            )
+
+    blocker = action_blocker(game, actor, action)
+    if blocker is not None:
+        raise ValueError(f"{actor_name} 不能执行这个动作: {blocker}")
+
+    mount_command(game, actor, action)
+    outcome = await run_offline_pass(game, room_id)
+    return CommandOutcome(
+        user_name=user_name,
+        actor_name=actor.name,
+        command=_command_label(action),
+        location=_location_of(game, actor),
+        snapshot_id=outcome.snapshot_id,
+    )
+
+
+###############################################################################
+def _location_of(game: SRPGGame, actor: Entity) -> str:
+    """执行后角色在哪儿：据点里是区域名，地图上是「全局舞台(x,y)」。"""
+    if not is_on_map(game, actor):
+        return actor.get(ActorComponent).current_stage
+    stage_entity, (x, y) = get_cell(game, actor)
+    return f"{stage_entity.name}({x},{y})"
+
+
+###############################################################################
+def _command_label(action: Component) -> str:
+    return type(action).__name__.removesuffix("Action")
+
+
+###############################################################################
 async def list_actors(
     room_id: str, game_name: str, *, snapshot_id: Optional[int] = None
 ) -> List[ActorSummary]:
@@ -270,11 +348,13 @@ def _load_snapshot(
 
 
 __all__ = [
+    "CommandOutcome",
     "GameAlreadyExistsError",
     "PlanOutcome",
     "NewGameOutcome",
     "OfflinePassFailed",
     "OfflinePassOutcome",
+    "command_actor",
     "create_new_game",
     "list_actors",
     "list_snapshots",

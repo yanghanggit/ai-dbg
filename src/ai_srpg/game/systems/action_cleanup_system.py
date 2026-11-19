@@ -2,6 +2,8 @@
 
 from typing import Final, FrozenSet, Iterable, Type, final, override
 
+from loguru import logger
+
 from ...entitas import CleanupProcessor, ExecuteProcessor, Matcher
 from ...entitas.components import Component
 from ..context import SRPGGame
@@ -42,6 +44,12 @@ class ActionCleanupSystem(SystemMixin, ExecuteProcessor, CleanupProcessor):
         action_entities = self._game.get_group(
             Matcher(any_of=self._registered_actions)
         ).entities.copy()
+        if action_entities:
+            # 动作本该在它那一层的 system 里被消费；活到收尾说明没人在那一轮处理它
+            logger.warning(
+                "收尾时仍有未消费的动作: "
+                + "、".join(sorted(entity.name for entity in action_entities))
+            )
 
         for entity in action_entities:
             for action_class in self._registered_actions:

@@ -76,10 +76,18 @@ _GLOBAL_ACTIONS: Final[Tuple[Type[Component], ...]] = (
 
 ############################################################################################################
 @prompt_builder
-def global_plan_prompt(*, location: str, cells: List[str]) -> str:
-    """地图上计划的任务说明：这一刻的位置与视野内的相邻格。"""
+def global_plan_prompt(
+    *, location: str, cells: List[str], compact: bool = False
+) -> str:
+    """地图上计划的任务说明：这一刻的位置与视野内的相邻格。
+
+    ``compact`` 给记忆用：视野压成一行，只留据点与别人——空地在记忆里没有信息量。
+    """
     lines = [f"当前位置：{location}", "", "视野："]
-    lines.extend(f"- {cell}" for cell in cells)
+    if compact:
+        lines.append("、".join(cells) if cells else "全是空地")
+    else:
+        lines.extend(f"- {cell}" for cell in cells)
     lines.extend(
         [
             "",
@@ -121,26 +129,22 @@ class GlobalPlanSystem(ReactiveProcessor, ActorPlanMixin):
     @override
     async def react(self, entities: List[Entity]) -> None:
         for entity in sorted(entities, key=lambda item: item.index):
+            # 「该想一次」在处理的同一刻被消费；行为动作留给后面的 system
+            entity.remove(ActorPlanAction)
+            record_message = global_plan_input(self._game, entity, compact=True)
+            decided = self.predecided_action(entity)
+            if decided is not None:
+                self.record_decision(entity, action=decided, prompt=record_message)
+                continue
             await self.run_plan(
                 entity,
-                input_message=self._input_message(entity),
+                input_message=global_plan_input(self._game, entity, compact=False),
+                record_message=record_message,
                 tools=_GLOBAL_TOOLS,
                 handlers=self._handlers(entity),
             )
 
     ##########################################################################################
-    def _input_message(self, entity: Entity) -> str:
-        map_entity, (x, y) = get_cell(self._game, entity)
-        here = get_stage_at_cell(self._game, map_entity, (x, y))
-        return global_plan_prompt(
-            location=f"({x},{y}) {here.name if here is not None else '空地'}",
-            cells=[
-                _describe_cell(cell)
-                for cell in get_map_cells(self._game, entity)
-                if (cell.x, cell.y) != (x, y)
-            ],
-        )
-
     ##########################################################################################
     def _handlers(
         self, entity: Entity
@@ -155,6 +159,25 @@ class GlobalPlanSystem(ReactiveProcessor, ActorPlanMixin):
 
 
 ############################################################################################################
+def global_plan_input(srpg_game: SRPGGame, entity: Entity, *, compact: bool) -> str:
+    """地图层这一刻的输入；计划与接管共用，只有 compact 不同。"""
+    map_entity, (x, y) = get_cell(srpg_game, entity)
+    here = get_stage_at_cell(srpg_game, map_entity, (x, y))
+    cells = [
+        _describe_cell(cell)
+        for cell in get_map_cells(srpg_game, entity)
+        if (cell.x, cell.y) != (x, y)
+    ]
+    if compact:
+        cells = [cell for cell in cells if not cell.endswith(" 空地")]
+    return global_plan_prompt(
+        location=f"({x},{y}) {here.name if here is not None else '空地'}",
+        cells=cells,
+        compact=compact,
+    )
+
+
+############################################################################################################
 def _describe_cell(cell: Cell) -> str:
     """一格一行：坐标、格上的据点（或空地），以及在格上的角色。"""
     where = cell.stage if cell.stage is not None else "空地"
@@ -165,4 +188,4 @@ def _describe_cell(cell: Cell) -> str:
 
 
 ###############################################################################
-__all__ = ["GlobalPlanSystem", "global_plan_prompt"]
+__all__ = ["GlobalPlanSystem", "global_plan_input", "global_plan_prompt"]

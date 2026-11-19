@@ -5,10 +5,13 @@
 
 from typing import Dict, List, final, override
 
+from loguru import logger
+
 from ...entitas import Entity, GroupEvent, Matcher, ReactiveProcessor
 from ...models import ActorComponent, ActorExitStageAction, PositionComponent
 from ..context import SRPGGame
-from ..entities.queries import get_cell, get_global_stage, get_settlement, is_on_map
+from ..entities.action_rules import action_blocker
+from ..entities.queries import get_cell, get_global_stage, get_settlement
 from .location_change_mixin import LocationChangeMixin
 
 
@@ -31,10 +34,8 @@ class ActorExitStageSystem(ReactiveProcessor, LocationChangeMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作、且在据点里的角色。"""
-        return entity.has(ActorComponent, ActorExitStageAction) and not is_on_map(
-            self._game, entity
-        )
+        """只处理仍挂着动作的角色：动作在处理的同一刻被消费。"""
+        return entity.has(ActorComponent, ActorExitStageAction)
 
     ##########################################################################################
     @override
@@ -44,6 +45,13 @@ class ActorExitStageSystem(ReactiveProcessor, LocationChangeMixin):
 
     ##########################################################################################
     def _exit(self, entity: Entity) -> None:
+        action = entity.get(ActorExitStageAction)
+        entity.remove(ActorExitStageAction)
+        blocker = action_blocker(self._game, entity, action)
+        if blocker is not None:
+            logger.warning(f"{entity.name} 的出城被拒绝: {blocker}")
+            return
+
         settlement = get_settlement(self._game, entity)
         assert settlement is not None, f"{entity.name} 在据点里却没有据点根"
         global_stage = get_global_stage(self._game, settlement.name)

@@ -55,6 +55,7 @@ class AppearanceRefreshSystem(ReactiveProcessor, DescriptionRefreshMixin):
             entities, label="appearance", instruction=appearance_prompt()
         )
         for entity in entities:
+            entity.remove(RefreshAppearanceAction)  # 处理即消费
             text = texts.get(entity.name)
             if text is None:
                 continue

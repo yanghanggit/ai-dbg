@@ -28,20 +28,27 @@ async def process_pipeline(
     ``StopPipeline`` 是显式的提前结束信号，不是错误：它在这里被消费，返回
     ``PassResult(aborted_by=...)``，不会抛给调用方。真正的失败仍然上抛，
     由上层（job / 会话）决定重试与状态处理。
+
+    pass 结束时清空反应式收集器：收集器跨 execute 存活，而它收集的动作只活一次 pass。
+    两者不同步时，下一轮会拿到「实体还在、动作已经没了」的残留（group 在组件替换时
+    会先派发 removed 再派发 added，回声因此留到下一轮），所以每轮边界都要对齐一次。
     """
     try:
         await pipeline.execute(observer)
     except StopPipeline:
         pipeline.cleanup()
+        pipeline.clear_reactive_processors()
         return pipeline.last_pass
     except BaseException:
         try:
             pipeline.cleanup()
         except Exception:
             logger.exception("pipeline cleanup failed after execute error")
+        pipeline.clear_reactive_processors()
         raise
 
     pipeline.cleanup()
+    pipeline.clear_reactive_processors()
     return pipeline.last_pass
 
 

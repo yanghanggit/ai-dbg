@@ -103,11 +103,28 @@ _LOCAL_ACTIONS: Final[Tuple[Type[Component], ...]] = (
 ############################################################################################################
 @prompt_builder
 def local_plan_prompt(
-    *, stage_name: str, environment: str, actors: List[str], destinations: List[str]
+    *,
+    stage_name: str,
+    environment: str,
+    actors: List[str],
+    destinations: List[str],
+    compact: bool = False,
 ) -> str:
-    """据点内计划的任务说明：这一刻的区域、环境、在场者与相邻区域。"""
-    lines = [f"当前区域：{stage_name}", f"环境：{environment}", "", "在场角色："]
-    lines.extend(f"- {actor}" for actor in actors)
+    """据点内计划的任务说明：这一刻的区域、环境、在场者与相邻区域。
+
+    ``compact`` 给记忆用：环境收成一句、在场者只留名字。发出去的提示词始终是完整版，
+    记忆里留摘要——过去那一刻的细节不必陪着角色走完后面所有回合。
+    """
+    lines = [
+        f"当前区域：{stage_name}",
+        f"环境：{_compact_text(environment) if compact else environment}",
+        "",
+        "在场角色：",
+    ]
+    if compact:
+        lines.extend(f"- {actor.split('：')[0]}" for actor in actors)
+    else:
+        lines.extend(f"- {actor}" for actor in actors)
     lines.extend(["", "可去之处："])
     lines.extend(f"- {item}" for item in destinations)
     if not destinations:
@@ -153,32 +170,22 @@ class LocalPlanSystem(ReactiveProcessor, ActorPlanMixin):
     @override
     async def react(self, entities: List[Entity]) -> None:
         for entity in sorted(entities, key=lambda item: item.index):
+            # 「该想一次」在处理的同一刻被消费；行为动作留给后面的 system
+            entity.remove(ActorPlanAction)
+            record_message = local_plan_input(self._game, entity, compact=True)
+            decided = self.predecided_action(entity)
+            if decided is not None:
+                self.record_decision(entity, action=decided, prompt=record_message)
+                continue
             await self.run_plan(
                 entity,
-                input_message=self._input_message(entity),
+                input_message=local_plan_input(self._game, entity, compact=False),
+                record_message=record_message,
                 tools=_LOCAL_TOOLS,
                 handlers=self._handlers(entity),
             )
 
     ##########################################################################################
-    def _input_message(self, entity: Entity) -> str:
-        stage_entity = resolve_stage_entity(self._game, entity)
-        assert stage_entity is not None, f"{entity.name} 无所在舞台"
-        return local_plan_prompt(
-            stage_name=stage_entity.name,
-            environment=_environment_of(stage_entity),
-            actors=[
-                _describe_actor(actor)
-                for actor in sorted(
-                    get_actors_in_stage(self._game, stage_entity),
-                    key=lambda item: item.index,
-                )
-            ],
-            destinations=[
-                stage.name for stage in get_adjacent_stages(self._game, entity)
-            ],
-        )
-
     ##########################################################################################
     def _handlers(
         self, entity: Entity
@@ -193,6 +200,35 @@ class LocalPlanSystem(ReactiveProcessor, ActorPlanMixin):
             "exit": lambda: self.mount_action(entity, ActorExitStageAction),
             "wait": lambda: self.mount_action(entity, ActorWaitAction),
         }
+
+
+############################################################################################################
+def local_plan_input(srpg_game: SRPGGame, entity: Entity, *, compact: bool) -> str:
+    """据点层这一刻的输入；计划与接管共用，只有 compact 不同。"""
+    stage_entity = resolve_stage_entity(srpg_game, entity)
+    assert stage_entity is not None, f"{entity.name} 无所在舞台"
+    return local_plan_prompt(
+        stage_name=stage_entity.name,
+        environment=_environment_of(stage_entity),
+        actors=[
+            _describe_actor(actor)
+            for actor in sorted(
+                get_actors_in_stage(srpg_game, stage_entity),
+                key=lambda item: item.index,
+            )
+        ],
+        destinations=[stage.name for stage in get_adjacent_stages(srpg_game, entity)],
+        compact=compact,
+    )
+
+
+############################################################################################################
+def _compact_text(text: str, *, limit: int = 40) -> str:
+    """取第一句，超长截断——记忆里的环境只需要认得出「这是哪儿」。"""
+    head = text.split("。")[0]
+    if len(head) <= limit:
+        return head
+    return f"{head[:limit]}…"
 
 
 ############################################################################################################
@@ -211,4 +247,4 @@ def _describe_actor(actor: Entity) -> str:
 
 
 ###############################################################################
-__all__ = ["LocalPlanSystem", "local_plan_prompt"]
+__all__ = ["LocalPlanSystem", "local_plan_input", "local_plan_prompt"]

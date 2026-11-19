@@ -30,17 +30,19 @@ class ActorWaitSystem(ReactiveProcessor, StageBroadcastMixin):
     ##########################################################################################
     @override
     def filter(self, entity: Entity) -> bool:
-        """只处理仍挂着动作、且不在战场上的角色。"""
-        return entity.has(ActorComponent, ActorWaitAction) and not is_on_map(
-            self._game, entity
-        )
+        """只处理仍挂着动作的角色：动作在处理的同一刻被消费。"""
+        return entity.has(ActorComponent, ActorWaitAction)
 
     ##########################################################################################
     @override
     async def react(self, entities: List[Entity]) -> None:
         for entity in sorted(entities, key=lambda item: item.index):
+            entity.remove(ActorWaitAction)
             stage_entity = resolve_stage_entity(self._game, entity)
             assert stage_entity is not None, f"{entity.name} 无所在舞台"
+            if is_on_map(self._game, entity):
+                # 地图不是场所：没有可告知的对象，等待只是「这轮没动」
+                continue
             self.broadcast_at_location(
                 stage_entity,
                 NoneEvent(message=f"{entity.name}留在原地。"),
